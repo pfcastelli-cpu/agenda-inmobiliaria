@@ -1,0 +1,110 @@
+#pat-access {
+  font: 400 16px/1.5 Poppins, system-ui, sans-serif;
+  --pa-bg: light-dark(#fff, #182638);
+  --pa-text: light-dark(#1a2c45, #eef7fa);
+  --pa-muted: light-dark(#4d4d4d, #b8c9d7);
+  background: var(--pa-bg);
+  color: var(--pa-text);
+  border-radius: 22px;
+  overflow: hidden;
+  min-height: 100vh;
+}
+#pat-access * { box-sizing: border-box; }
+#pat-access [hidden] { display: none !important; }
+#pat-access .pa-head {
+  background: #1a2c45;
+  color: white;
+  padding: 24px 28px;
+  border-bottom: 4px solid #00a9a5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+#pat-access .pa-head strong { letter-spacing: 2px; font-size: 18px; }
+#pat-access .pa-head small { display: block; font-size: 14px; letter-spacing: 3px; }
+#pat-access .pa-badge {
+  font-size: 14px;
+  border: 1px solid #759397;
+  border-radius: 20px;
+  padding: 5px 10px;
+}
+#pat-access .pa-form { max-width: 450px; padding: 38px 24px; margin: auto; }
+#pat-access h2 { font-size: 28px; line-height: 1.2; margin: 0 0 12px; }
+#pat-access p { color: var(--pa-muted); margin: 0 0 24px; font-size: 14px; }
+#pat-access label { display: block; font-size: 14px; margin: 18px 0 7px; }
+#pat-access input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  border: 1px solid light-dark(#cbd8df, #4e647b);
+  border-radius: 10px;
+  background: var(--pa-bg);
+  color: var(--pa-text);
+  padding: 12px;
+  font: inherit;
+}
+#pat-access button {
+  min-height: 44px;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+#pat-access .pa-main {
+  width: 100%;
+  background: #00a9a5;
+  color: #1a2c45;
+  border: 0;
+  font-weight: 600;
+  margin-top: 20px;
+}
+#pat-access .pa-main:disabled { opacity: 0.6; cursor: wait; }
+#pat-access .pa-secondary {
+  width: 100%;
+  background: transparent;
+  border: 1px solid light-dark(#cadbdf, #516879);
+  color: var(--pa-text);
+  margin-top: 10px;
+}
+#pat-access .pa-link {
+  background: none;
+  color: var(--pa-text);
+  border: 0;
+  padding: 8px 0;
+  font-size: 14px;
+}
+#pat-access .pa-pass { display: flex; gap: 8px; }
+#pat-access .pa-pass button {
+  background: transparent;
+  border: 1px solid light-dark(#cadbdf, #516879);
+  color: var(--pa-text);
+  font-size: 13px;
+}
+#pat-access #pa-message,
+#pat-access .pa-aviso {
+  font-size: 14px;
+  color: var(--pa-text);
+  margin-top: 14px;
+}
+#pat-access .pa-aviso-error { color: #d43228; }
+#pat-access .pa-foot {
+  font-size: 14px;
+  text-align: center;
+  padding: 16px;
+  color: var(--pa-muted);
+  border-top: 1px solid light-dark(#e3eeee, #3b4c5f);
+}
+#pat-access .pa-toolbar {
+  padding: 12px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: light-dark(#e3f8f7, #203e44);
+}
+#pat-access .pa-toolbar strong { color: #1a2c45; }
+#pat-access .pa-sesion { font-size: 13px; min-width: 0; }
+#pat-access .pa-sesion span { display: block; color: var(--pa-muted); font-size: 14px; }

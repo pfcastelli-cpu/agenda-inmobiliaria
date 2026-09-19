@@ -1,0 +1,1691 @@
+<!doctype html>
+<html lang="en" data-visualize-standalone>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Acceso Patrimonios</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Acceso Patrimonios" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Acceso Patrimonios&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 14px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --icon-size: 16px;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --corner-shape: round;
+  --radius: var(--border-radius-lg, 10px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: var(--visualize-paint-gutter, 0px);
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+:root:not([data-app-block-surface], [data-visualize-standalone]) &gt; body {
+  padding: 12px;
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: var(--corner-shape);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* The shared runtime owns data-tooltip; suppress AppBlock&#x27;s pseudo-tooltip. */
+main [data-tooltip]::after {
+  content: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+hr {
+  width: 100%;
+  height: 1px;
+  margin-block: 6px;
+  border: 0;
+  background: var(--border);
+}
+
+.nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress {
+  display: flex;
+  height: 8px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 8px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar:only-child {
+  border-radius: var(--radius-full);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.nav-link,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn,
+.nav-link {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover,
+.nav-link:not(:disabled):not([aria-disabled=&quot;true&quot;]):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.nav-pills .nav-link {
+  min-width: 0;
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.nav-justified .nav-link {
+  flex: 1 1 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.nav-pills .nav-link.active {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+.btn:disabled,
+.nav-link:disabled,
+.nav-link[aria-disabled=&quot;true&quot;] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: var(--corner-shape);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible,
+.nav-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .nav-link,
+  .form-control,
+  .form-select {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Keep small-screen WebKit from zooming when a text field receives focus. */
+  .form-control,
+  .form-select {
+    font-size: max(16px, var(--font-size-normal));
+  }
+
+  .form-control[type=&quot;file&quot;]::file-selector-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control-color[type=&quot;color&quot;] {
+    width: 44px;
+    height: 44px;
+  }
+
+  .form-control:is(
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;week&quot;]
+  ) {
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
+  }
+
+  .form-check {
+    min-height: 44px;
+    padding-inline: 15px;
+  }
+
+  .form-check-input {
+    position: relative;
+  }
+
+  .form-check-input::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    content: &quot;&quot;;
+    transform: translate(-50%, -50%);
+  }
+
+  .form-check-label {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .form-range {
+    height: 44px;
+    touch-action: pan-y;
+  }
+
+  .form-range::-webkit-slider-runnable-track {
+    height: 44px;
+  }
+
+  .form-range::-moz-range-track {
+    height: 44px;
+  }
+
+  .form-range::-webkit-slider-thumb {
+    margin-top: 12px;
+  }
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: var(--icon-size) !important;
+  height: var(--icon-size) !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;style&gt;
+#pat-access{font:400 16px/1.5 Poppins,system-ui,sans-serif;--pa-bg:light-dark(#fff,#182638);--pa-text:light-dark(#1a2c45,#eef7fa);--pa-muted:light-dark(#4d4d4d,#b8c9d7);background:var(--pa-bg);color:var(--pa-text);border-radius:22px;overflow:hidden}
+#pat-access *{box-sizing:border-box}#pat-access [hidden]{display:none!important}
+#pat-access .pa-head{background:#1a2c45;color:white;padding:24px 28px;border-bottom:4px solid #00a9a5;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#pat-access .pa-head strong{letter-spacing:2px;font-size:18px}#pat-access .pa-head small{display:block;font-size:12px;letter-spacing:3px}#pat-access .pa-badge{font-size:12px;border:1px solid #759397;border-radius:20px;padding:5px 10px}
+#pat-access .pa-form{max-width:450px;padding:38px 24px;margin:auto}#pat-access h2{font-size:28px;line-height:1.2;margin:0 0 12px}#pat-access p{color:var(--pa-muted);margin:0 0 24px;font-size:14px}
+#pat-access label{display:block;font-size:14px;margin:18px 0 7px}#pat-access input{width:100%;min-width:0;min-height:48px;border:1px solid light-dark(#cbd8df,#4e647b);border-radius:10px;background:var(--pa-bg);color:var(--pa-text);padding:12px;font:inherit}
+#pat-access button{min-height:44px;font:inherit;cursor:pointer;border-radius:10px;padding:10px 14px}#pat-access .pa-main{width:100%;background:#00a9a5;color:#1a2c45;border:0;font-weight:600;margin-top:20px}#pat-access .pa-secondary{width:100%;background:transparent;border:1px solid light-dark(#cadbdf,#516879);color:var(--pa-text);margin-top:10px}#pat-access .pa-link{background:none;color:var(--pa-text);border:0;padding:8px 0;font-size:14px}#pat-access .pa-pass{display:flex;gap:8px}#pat-access .pa-pass button{background:transparent;border:1px solid light-dark(#cadbdf,#516879);color:var(--pa-text);font-size:13px}#pat-access #pa-message{font-size:14px;color:var(--pa-text);margin-top:14px}#pat-access .pa-foot{font-size:12px;text-align:center;padding:16px;color:var(--pa-muted);border-top:1px solid light-dark(#e3eeee,#3b4c5f)}#pat-access .pa-toolbar{padding:12px 22px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:light-dark(#e3f8f7,#203e44)}
+&lt;/style&gt;
+&lt;div id=&quot;pat-access&quot;&gt;
+ &lt;header class=&quot;pa-head&quot;&gt;&lt;div&gt;&lt;strong&gt;PATRIMONIOS&lt;/strong&gt;&lt;small&gt;INMOBILIARIOS&lt;/small&gt;&lt;/div&gt;&lt;span class=&quot;pa-badge&quot;&gt;Vista de prueba&lt;/span&gt;&lt;/header&gt;
+ &lt;section id=&quot;pa-login&quot; class=&quot;pa-form&quot;&gt;
+  &lt;h2&gt;Bienvenido a tu agenda&lt;/h2&gt;&lt;p&gt;Accede para organizar tus visitas y disponibilidad.&lt;/p&gt;
+  &lt;form id=&quot;pa-form&quot; autocomplete=&quot;off&quot;&gt;
+   &lt;label for=&quot;pa-email&quot;&gt;Correo electrónico&lt;/label&gt;&lt;input id=&quot;pa-email&quot; type=&quot;email&quot; placeholder=&quot;nombre@empresa.com&quot; required&gt;
+   &lt;label for=&quot;pa-password&quot;&gt;Contraseña&lt;/label&gt;&lt;div class=&quot;pa-pass&quot;&gt;&lt;input id=&quot;pa-password&quot; type=&quot;password&quot; placeholder=&quot;Solo datos de prueba&quot; required&gt;&lt;button id=&quot;pa-reveal&quot; type=&quot;button&quot; aria-pressed=&quot;false&quot;&gt;Mostrar&lt;/button&gt;&lt;/div&gt;
+   &lt;button class=&quot;pa-link&quot; type=&quot;button&quot; id=&quot;pa-reset&quot;&gt;Olvidé mi contraseña&lt;/button&gt;
+   &lt;button type=&quot;submit&quot; class=&quot;pa-main&quot;&gt;Iniciar sesión&lt;/button&gt;
+  &lt;/form&gt;
+  &lt;button class=&quot;pa-secondary&quot; id=&quot;pa-demo&quot; type=&quot;button&quot;&gt;Explorar la agenda de demostración&lt;/button&gt;
+  &lt;div id=&quot;pa-message&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
+  &lt;p style=&quot;margin:22px 0 0;font-size:12px&quot;&gt;Acceso real pendiente de conexión. No ingreses contraseñas reales. Tu administrador habilitará tu cuenta.&lt;/p&gt;
+ &lt;/section&gt;
+ &lt;section id=&quot;pa-agenda&quot; hidden&gt;&lt;div class=&quot;pa-toolbar&quot;&gt;&lt;span&gt;Agenda simulada&lt;/span&gt;&lt;button type=&quot;button&quot; class=&quot;pa-link&quot; id=&quot;pa-back&quot;&gt;Volver al inicio&lt;/button&gt;&lt;/div&gt;&lt;div id=&quot;pa-agenda-content&quot;&gt;&lt;style&gt;
+#visita-app{--v-bg:light-dark(#f4f4f4,#111725);--v-surface:light-dark(#fff,#1a2233);--v-text:light-dark(#15233b,#edf2ff);--v-muted:light-dark(#586780,#a5b3cd);--v-line:light-dark(#e2e8f2,#303d54);--v-blue:light-dark(#1a2c45,#8eb0ff);--v-tint:light-dark(#e3f8f7,#253555);--v-green:light-dark(#177153,#78dab5);--v-greenbg:light-dark(#e8f6ef,#203f36);--v-red:light-dark(#b32f43,#ffa4ad);font:400 16px/1.45 system-ui,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,sans-serif;color:var(--v-text);background:var(--v-bg);border-radius:24px;overflow:hidden;isolation:isolate;text-align:left}
+#visita-app *{box-sizing:border-box}
+#visita-app button,#visita-app input,#visita-app select{font:inherit}
+#visita-app button{cursor:pointer;color:inherit}
+#visita-app button:disabled{cursor:not-allowed;opacity:.4}
+#visita-app h2,#visita-app h3,#visita-app p{margin:0}
+#visita-app h2{font-size:28px;line-height:1.2;font-weight:650;letter-spacing:-.8px}
+#visita-app h3{font-size:17px;font-weight:600;line-height:1.35}
+#visita-app svg{width:20px;height:20px;flex-shrink:0}
+#visita-app .v-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 22px;background:var(--v-surface);border-bottom:1px solid var(--v-line)}
+#visita-app .v-brand{display:flex;align-items:center;gap:9px;font-size:21px;font-weight:750;letter-spacing:-.6px}
+#visita-app .v-logo{width:35px;height:35px;border-radius:11px;background:#1a2c45;color:#fff;display:grid;place-items:center}
+#visita-app .v-company{font-size:12px;font-weight:500;color:var(--v-muted);letter-spacing:.1px}
+#visita-app .v-demo{font-size:12px;padding:5px 9px;border:1px solid var(--v-line);border-radius:20px;color:var(--v-muted)}
+#visita-app .v-content{padding:22px;min-height:540px}
+#visita-app .v-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}
+#visita-app .v-muted{color:var(--v-muted);font-size:14px}
+#visita-app .v-eyebrow{color:var(--v-blue);font-size:12px;letter-spacing:1.3px;font-weight:700;text-transform:uppercase;margin-bottom:7px}
+#visita-app .v-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--v-line);border-radius:12px;background:var(--v-surface);padding:11px 14px;min-height:44px;font-size:14px;font-weight:600;text-decoration:none}
+#visita-app .v-primary{background:#1a2c45;border-color:#1a2c45;color:#fff}
+#visita-app .v-quiet{background:transparent;border:0;color:var(--v-blue);padding:10px 4px}
+#visita-app .v-iconbtn{width:44px;height:44px;display:grid;place-items:center;padding:0;background:var(--v-surface);border:1px solid var(--v-line);border-radius:12px}
+#visita-app .v-row{display:flex;align-items:center;gap:10px;min-width:0}
+#visita-app .v-between{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#visita-app .v-statbar{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--v-surface);border:1px solid var(--v-line);border-radius:16px;margin-bottom:20px;padding:15px 4px}
+#visita-app .v-stat{padding:0 12px;border-right:1px solid var(--v-line)}
+#visita-app .v-stat:last-child{border:0}
+#visita-app .v-stat strong{display:block;font-size:23px;line-height:1.25;font-weight:650}
+#visita-app .v-stat span{font-size:12px;color:var(--v-muted)}
+#visita-app .v-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:12px 0 19px}
+#visita-app .v-day{border:1px solid var(--v-line);background:var(--v-surface);padding:9px 0 8px;border-radius:13px;min-height:75px;display:flex;flex-direction:column;align-items:center;gap:3px}
+#visita-app .v-day span{font-size:12px;color:var(--v-muted)}
+#visita-app .v-day strong{font-size:19px;font-weight:650}
+#visita-app .v-day small{font-size:10px;min-height:13px;color:var(--v-muted)}
+#visita-app .v-day[aria-pressed=true]{background:#1a2c45;border-color:#1a2c45;color:#fff;box-shadow:0 4px 12px #1a2c4522}
+#visita-app .v-day[aria-pressed=true] span,#visita-app .v-day[aria-pressed=true] small{color:#e5edff}
+#visita-app .v-field{display:grid;gap:7px;font-size:14px;font-weight:500;margin-bottom:15px}
+#visita-app .v-input{display:block;width:100%;min-width:0;background:var(--v-surface);color:var(--v-text);border:1px solid var(--v-line);border-radius:12px;padding:12px 13px;min-height:46px;font-size:16px;font-weight:400}
+#visita-app .v-input::placeholder{color:var(--v-muted)}
+#visita-app .v-search{position:relative;margin-bottom:12px}
+#visita-app .v-search svg{position:absolute;top:14px;left:13px;color:var(--v-muted)}
+#visita-app .v-search input{padding-left:42px}
+#visita-app .v-filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:17px}
+#visita-app .v-filters select{font-size:14px}
+#visita-app .v-list{display:grid;gap:11px;margin-top:13px}
+#visita-app .v-appt{display:grid;grid-template-columns:53px minmax(0,1fr);gap:11px}
+#visita-app .v-time{padding-top:16px;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+#visita-app .v-time small{display:block;font-size:11px;font-weight:400;color:var(--v-muted);margin-top:2px}
+#visita-app .v-apptbody{padding:15px;background:var(--v-surface);border:1px solid var(--v-line);border-left:3px solid var(--advisor-color,var(--v-blue));border-radius:0 15px 15px 0;min-width:0}
+#visita-app .v-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 7px;border-radius:6px;color:var(--v-green);background:var(--v-greenbg);white-space:nowrap}
+#visita-app .v-tag-neutral{color:var(--v-muted);background:var(--v-bg)}
+#visita-app .v-apptmeta{display:flex;align-items:center;flex-wrap:wrap;gap:5px 10px;color:var(--v-muted);font-size:12px;margin:6px 0 10px}
+#visita-app .v-apptmeta svg{width:13px;height:13px}
+#visita-app .v-avatar{width:31px;height:31px;border-radius:50%;display:inline-grid;place-items:center;background:var(--v-tint);color:var(--v-blue);font-weight:700;font-size:11px;flex-shrink:0}
+#visita-app .v-advisorname{font-size:12px;font-weight:500}
+#visita-app .v-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:9px;padding-top:8px;border-top:1px solid var(--v-line)}
+#visita-app .v-actions button{background:none;border:0;padding:4px 0;min-height:32px;font-size:12px;color:var(--v-blue)}
+#visita-app .v-actions button.v-danger{color:var(--v-red)}
+#visita-app .v-nav{display:grid;grid-template-columns:repeat(3,1fr);padding:9px 12px 12px;background:var(--v-surface);border-top:1px solid var(--v-line)}
+#visita-app .v-nav button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border:0;background:transparent;color:var(--v-muted);border-radius:12px;font-size:13px;font-weight:600}
+#visita-app .v-nav button[aria-current=page]{background:var(--v-tint);color:var(--v-blue)}
+#visita-app .v-property{background:var(--v-surface);border:1px solid var(--v-line);border-radius:16px;padding:15px;min-width:0}
+#visita-app .v-propertyhead{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+#visita-app .v-building{width:49px;height:54px;background:var(--v-tint);color:var(--v-blue);border-radius:12px;display:grid;place-items:center;flex-shrink:0}
+#visita-app .v-building svg{width:26px;height:26px}
+#visita-app .v-property h3{font-size:16px}
+#visita-app .v-details{font-size:12px;color:var(--v-muted);margin-top:4px}
+#visita-app .v-price{font-size:17px;font-weight:650;letter-spacing:-.3px}
+#visita-app .v-price small{font-size:11px;font-weight:400;color:var(--v-muted)}
+#visita-app .v-cardfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:12px;border-top:1px solid var(--v-line)}
+#visita-app .v-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#visita-app .v-pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:18px;color:var(--v-muted);font-size:13px}
+#visita-app .v-teamcard{background:var(--v-surface);border:1px solid var(--v-line);border-radius:17px;padding:17px}
+#visita-app .v-teamcard .v-avatar{width:45px;height:45px;font-size:14px}
+#visita-app .v-teammeta{display:flex;gap:16px;margin:15px 0;color:var(--v-muted);font-size:13px}
+#visita-app .v-loadtrack{height:5px;border-radius:10px;background:var(--v-line);overflow:hidden;margin-bottom:14px}
+#visita-app .v-load{height:100%;background:var(--v-blue)}
+#visita-app .v-step{display:flex;align-items:center;gap:8px;color:var(--v-muted);font-size:12px;margin:0 0 20px}
+#visita-app .v-step b{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:var(--v-line);font-size:11px}
+#visita-app .v-step .active{color:var(--v-blue);font-weight:600;display:flex;align-items:center;gap:6px}
+#visita-app .v-step .active b{background:var(--v-blue);color:var(--v-surface)}
+#visita-app .v-bookinghero{background:var(--v-tint);border-radius:16px;padding:17px;margin-bottom:20px}
+#visita-app .v-bookinghero .v-muted{font-size:12px}
+#visita-app .v-sectiontitle{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:650;margin-bottom:12px}
+#visita-app .v-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 10px}
+#visita-app .v-slot{background:var(--v-surface);border:1px solid var(--v-line);border-radius:11px;min-height:44px;font-size:14px;font-weight:500}
+#visita-app .v-slot[aria-pressed=true]{background:#1a2c45;border-color:#1a2c45;color:#fff}
+#visita-app .v-slot:disabled{text-decoration:line-through}
+#visita-app .v-note{font-size:12px;color:var(--v-muted);margin-bottom:20px}
+#visita-app .v-bookinggrid{display:grid;grid-template-columns:1fr 1fr;gap:25px}
+#visita-app .v-full{width:100%}
+#visita-app .v-error{color:var(--v-red);font-size:14px;margin:10px 0}
+#visita-app .v-empty{padding:32px 18px;text-align:center;color:var(--v-muted);border:1px dashed var(--v-line);border-radius:16px;margin:14px 0}
+#visita-app .v-empty svg{width:32px;height:32px;margin-bottom:10px}
+#visita-app .v-success{background:var(--v-surface);border:1px solid var(--v-line);border-radius:22px;padding:26px 20px;max-width:480px;margin:15px auto;text-align:center}
+#visita-app .v-successicon{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:var(--v-greenbg);color:var(--v-green);margin:0 auto 16px}
+#visita-app .v-successicon svg{width:32px;height:32px}
+#visita-app .v-ticket{margin:23px 0;text-align:left;border-top:1px dashed var(--v-line);border-bottom:1px dashed var(--v-line);padding:18px 0;display:grid;gap:12px}
+#visita-app .v-ticket .v-row{align-items:flex-start}
+#visita-app .v-toast{padding:10px 22px;background:var(--v-greenbg);color:var(--v-green);font-size:14px}
+#visita-app .v-toast:empty{display:none}
+#visita-app .v-cancelbox{margin-top:10px;padding:12px;border:1px solid var(--v-line);border-radius:10px;font-size:13px}
+#visita-app .v-footnote{text-align:center;color:var(--v-muted);font-size:11px;padding:9px 15px;background:var(--v-surface)}
+@media(max-width:560px){#visita-app{border-radius:18px}#visita-app .v-header{padding:16px}#visita-app .v-content{padding:20px 15px;min-height:530px}#visita-app h2{font-size:26px}#visita-app .v-grid,#visita-app .v-bookinggrid{grid-template-columns:1fr}#visita-app .v-nav button{flex-direction:column;gap:3px;font-size:11px}#visita-app .v-appt{grid-template-columns:45px minmax(0,1fr);gap:7px}#visita-app .v-apptbody{padding:12px}#visita-app .v-day{border-radius:11px}#visita-app .v-days{gap:4px}#visita-app .v-actions button{min-height:44px}#visita-app .v-stat{padding:0 9px}#visita-app .v-bookinggrid{gap:8px}#visita-app .v-top&gt;.v-btn{padding:11px;font-size:13px}#visita-app .v-company{font-size:11px}}
+@media(prefers-reduced-motion:no-preference){#visita-app .v-btn,#visita-app .v-day,#visita-app .v-slot{transition:background .15s,border-color .15s}#visita-app .v-primary:hover{background:#00a9a5}}
+&lt;/style&gt;
+&lt;div id=&quot;visita-app&quot;&gt;
+  &lt;header class=&quot;v-header&quot;&gt;
+    &lt;div class=&quot;v-row&quot;&gt;&lt;div class=&quot;v-logo&quot;&gt;&lt;i data-lucide=&quot;calendar-range&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;v-brand&quot;&gt;visita&lt;span style=&quot;color:var(--v-blue)&quot;&gt;.&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;v-company&quot;&gt;PATRIMONIOS · BOGOTÁ&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;span class=&quot;v-demo&quot;&gt;Demo interactiva&lt;/span&gt;
+  &lt;/header&gt;
+  &lt;nav class=&quot;v-nav&quot; aria-label=&quot;Navegación principal&quot;&gt;
+    &lt;button type=&quot;button&quot; data-view=&quot;agenda&quot; aria-current=&quot;page&quot;&gt;&lt;i data-lucide=&quot;calendar-days&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Agenda&lt;/button&gt;
+    &lt;button type=&quot;button&quot; data-view=&quot;properties&quot;&gt;&lt;i data-lucide=&quot;building-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Inmuebles · 100&lt;/button&gt;
+    &lt;button type=&quot;button&quot; data-view=&quot;team&quot;&gt;&lt;i data-lucide=&quot;users&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Equipo · 10&lt;/button&gt;
+  &lt;/nav&gt;
+  &lt;div id=&quot;v-toast&quot; class=&quot;v-toast&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
+  &lt;main id=&quot;v-main&quot; class=&quot;v-content&quot;&gt;&lt;/main&gt;
+  &lt;div class=&quot;v-footnote&quot;&gt;Datos ficticios · Horarios de Bogotá · Cambios solo en esta sesión&lt;/div&gt;
+&lt;/div&gt;
+&lt;script&gt;
+(() =&gt; {
+  &#x27;use strict&#x27;;
+  const root=document.getElementById(&#x27;visita-app&#x27;);
+  const main=root.querySelector(&#x27;#v-main&#x27;);
+  const toast=root.querySelector(&#x27;#v-toast&#x27;);
+  const duration=40, travel=30, baseDate=&#x27;2026-09-07&#x27;;
+  const tenantId=&#x27;patrimonios-demo&#x27;;
+  const names=[&#x27;Valentina Ríos&#x27;,&#x27;Mateo Beltrán&#x27;,&#x27;Camila Torres&#x27;,&#x27;Daniel Acosta&#x27;,&#x27;Sofía Mendoza&#x27;,&#x27;Nicolás Vélez&#x27;,&#x27;Isabella Ruiz&#x27;,&#x27;Sebastián Mora&#x27;,&#x27;Mariana Castro&#x27;,&#x27;Tomás Herrera&#x27;];
+  const zones=[&#x27;Cedritos&#x27;,&#x27;Chicó&#x27;,&#x27;Colina Campestre&#x27;,&#x27;Usaquén&#x27;,&#x27;Chapinero&#x27;,&#x27;Salitre&#x27;,&#x27;Santa Bárbara&#x27;,&#x27;Suba&#x27;,&#x27;Rosales&#x27;,&#x27;Teusaquillo&#x27;];
+  const colors=[&#x27;#426fe2&#x27;,&#x27;#a66adc&#x27;,&#x27;#268979&#x27;,&#x27;#be7745&#x27;,&#x27;#ba6489&#x27;,&#x27;#578dce&#x27;,&#x27;#8b7bc7&#x27;,&#x27;#4e949e&#x27;,&#x27;#ab793e&#x27;,&#x27;#6b89a5&#x27;];
+  const advisors=names.map((name,i)=&gt;({id:&#x27;a&#x27;+i,tenantId,name,zone:zones[i],color:colors[i],start:480+(i%3)*30,end:1050+(i%2)*30,initials:name.split(&#x27; &#x27;).map(n=&gt;n[0]).join(&#x27;&#x27;)}));
+  const properties=Array.from({length:100},(_,i)=&gt;({id:601+i,tenantId,advisorId:advisors[i%10].id,zone:zones[i%10],type:i%9===0?&#x27;Casa&#x27;:i%7===0?&#x27;Local&#x27;:&#x27;Apartamento&#x27;,mode:i%4===0?&#x27;Venta&#x27;:&#x27;Arriendo&#x27;,area:45+(i*17)%210,rooms:1+i%4,baths:1+i%3,price:i%4===0?350000000+(i*23000000)%1900000000:1400000+(i*170000)%7200000,address:`${i%2?&#x27;Carrera&#x27;:&#x27;Calle&#x27;} ${25+(i*7)%140} # ${8+(i*3)%60} – ${10+(i*11)%80}`,start:540+(i%3)*30,end:960+(i%3)*30,saturday:i%4!==0}));
+  const clients=[&#x27;Laura Martínez&#x27;,&#x27;Andrés Gómez&#x27;,&#x27;Juliana Pérez&#x27;,&#x27;Carlos Moreno&#x27;,&#x27;Paula Medina&#x27;,&#x27;David López&#x27;,&#x27;Ana Vargas&#x27;,&#x27;Felipe Ortiz&#x27;,&#x27;Diana León&#x27;,&#x27;Santiago Díaz&#x27;];
+  let appointments=[];
+  let nextId=1;
+  const state={view:&#x27;agenda&#x27;,date:baseDate,week:0,advisor:&#x27;all&#x27;,query:&#x27;&#x27;,zone:&#x27;all&#x27;,mode:&#x27;all&#x27;,page:0,limit:6,property:null,slot:null,editId:null,client:&#x27;&#x27;,cancelId:null,successId:null};
+  const money=new Intl.NumberFormat(&#x27;es-CO&#x27;,{style:&#x27;currency&#x27;,currency:&#x27;COP&#x27;,maximumFractionDigits:0});
+  const escape=s=&gt;String(s).replace(/[&amp;&lt;&gt;&quot;&#x27;]/g,c=&gt;({&#x27;&amp;&#x27;:&#x27;&amp;amp;&#x27;,&#x27;&lt;&#x27;:&#x27;&amp;lt;&#x27;,&#x27;&gt;&#x27;:&#x27;&amp;gt;&#x27;,&#x27;&quot;&#x27;:&#x27;&amp;quot;&#x27;,&quot;&#x27;&quot;:&#x27;&amp;#39;&#x27;}[c]));
+  const icon=name=&gt;`&lt;i data-lucide=&quot;${name}&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;`;
+  const prop=id=&gt;properties.find(p=&gt;p.id===Number(id));
+  const advisor=id=&gt;advisors.find(a=&gt;a.id===id);
+  const dateObj=s=&gt;new Date(s+&#x27;T12:00:00Z&#x27;);
+  const addDays=(s,n)=&gt;{const d=dateObj(s);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+  const dateLabel=s=&gt;new Intl.DateTimeFormat(&#x27;es-CO&#x27;,{weekday:&#x27;long&#x27;,day:&#x27;numeric&#x27;,month:&#x27;long&#x27;,timeZone:&#x27;UTC&#x27;}).format(dateObj(s));
+  const time=n=&gt;`${String(Math.floor(n/60)).padStart(2,&#x27;0&#x27;)}:${String(n%60).padStart(2,&#x27;0&#x27;)}`;
+  const activeAppointments=()=&gt;appointments.filter(a=&gt;a.tenantId===tenantId&amp;&amp;a.status!==&#x27;cancelled&#x27;);
+  function windowFor(p,date){
+    const day=dateObj(date).getUTCDay(),a=advisor(p.advisorId);
+    if(day===0||(day===6&amp;&amp;!p.saturday))return null;
+    return {start:Math.max(a.start,p.start),end:Math.min(day===6?780:a.end,day===6?780:p.end)};
+  }
+  function canBook(p,date,start,ignoreId=null){
+    const w=windowFor(p,date);
+    if(!w||start&lt;w.start||start+duration&gt;w.end)return false;
+    return !activeAppointments().some(b=&gt;{
+      if(b.id===ignoreId||b.date!==date)return false;
+      if(b.advisorId!==p.advisorId&amp;&amp;b.propertyId!==p.id)return false;
+      const buffer=b.propertyId===p.id?0:travel;
+      return start&lt;b.start+duration+buffer&amp;&amp;start+duration+buffer&gt;b.start;
+    });
+  }
+  function slotsFor(p,date,ignoreId=null){
+    const w=windowFor(p,date);if(!w)return [];
+    const result=[];for(let t=Math.ceil(w.start/30)*30;t+duration&lt;=w.end;t+=30)result.push({time:t,available:canBook(p,date,t,ignoreId)});return result;
+  }
+  // Seed appointments through the same scheduling rules used by the booking form.
+  for(let d=0;d&lt;14;d++){
+    const date=addDays(baseDate,d);
+    advisors.forEach((a,i)=&gt;{
+      const p=properties[(d%10)*10+i];
+      for(const start of [600,840])if(canBook(p,date,start))appointments.push({id:&#x27;v&#x27;+nextId++,tenantId,propertyId:p.id,advisorId:a.id,date,start,client:clients[(i+d)%clients.length],status:&#x27;confirmed&#x27;});
+    });
+  }
+  function avatar(a){return `&lt;span class=&quot;v-avatar&quot;&gt;${a.initials}&lt;/span&gt;`}
+  function notify(text){toast.textContent=text}
+  function refreshIcons(){if(typeof lucide!==&#x27;undefined&#x27;)lucide.createIcons({attrs:{&#x27;stroke-width&#x27;:1.8}})}
+  function nav(){root.querySelectorAll(&#x27;[data-view]&#x27;).forEach(b=&gt;{if(b.dataset.view===state.view||(state.view===&#x27;booking&#x27;&amp;&amp;b.dataset.view===&#x27;properties&#x27;))b.setAttribute(&#x27;aria-current&#x27;,&#x27;page&#x27;);else b.removeAttribute(&#x27;aria-current&#x27;)})}
+  function setView(view){state.view=view;state.cancelId=null;state.limit=6;notify(&#x27;&#x27;);render()}
+  function dateStrip(booking=false){
+    const first=addDays(baseDate,state.week*7);
+    return `&lt;div class=&quot;v-between&quot;&gt;&lt;div&gt;&lt;strong style=&quot;font-size:14px&quot;&gt;Septiembre 2026&lt;/strong&gt;&lt;div class=&quot;v-muted&quot; style=&quot;font-size:12px&quot;&gt;${booking?&#x27;Elige el día de visita&#x27;:&#x27;Semana de demostración&#x27;}&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;v-row&quot;&gt;&lt;button class=&quot;v-iconbtn&quot; data-week=&quot;-1&quot; aria-label=&quot;Semana anterior&quot; ${state.week===0?&#x27;disabled&#x27;:&#x27;&#x27;}&gt;${icon(&#x27;chevron-left&#x27;)}&lt;/button&gt;&lt;button class=&quot;v-iconbtn&quot; data-week=&quot;1&quot; aria-label=&quot;Semana siguiente&quot; ${state.week===1?&#x27;disabled&#x27;:&#x27;&#x27;}&gt;${icon(&#x27;chevron-right&#x27;)}&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;div class=&quot;v-days&quot;&gt;${Array.from({length:7},(_,i)=&gt;{
+      const date=addDays(first,i),d=dateObj(date),count=booking?slotsFor(prop(state.property),date,state.editId).filter(s=&gt;s.available).length:activeAppointments().filter(a=&gt;a.date===date&amp;&amp;(state.advisor===&#x27;all&#x27;||a.advisorId===state.advisor)).length;
+      return `&lt;button type=&quot;button&quot; class=&quot;v-day&quot; data-date=&quot;${date}&quot; aria-pressed=&quot;${state.date===date}&quot; aria-label=&quot;${dateLabel(date)}, ${count} ${booking?&#x27;horarios libres&#x27;:&#x27;citas&#x27;}&quot;&gt;&lt;span&gt;${[&#x27;dom&#x27;,&#x27;lun&#x27;,&#x27;mar&#x27;,&#x27;mié&#x27;,&#x27;jue&#x27;,&#x27;vie&#x27;,&#x27;sáb&#x27;][d.getUTCDay()]}&lt;/span&gt;&lt;strong&gt;${d.getUTCDate()}&lt;/strong&gt;&lt;small&gt;${count?count+(booking?&#x27; libres&#x27;:&#x27; citas&#x27;):&#x27;—&#x27;}&lt;/small&gt;&lt;/button&gt;`}).join(&#x27;&#x27;)}&lt;/div&gt;`;
+  }
+  function appointmentCard(b){
+    const p=prop(b.propertyId),a=advisor(b.advisorId);
+    return `&lt;article class=&quot;v-appt&quot;&gt;&lt;div class=&quot;v-time&quot;&gt;${time(b.start)}&lt;small&gt;${time(b.start+duration)}&lt;/small&gt;&lt;/div&gt;&lt;div class=&quot;v-apptbody&quot; style=&quot;--advisor-color:${a.color}&quot;&gt;
+      &lt;div class=&quot;v-between&quot;&gt;&lt;span class=&quot;v-muted&quot; style=&quot;font-size:11px&quot;&gt;#${p.id} · ${p.mode}&lt;/span&gt;&lt;span class=&quot;v-tag ${b.status===&#x27;completed&#x27;?&#x27;v-tag-neutral&#x27;:&#x27;&#x27;}&quot;&gt;${b.status===&#x27;completed&#x27;?&#x27;Realizada&#x27;:&#x27;Confirmada&#x27;}&lt;/span&gt;&lt;/div&gt;
+      &lt;h3 style=&quot;margin-top:6px&quot;&gt;${p.type} en ${p.zone}&lt;/h3&gt;&lt;div class=&quot;v-apptmeta&quot;&gt;&lt;span&gt;${b.client?escape(b.client):&#x27;Cliente de prueba&#x27;}&lt;/span&gt;&lt;span&gt;· ${duration} min&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;v-row&quot;&gt;${avatar(a)}&lt;span class=&quot;v-advisorname&quot;&gt;${a.name}&lt;/span&gt;&lt;/div&gt;
+      ${b.status===&#x27;completed&#x27;?&#x27;&#x27;:`&lt;div class=&quot;v-actions&quot;&gt;&lt;button data-edit=&quot;${b.id}&quot;&gt;Reprogramar&lt;/button&gt;&lt;button data-complete=&quot;${b.id}&quot;&gt;Realizada&lt;/button&gt;&lt;button class=&quot;v-danger&quot; data-cancel=&quot;${b.id}&quot;&gt;Cancelar&lt;/button&gt;&lt;/div&gt;`}
+      ${state.cancelId===b.id?`&lt;div class=&quot;v-cancelbox&quot;&gt;¿Cancelar esta visita y liberar el horario?&lt;div class=&quot;v-actions&quot;&gt;&lt;button class=&quot;v-danger&quot; data-confirmcancel=&quot;${b.id}&quot;&gt;Sí, cancelar&lt;/button&gt;&lt;button data-keep=&quot;${b.id}&quot;&gt;Conservar&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;`:&#x27;&#x27;}
+    &lt;/div&gt;&lt;/article&gt;`;
+  }
+  function renderAgenda(){
+    const today=activeAppointments().filter(a=&gt;a.date===state.date&amp;&amp;(state.advisor===&#x27;all&#x27;||a.advisorId===state.advisor)).sort((a,b)=&gt;a.start-b.start||a.advisorId.localeCompare(b.advisorId));
+    const completed=today.filter(a=&gt;a.status===&#x27;completed&#x27;).length;
+    main.innerHTML=`&lt;div class=&quot;v-top&quot;&gt;&lt;div&gt;&lt;div class=&quot;v-eyebrow&quot;&gt;Tu operación, al día&lt;/div&gt;&lt;h2&gt;Agenda de visitas&lt;/h2&gt;&lt;/div&gt;&lt;button class=&quot;v-btn v-primary&quot; data-new&gt;${icon(&#x27;plus&#x27;)}Nueva cita&lt;/button&gt;&lt;/div&gt;
+      &lt;div class=&quot;v-statbar&quot;&gt;&lt;div class=&quot;v-stat&quot;&gt;&lt;strong&gt;${today.length}&lt;/strong&gt;&lt;span&gt;Citas del día&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;v-stat&quot;&gt;&lt;strong&gt;${new Set(today.map(a=&gt;a.advisorId)).size}&lt;/strong&gt;&lt;span&gt;Asesores con citas&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;v-stat&quot;&gt;&lt;strong&gt;${completed}&lt;/strong&gt;&lt;span&gt;Realizadas&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+      ${dateStrip()}&lt;label class=&quot;v-field&quot; for=&quot;v-advisor&quot;&gt;Ver agenda de&lt;select id=&quot;v-advisor&quot; class=&quot;v-input&quot;&gt;&lt;option value=&quot;all&quot;&gt;Todo el equipo · 10 asesores&lt;/option&gt;${advisors.map(a=&gt;`&lt;option value=&quot;${a.id}&quot; ${state.advisor===a.id?&#x27;selected&#x27;:&#x27;&#x27;}&gt;${a.name} · ${a.zone}&lt;/option&gt;`).join(&#x27;&#x27;)}&lt;/select&gt;&lt;/label&gt;
+      &lt;div class=&quot;v-between&quot;&gt;&lt;h3 style=&quot;text-transform:capitalize&quot;&gt;${dateLabel(state.date).split(&#x27; de septiembre&#x27;)[0]}&lt;/h3&gt;&lt;span class=&quot;v-muted&quot;&gt;${today.length} visitas&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;v-list&quot;&gt;${today.length?today.slice(0,state.limit).map(appointmentCard).join(&#x27;&#x27;):`&lt;div class=&quot;v-empty&quot;&gt;${icon(&#x27;calendar-check&#x27;)}&lt;h3&gt;Agenda despejada&lt;/h3&gt;&lt;p style=&quot;margin-top:8px&quot;&gt;No hay visitas para este día y asesor.&lt;/p&gt;&lt;button class=&quot;v-btn v-primary&quot; data-new style=&quot;margin-top:16px&quot;&gt;Agendar una visita&lt;/button&gt;&lt;/div&gt;`}&lt;/div&gt;
+      ${today.length&gt;state.limit?`&lt;button class=&quot;v-btn v-full&quot; data-more style=&quot;margin-top:15px&quot;&gt;Ver ${today.length-state.limit} citas más ${icon(&#x27;chevron-down&#x27;)}&lt;/button&gt;`:&#x27;&#x27;}`;
+  }
+  function propertyCard(p){const a=advisor(p.advisorId);return `&lt;article class=&quot;v-property&quot;&gt;&lt;div class=&quot;v-propertyhead&quot;&gt;&lt;div class=&quot;v-building&quot;&gt;${icon(p.type===&#x27;Casa&#x27;?&#x27;house&#x27;:p.type===&#x27;Local&#x27;?&#x27;store&#x27;:&#x27;building-2&#x27;)}&lt;/div&gt;&lt;div style=&quot;min-width:0&quot;&gt;&lt;div class=&quot;v-muted&quot; style=&quot;font-size:11px;margin-bottom:3px&quot;&gt;#${p.id} · ${p.mode}&lt;/div&gt;&lt;h3&gt;${p.type} en ${p.zone}&lt;/h3&gt;&lt;div class=&quot;v-details&quot;&gt;${p.area} m² · ${p.type===&#x27;Local&#x27;?&#x27;Espacio comercial&#x27;:p.rooms+&#x27; hab. · &#x27;+p.baths+&#x27; baños&#x27;}&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;v-between&quot; style=&quot;margin-bottom:12px&quot;&gt;&lt;div class=&quot;v-price&quot;&gt;${money.format(p.price)}&lt;small&gt;${p.mode===&#x27;Arriendo&#x27;?&#x27; / mes&#x27;:&#x27;&#x27;}&lt;/small&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;v-cardfoot&quot;&gt;&lt;div class=&quot;v-row&quot;&gt;${avatar(a)}&lt;span class=&quot;v-advisorname&quot;&gt;${a.name.split(&#x27; &#x27;)[0]}&lt;/span&gt;&lt;/div&gt;&lt;button class=&quot;v-btn v-primary&quot; data-book=&quot;${p.id}&quot;&gt;Ver horarios ${icon(&#x27;arrow-up-right&#x27;)}&lt;/button&gt;&lt;/div&gt;&lt;/article&gt;`}
+  function filteredProperties(){const q=state.query.normalize(&#x27;NFD&#x27;).replace(/[\u0300-\u036f]/g,&#x27;&#x27;).toLowerCase();return properties.filter(p=&gt;p.tenantId===tenantId&amp;&amp;(state.zone===&#x27;all&#x27;||p.zone===state.zone)&amp;&amp;(state.mode===&#x27;all&#x27;||p.mode===state.mode)&amp;&amp;`${p.id} ${p.zone} ${p.type} ${p.address} ${advisor(p.advisorId).name}`.normalize(&#x27;NFD&#x27;).replace(/[\u0300-\u036f]/g,&#x27;&#x27;).toLowerCase().includes(q))}
+  function renderPropertyResults(){const list=filteredProperties(),total=Math.max(1,Math.ceil(list.length/6));state.page=Math.min(state.page,total-1);root.querySelector(&#x27;#v-property-results&#x27;).innerHTML=`&lt;div class=&quot;v-between&quot; style=&quot;margin-bottom:12px&quot;&gt;&lt;span class=&quot;v-muted&quot;&gt;${list.length} inmuebles&lt;/span&gt;&lt;span class=&quot;v-muted&quot; style=&quot;font-size:12px&quot;&gt;Asesor asignado automáticamente&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;v-grid&quot;&gt;${list.slice(state.page*6,state.page*6+6).map(propertyCard).join(&#x27;&#x27;)}&lt;/div&gt;${list.length?&#x27;&#x27;:`&lt;div class=&quot;v-empty&quot;&gt;${icon(&#x27;search&#x27;)}&lt;h3&gt;No encontramos inmuebles&lt;/h3&gt;&lt;p style=&quot;margin-top:8px&quot;&gt;Prueba otro código, barrio o filtro.&lt;/p&gt;&lt;/div&gt;`}&lt;div class=&quot;v-pagination&quot;&gt;&lt;button class=&quot;v-btn&quot; data-page=&quot;-1&quot; ${state.page===0?&#x27;disabled&#x27;:&#x27;&#x27;}&gt;${icon(&#x27;chevron-left&#x27;)}Anterior&lt;/button&gt;&lt;span&gt;${state.page+1} / ${total}&lt;/span&gt;&lt;button class=&quot;v-btn&quot; data-page=&quot;1&quot; ${state.page&gt;=total-1?&#x27;disabled&#x27;:&#x27;&#x27;}&gt;Siguiente${icon(&#x27;chevron-right&#x27;)}&lt;/button&gt;&lt;/div&gt;`;refreshIcons()}
+  function renderProperties(){main.innerHTML=`&lt;div class=&quot;v-top&quot;&gt;&lt;div&gt;&lt;div class=&quot;v-eyebrow&quot;&gt;Encuentra la próxima visita&lt;/div&gt;&lt;h2&gt;100 oportunidades&lt;/h2&gt;&lt;p class=&quot;v-muted&quot; style=&quot;margin-top:6px&quot;&gt;Elige un inmueble para ver su disponibilidad.&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;label class=&quot;v-field&quot; for=&quot;v-search&quot;&gt;&lt;span class=&quot;sr-only&quot; style=&quot;position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)&quot;&gt;Buscar por código, barrio o asesor&lt;/span&gt;&lt;div class=&quot;v-search&quot;&gt;&lt;input id=&quot;v-search&quot; class=&quot;v-input&quot; value=&quot;${escape(state.query)}&quot; placeholder=&quot;Código, barrio o asesor…&quot; type=&quot;search&quot;&gt;${icon(&#x27;search&#x27;)}&lt;/div&gt;&lt;/label&gt;&lt;div class=&quot;v-filters&quot;&gt;&lt;select class=&quot;v-input&quot; id=&quot;v-zone&quot; aria-label=&quot;Filtrar por barrio&quot;&gt;&lt;option value=&quot;all&quot;&gt;Todos los barrios&lt;/option&gt;${zones.map(z=&gt;`&lt;option ${z===state.zone?&#x27;selected&#x27;:&#x27;&#x27;}&gt;${z}&lt;/option&gt;`).join(&#x27;&#x27;)}&lt;/select&gt;&lt;select class=&quot;v-input&quot; id=&quot;v-mode&quot; aria-label=&quot;Filtrar por operación&quot;&gt;&lt;option value=&quot;all&quot;&gt;Venta y arriendo&lt;/option&gt;&lt;option ${state.mode===&#x27;Arriendo&#x27;?&#x27;selected&#x27;:&#x27;&#x27;}&gt;Arriendo&lt;/option&gt;&lt;option ${state.mode===&#x27;Venta&#x27;?&#x27;selected&#x27;:&#x27;&#x27;}&gt;Venta&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;&lt;div id=&quot;v-property-results&quot;&gt;&lt;/div&gt;`;renderPropertyResults()}
+  function startBooking(id,editId=null){state.property=Number(id);state.editId=editId;state.slot=null;state.client=&#x27;&#x27;;if(editId){const b=appointments.find(a=&gt;a.id===editId);state.date=b.date;state.slot=b.start;state.client=b.client;state.week=Math.floor((dateObj(b.date)-dateObj(baseDate))/86400000/7)}state.view=&#x27;booking&#x27;;notify(&#x27;&#x27;);render()}
+  function renderBooking(){
+    const p=prop(state.property),a=advisor(p.advisorId),slots=slotsFor(p,state.date,state.editId),free=slots.filter(s=&gt;s.available),w=windowFor(p,state.date);
+    if(state.slot!==null&amp;&amp;!canBook(p,state.date,state.slot,state.editId))state.slot=null;
+    main.innerHTML=`&lt;div class=&quot;v-top&quot;&gt;&lt;button class=&quot;v-btn v-quiet&quot; data-back&gt;${icon(&#x27;arrow-left&#x27;)}Volver&lt;/button&gt;&lt;span class=&quot;v-demo&quot;&gt;${state.editId?&#x27;Reprogramar&#x27;:&#x27;Nueva visita&#x27;}&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;v-step&quot;&gt;&lt;span class=&quot;active&quot;&gt;&lt;b&gt;1&lt;/b&gt;Inmueble&lt;/span&gt;&lt;span&gt;—&lt;/span&gt;&lt;span class=&quot;active&quot;&gt;&lt;b&gt;2&lt;/b&gt;Horario y cliente&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;v-bookinghero&quot;&gt;&lt;div class=&quot;v-muted&quot;&gt;#${p.id} · ${p.mode}&lt;/div&gt;&lt;h3 style=&quot;font-size:20px;margin:4px 0&quot;&gt;${p.type} en ${p.zone}&lt;/h3&gt;&lt;div class=&quot;v-muted&quot;&gt;${p.address} · ${p.area} m²&lt;/div&gt;&lt;div class=&quot;v-row&quot; style=&quot;margin-top:14px&quot;&gt;${avatar(a)}&lt;div&gt;&lt;div style=&quot;font-size:14px;font-weight:600&quot;&gt;${a.name}&lt;/div&gt;&lt;div class=&quot;v-muted&quot;&gt;Asesor asignado · ${a.zone}&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;v-bookinggrid&quot;&gt;&lt;section aria-label=&quot;Fecha y disponibilidad&quot;&gt;${dateStrip(true)}&lt;div class=&quot;v-between&quot;&gt;&lt;div class=&quot;v-sectiontitle&quot; style=&quot;margin:0&quot;&gt;${icon(&#x27;clock-3&#x27;)}Horarios disponibles&lt;/div&gt;&lt;span class=&quot;v-muted&quot;&gt;${free.length} libres&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;v-slots&quot;&gt;${slots.map(s=&gt;`&lt;button type=&quot;button&quot; class=&quot;v-slot&quot; data-slot=&quot;${s.time}&quot; aria-pressed=&quot;${state.slot===s.time}&quot; ${s.available?&#x27;&#x27;:&#x27;disabled&#x27;} aria-label=&quot;${time(s.time)}${s.available?&#x27; disponible&#x27;:&#x27; no disponible&#x27;}&quot;&gt;${time(s.time)}&lt;/button&gt;`).join(&#x27;&#x27;)}&lt;/div&gt;${!slots.length?`&lt;div class=&quot;v-empty&quot;&gt;&lt;h3&gt;Sin atención este día&lt;/h3&gt;&lt;p style=&quot;margin-top:7px&quot;&gt;El inmueble o el asesor no recibe visitas. Elige otra fecha.&lt;/p&gt;&lt;/div&gt;`:!free.length?`&lt;div class=&quot;v-empty&quot;&gt;Todos los horarios están ocupados. Prueba otro día.&lt;/div&gt;`:&#x27;&#x27;}&lt;p class=&quot;v-note&quot;&gt;Visita de 40 min · 30 min de traslado entre inmuebles.&lt;br&gt;${w?&#x27;Ventana de visita: &#x27;+time(w.start)+&#x27;–&#x27;+time(w.end)+&#x27;. Horas tachadas: cita o traslado.&#x27;:&#x27;Domingos sin atención; sábados según el inmueble.&#x27;}&lt;/p&gt;&lt;/section&gt;&lt;section aria-label=&quot;Datos de la visita&quot;&gt;&lt;form id=&quot;v-book-form&quot;&gt;&lt;div class=&quot;v-sectiontitle&quot;&gt;${icon(&#x27;user-round&#x27;)}¿Quién visitará el inmueble?&lt;/div&gt;&lt;label class=&quot;v-field&quot; for=&quot;v-client&quot;&gt;Nombre del cliente&lt;input class=&quot;v-input&quot; id=&quot;v-client&quot; value=&quot;${escape(state.client)}&quot; maxlength=&quot;80&quot; placeholder=&quot;Ej. Andrea Gómez&quot; autocomplete=&quot;off&quot; required&gt;&lt;/label&gt;&lt;div style=&quot;padding:15px 0;border-top:1px solid var(--v-line);border-bottom:1px solid var(--v-line);margin:20px 0&quot;&gt;&lt;div class=&quot;v-muted&quot; style=&quot;font-size:12px&quot;&gt;TU SELECCIÓN&lt;/div&gt;&lt;div style=&quot;font-size:15px;text-transform:capitalize;margin-top:6px&quot;&gt;${dateLabel(state.date)}&lt;/div&gt;&lt;div id=&quot;v-selected-time&quot; style=&quot;font-size:23px;font-weight:650;color:var(--v-blue);margin-top:4px&quot;&gt;${state.slot===null?&#x27;Elige una hora&#x27;:time(state.slot)+&#x27; – &#x27;+time(state.slot+duration)}&lt;/div&gt;&lt;/div&gt;&lt;div id=&quot;v-book-error&quot; class=&quot;v-error&quot; role=&quot;alert&quot;&gt;&lt;/div&gt;&lt;button class=&quot;v-btn v-primary v-full&quot; type=&quot;submit&quot; ${state.slot===null?&#x27;disabled&#x27;:&#x27;&#x27;}&gt;${icon(&#x27;calendar-check&#x27;)}${state.editId?&#x27;Guardar nuevo horario&#x27;:&#x27;Confirmar visita&#x27;}&lt;/button&gt;&lt;p class=&quot;v-note&quot; style=&quot;margin-top:12px&quot;&gt;Reserva de prueba. No envía mensajes ni crea eventos externos.&lt;/p&gt;&lt;/form&gt;&lt;/section&gt;&lt;/div&gt;`;
+  }
+  function renderTeam(){main.innerHTML=`&lt;div class=&quot;v-top&quot;&gt;&lt;div&gt;&lt;div class=&quot;v-eyebrow&quot;&gt;Personas detrás de cada visita&lt;/div&gt;&lt;h2&gt;Tu equipo&lt;/h2&gt;&lt;p class=&quot;v-muted&quot; style=&quot;margin-top:6px&quot;&gt;10 asesores · 10 inmuebles por asesor&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;v-grid&quot;&gt;${advisors.map(a=&gt;{const count=activeAppointments().filter(b=&gt;b.advisorId===a.id&amp;&amp;b.date===state.date).length;return `&lt;article class=&quot;v-teamcard&quot;&gt;&lt;div class=&quot;v-row&quot;&gt;${avatar(a)}&lt;div&gt;&lt;h3&gt;${a.name}&lt;/h3&gt;&lt;p class=&quot;v-muted&quot;&gt;${a.zone}&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;v-teammeta&quot;&gt;&lt;span&gt;&lt;strong style=&quot;color:var(--v-text)&quot;&gt;10&lt;/strong&gt; inmuebles&lt;/span&gt;&lt;span&gt;&lt;strong style=&quot;color:var(--v-text)&quot;&gt;${count}&lt;/strong&gt; citas el ${dateObj(state.date).getUTCDate()} sep.&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;v-loadtrack&quot; aria-label=&quot;${count*duration} minutos de visitas en la fecha seleccionada&quot;&gt;&lt;div class=&quot;v-load&quot; style=&quot;width:${Math.min(100,count*duration/(a.end-a.start)*100)}%&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;p class=&quot;v-muted&quot; style=&quot;font-size:12px;margin-bottom:14px&quot;&gt;Lun–vie ${time(a.start)}–${time(a.end)}&lt;br&gt;Sábados hasta las 13:00 · Domingo libre&lt;/p&gt;&lt;button class=&quot;v-btn v-full&quot; data-team=&quot;${a.id}&quot;&gt;${icon(&#x27;calendar-days&#x27;)}Ver agenda&lt;/button&gt;&lt;/article&gt;`}).join(&#x27;&#x27;)}&lt;/div&gt;`}
+  function renderSuccess(){const b=appointments.find(a=&gt;a.id===state.successId),p=prop(b.propertyId),a=advisor(b.advisorId);main.innerHTML=`&lt;section class=&quot;v-success&quot;&gt;&lt;div class=&quot;v-successicon&quot;&gt;${icon(&#x27;check&#x27;)}&lt;/div&gt;&lt;div class=&quot;v-eyebrow&quot;&gt;Todo listo&lt;/div&gt;&lt;h2&gt;${state.editId?&#x27;Visita reprogramada&#x27;:&#x27;Visita confirmada&#x27;}&lt;/h2&gt;&lt;p class=&quot;v-muted&quot; style=&quot;margin-top:10px&quot;&gt;El horario quedó reservado para ${escape(b.client)}.&lt;/p&gt;&lt;div class=&quot;v-ticket&quot;&gt;&lt;div class=&quot;v-row&quot;&gt;${icon(&#x27;building-2&#x27;)}&lt;div&gt;&lt;h3&gt;${p.type} en ${p.zone}&lt;/h3&gt;&lt;p class=&quot;v-muted&quot;&gt;#${p.id} · ${p.address}&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;v-row&quot;&gt;${icon(&#x27;calendar-days&#x27;)}&lt;div&gt;&lt;div style=&quot;text-transform:capitalize&quot;&gt;${dateLabel(b.date)}&lt;/div&gt;&lt;strong&gt;${time(b.start)} – ${time(b.start+duration)}&lt;/strong&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;v-row&quot;&gt;${avatar(a)}&lt;div&gt;&lt;div&gt;${a.name}&lt;/div&gt;&lt;div class=&quot;v-muted&quot;&gt;Asesor responsable&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;button class=&quot;v-btn v-primary v-full&quot; data-gotoagenda&gt;Ver en la agenda ${icon(&#x27;arrow-right&#x27;)}&lt;/button&gt;&lt;button class=&quot;v-btn v-quiet&quot; data-new style=&quot;margin-top:9px&quot;&gt;Agendar otra visita&lt;/button&gt;&lt;p class=&quot;v-note&quot; style=&quot;margin:12px 0 0&quot;&gt;Reserva simulada ${b.id.toUpperCase()} · Sin notificaciones externas&lt;/p&gt;&lt;/section&gt;`}
+  function render(){nav();if(state.view===&#x27;agenda&#x27;)renderAgenda();else if(state.view===&#x27;properties&#x27;)renderProperties();else if(state.view===&#x27;team&#x27;)renderTeam();else if(state.view===&#x27;booking&#x27;)renderBooking();else renderSuccess();refreshIcons()}
+  root.addEventListener(&#x27;input&#x27;,e=&gt;{
+    if(e.target.id===&#x27;v-search&#x27;){state.query=e.target.value;state.page=0;renderPropertyResults()}
+    if(e.target.id===&#x27;v-client&#x27;)state.client=e.target.value;
+  });
+  root.addEventListener(&#x27;change&#x27;,e=&gt;{
+    if(e.target.id===&#x27;v-advisor&#x27;){state.advisor=e.target.value;state.limit=6;render()}
+    if(e.target.id===&#x27;v-zone&#x27;){state.zone=e.target.value;state.page=0;renderPropertyResults()}
+    if(e.target.id===&#x27;v-mode&#x27;){state.mode=e.target.value;state.page=0;renderPropertyResults()}
+  });
+  root.addEventListener(&#x27;click&#x27;,e=&gt;{
+    const b=e.target.closest(&#x27;button&#x27;);if(!b||b.disabled||!root.contains(b))return;
+    if(b.dataset.view){setView(b.dataset.view);return}
+    if(b.hasAttribute(&#x27;data-new&#x27;)){state.query=&#x27;&#x27;;state.zone=&#x27;all&#x27;;state.mode=&#x27;all&#x27;;state.page=0;state.editId=null;setView(&#x27;properties&#x27;);return}
+    if(b.dataset.week){state.week=Math.max(0,Math.min(1,state.week+Number(b.dataset.week)));state.date=addDays(baseDate,state.week*7);state.slot=null;state.limit=6;render();return}
+    if(b.dataset.date){state.date=b.dataset.date;state.slot=null;state.limit=6;render();return}
+    if(b.dataset.page){state.page+=Number(b.dataset.page);renderPropertyResults();return}
+    if(b.hasAttribute(&#x27;data-more&#x27;)){state.limit=100;render();return}
+    if(b.dataset.book){startBooking(b.dataset.book);return}
+    if(b.hasAttribute(&#x27;data-back&#x27;)){setView(state.editId?&#x27;agenda&#x27;:&#x27;properties&#x27;);return}
+    if(b.dataset.slot){state.slot=Number(b.dataset.slot);root.querySelectorAll(&#x27;[data-slot]&#x27;).forEach(el=&gt;el.setAttribute(&#x27;aria-pressed&#x27;,Number(el.dataset.slot)===state.slot));root.querySelector(&#x27;#v-selected-time&#x27;).textContent=time(state.slot)+&#x27; – &#x27;+time(state.slot+duration);root.querySelector(&#x27;#v-book-form button[type=submit]&#x27;).disabled=false;root.querySelector(&#x27;#v-book-error&#x27;).textContent=&#x27;&#x27;;return}
+    if(b.dataset.team){state.advisor=b.dataset.team;setView(&#x27;agenda&#x27;);return}
+    if(b.dataset.edit){const apt=appointments.find(a=&gt;a.id===b.dataset.edit);startBooking(apt.propertyId,apt.id);return}
+    if(b.dataset.complete){appointments.find(a=&gt;a.id===b.dataset.complete).status=&#x27;completed&#x27;;notify(&#x27;Visita marcada como realizada.&#x27;);render();return}
+    if(b.dataset.cancel){state.cancelId=b.dataset.cancel;render();return}
+    if(b.dataset.keep){state.cancelId=null;render();return}
+    if(b.dataset.confirmcancel){appointments.find(a=&gt;a.id===b.dataset.confirmcancel).status=&#x27;cancelled&#x27;;state.cancelId=null;notify(&#x27;Visita cancelada. El horario vuelve a estar disponible.&#x27;);render();return}
+    if(b.hasAttribute(&#x27;data-gotoagenda&#x27;)){const apt=appointments.find(a=&gt;a.id===state.successId);state.date=apt.date;state.advisor=apt.advisorId;state.week=Math.floor((dateObj(apt.date)-dateObj(baseDate))/86400000/7);setView(&#x27;agenda&#x27;)}
+  });
+  root.addEventListener(&#x27;submit&#x27;,e=&gt;{
+    if(e.target.id!==&#x27;v-book-form&#x27;)return;e.preventDefault();
+    const p=prop(state.property),name=state.client.trim(),err=root.querySelector(&#x27;#v-book-error&#x27;);
+    if(name.length&lt;2){err.textContent=&#x27;Escribe un nombre de al menos dos caracteres.&#x27;;root.querySelector(&#x27;#v-client&#x27;).focus();return}
+    if(state.slot===null||!canBook(p,state.date,state.slot,state.editId)){err.textContent=&#x27;Este horario ya no está disponible. Selecciona otro.&#x27;;return}
+    if(state.editId){const apt=appointments.find(a=&gt;a.id===state.editId);Object.assign(apt,{date:state.date,start:state.slot,client:name});state.successId=apt.id}
+    else{const apt={id:&#x27;v&#x27;+nextId++,tenantId,propertyId:p.id,advisorId:p.advisorId,date:state.date,start:state.slot,client:name,status:&#x27;confirmed&#x27;};appointments.push(apt);state.successId=apt.id}
+    state.view=&#x27;success&#x27;;render();
+  });
+  render();
+})();
+&lt;/script&gt;
+&lt;/div&gt;&lt;/section&gt;
+ &lt;footer class=&quot;pa-foot&quot;&gt;Bogotá · Barranquilla · Medellín&lt;/footer&gt;
+&lt;/div&gt;
+&lt;script&gt;
+(()=&gt;{const r=document.getElementById(&#x27;pat-access&#x27;),q=s=&gt;r.querySelector(s),m=q(&#x27;#pa-message&#x27;),p=q(&#x27;#pa-password&#x27;);q(&#x27;#pa-form&#x27;).addEventListener(&#x27;submit&#x27;,e=&gt;{e.preventDefault();p.value=&#x27;&#x27;;m.textContent=&#x27;El inicio de sesión se activará al conectar Supabase. Puedes explorar la demostración sin credenciales.&#x27;});q(&#x27;#pa-reset&#x27;).onclick=()=&gt;{m.textContent=&#x27;La recuperación por correo estará disponible al activar la conexión. En esta prueba no se envían correos.&#x27;};q(&#x27;#pa-reveal&#x27;).onclick=e=&gt;{const show=p.type===&#x27;password&#x27;;p.type=show?&#x27;text&#x27;:&#x27;password&#x27;;e.currentTarget.textContent=show?&#x27;Ocultar&#x27;:&#x27;Mostrar&#x27;;e.currentTarget.setAttribute(&#x27;aria-pressed&#x27;,String(show))};q(&#x27;#pa-demo&#x27;).onclick=()=&gt;{q(&#x27;#pa-form&#x27;).reset();q(&#x27;#pa-login&#x27;).hidden=true;q(&#x27;#pa-agenda&#x27;).hidden=false};q(&#x27;#pa-back&#x27;).onclick=()=&gt;{q(&#x27;#pa-login&#x27;).hidden=false;q(&#x27;#pa-agenda&#x27;).hidden=true;m.textContent=&#x27;&#x27;;};})();
+&lt;/script&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+  let lastPointerWasTouch = false;
+  let pinnedByTouch = false;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    pinnedByTouch = false;
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handlePointer = (event) =&gt; {
+    lastPointerWasTouch =
+      event.type === &quot;pointerdown&quot; &amp;&amp; event.pointerType === &quot;touch&quot;;
+  };
+  const handleTouchClick = (event) =&gt; {
+    const isTouch = event.pointerType === &quot;touch&quot; || lastPointerWasTouch;
+    lastPointerWasTouch = false;
+    if (!isTouch || event.detail === 0) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (
+      trigger == null ||
+      !trigger.isConnected ||
+      getContent(trigger).length === 0 ||
+      (pinnedByTouch &amp;&amp; activeTrigger === trigger)
+    ) {
+      if (pinnedByTouch) {
+        closeTooltip();
+      }
+      return;
+    }
+    openTooltip(trigger);
+    pinnedByTouch = activeTrigger === trigger;
+    window.setTimeout(() =&gt; {
+      if (activeTrigger === trigger &amp;&amp; !trigger.isConnected) {
+        closeTooltip(false);
+      }
+    }, 0);
+  };
+  const handleLeave = (event) =&gt; {
+    if (pinnedByTouch) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    lastPointerWasTouch = false;
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    lastPointerWasTouch = false;
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerdown&quot;, handlePointer);
+    document.removeEventListener(&quot;pointercancel&quot;, handlePointer);
+    document.removeEventListener(&quot;click&quot;, handleTouchClick);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerdown&quot;, handlePointer);
+  document.addEventListener(&quot;pointercancel&quot;, handlePointer);
+  document.addEventListener(&quot;click&quot;, handleTouchClick);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-tabs&quot;&gt;
+(() =&gt; {
+  const selector = &#x27;.nav[role=&quot;tablist&quot;] [role=&quot;tab&quot;]&#x27;;
+  const disabled = &#x27;:disabled,[aria-disabled=&quot;true&quot;]&#x27;;
+  const selectTab = (selected) =&gt; {
+    const panelId = selected.getAttribute(&quot;aria-controls&quot;);
+    for (const tab of selected.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)) {
+      const active = tab === selected;
+      tab.classList.toggle(&quot;active&quot;, active);
+      tab.setAttribute(&quot;aria-selected&quot;, String(active));
+      const id = tab.getAttribute(&quot;aria-controls&quot;);
+      const panel = id &amp;&amp; document.getElementById(id);
+      if (panel != null) {
+        panel.hidden = id !== panelId;
+        if (!panel.hidden &amp;&amp; selected.id) {
+          panel.setAttribute(&quot;aria-labelledby&quot;, selected.id);
+        }
+      }
+    }
+  };
+  const interact = (event) =&gt; {
+    const tab = event.target?.closest?.(selector);
+    if (event.defaultPrevented || tab == null || tab.matches(disabled)) {
+      return;
+    }
+    if (event.type === &quot;click&quot;) {
+      selectTab(tab);
+      return;
+    }
+    const tabs = Array.from(
+      tab.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;),
+    ).filter((candidate) =&gt; !candidate.matches(disabled));
+    const current = tabs.indexOf(tab);
+    let next;
+    if (event.key === &quot;ArrowRight&quot; || event.key === &quot;ArrowDown&quot;) {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === &quot;ArrowLeft&quot; || event.key === &quot;ArrowUp&quot;) {
+      next = (current + tabs.length - 1) % tabs.length;
+    } else if (event.key === &quot;Home&quot;) {
+      next = 0;
+    } else if (event.key === &quot;End&quot;) {
+      next = tabs.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    tabs[next].focus();
+    selectTab(tabs[next]);
+  };
+
+  for (const list of document.querySelectorAll(&#x27;.nav[role=&quot;tablist&quot;]&#x27;)) {
+    const selected =
+      list.querySelector(&#x27;[role=&quot;tab&quot;][aria-selected=&quot;true&quot;]&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;].active&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;]&#x27;);
+    if (selected != null) {
+      selectTab(selected);
+    }
+  }
+  document.addEventListener(&quot;click&quot;, interact);
+  document.addEventListener(&quot;keydown&quot;, interact);
+  window.addEventListener(&quot;pagehide&quot;, () =&gt; {
+    document.removeEventListener(&quot;click&quot;, interact);
+    document.removeEventListener(&quot;keydown&quot;, interact);
+  }, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>

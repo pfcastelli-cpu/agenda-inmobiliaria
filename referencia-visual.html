@@ -1,0 +1,289 @@
+<style>
+#pat-access{font:400 16px/1.5 Poppins,system-ui,sans-serif;--pa-bg:light-dark(#fff,#182638);--pa-text:light-dark(#1a2c45,#eef7fa);--pa-muted:light-dark(#4d4d4d,#b8c9d7);background:var(--pa-bg);color:var(--pa-text);border-radius:22px;overflow:hidden}
+#pat-access *{box-sizing:border-box}#pat-access [hidden]{display:none!important}
+#pat-access .pa-head{background:#1a2c45;color:white;padding:24px 28px;border-bottom:4px solid #00a9a5;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#pat-access .pa-head strong{letter-spacing:2px;font-size:18px}#pat-access .pa-head small{display:block;font-size:12px;letter-spacing:3px}#pat-access .pa-badge{font-size:12px;border:1px solid #759397;border-radius:20px;padding:5px 10px}
+#pat-access .pa-form{max-width:450px;padding:38px 24px;margin:auto}#pat-access h2{font-size:28px;line-height:1.2;margin:0 0 12px}#pat-access p{color:var(--pa-muted);margin:0 0 24px;font-size:14px}
+#pat-access label{display:block;font-size:14px;margin:18px 0 7px}#pat-access input{width:100%;min-width:0;min-height:48px;border:1px solid light-dark(#cbd8df,#4e647b);border-radius:10px;background:var(--pa-bg);color:var(--pa-text);padding:12px;font:inherit}
+#pat-access button{min-height:44px;font:inherit;cursor:pointer;border-radius:10px;padding:10px 14px}#pat-access .pa-main{width:100%;background:#00a9a5;color:#1a2c45;border:0;font-weight:600;margin-top:20px}#pat-access .pa-secondary{width:100%;background:transparent;border:1px solid light-dark(#cadbdf,#516879);color:var(--pa-text);margin-top:10px}#pat-access .pa-link{background:none;color:var(--pa-text);border:0;padding:8px 0;font-size:14px}#pat-access .pa-pass{display:flex;gap:8px}#pat-access .pa-pass button{background:transparent;border:1px solid light-dark(#cadbdf,#516879);color:var(--pa-text);font-size:13px}#pat-access #pa-message{font-size:14px;color:var(--pa-text);margin-top:14px}#pat-access .pa-foot{font-size:12px;text-align:center;padding:16px;color:var(--pa-muted);border-top:1px solid light-dark(#e3eeee,#3b4c5f)}#pat-access .pa-toolbar{padding:12px 22px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:light-dark(#e3f8f7,#203e44)}
+</style>
+<div id="pat-access">
+ <header class="pa-head"><div><strong>PATRIMONIOS</strong><small>INMOBILIARIOS</small></div><span class="pa-badge">Vista de prueba</span></header>
+ <section id="pa-login" class="pa-form">
+  <h2>Bienvenido a tu agenda</h2><p>Accede para organizar tus visitas y disponibilidad.</p>
+  <form id="pa-form" autocomplete="off">
+   <label for="pa-email">Correo electrónico</label><input id="pa-email" type="email" placeholder="nombre@empresa.com" required>
+   <label for="pa-password">Contraseña</label><div class="pa-pass"><input id="pa-password" type="password" placeholder="Solo datos de prueba" required><button id="pa-reveal" type="button" aria-pressed="false">Mostrar</button></div>
+   <button class="pa-link" type="button" id="pa-reset">Olvidé mi contraseña</button>
+   <button type="submit" class="pa-main">Iniciar sesión</button>
+  </form>
+  <button class="pa-secondary" id="pa-demo" type="button">Explorar la agenda de demostración</button>
+  <div id="pa-message" role="status" aria-live="polite"></div>
+  <p style="margin:22px 0 0;font-size:12px">Acceso real pendiente de conexión. No ingreses contraseñas reales. Tu administrador habilitará tu cuenta.</p>
+ </section>
+ <section id="pa-agenda" hidden><div class="pa-toolbar"><span>Agenda simulada</span><button type="button" class="pa-link" id="pa-back">Volver al inicio</button></div><div id="pa-agenda-content"><style>
+#visita-app{--v-bg:light-dark(#f4f4f4,#111725);--v-surface:light-dark(#fff,#1a2233);--v-text:light-dark(#15233b,#edf2ff);--v-muted:light-dark(#586780,#a5b3cd);--v-line:light-dark(#e2e8f2,#303d54);--v-blue:light-dark(#1a2c45,#8eb0ff);--v-tint:light-dark(#e3f8f7,#253555);--v-green:light-dark(#177153,#78dab5);--v-greenbg:light-dark(#e8f6ef,#203f36);--v-red:light-dark(#b32f43,#ffa4ad);font:400 16px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--v-text);background:var(--v-bg);border-radius:24px;overflow:hidden;isolation:isolate;text-align:left}
+#visita-app *{box-sizing:border-box}
+#visita-app button,#visita-app input,#visita-app select{font:inherit}
+#visita-app button{cursor:pointer;color:inherit}
+#visita-app button:disabled{cursor:not-allowed;opacity:.4}
+#visita-app h2,#visita-app h3,#visita-app p{margin:0}
+#visita-app h2{font-size:28px;line-height:1.2;font-weight:650;letter-spacing:-.8px}
+#visita-app h3{font-size:17px;font-weight:600;line-height:1.35}
+#visita-app svg{width:20px;height:20px;flex-shrink:0}
+#visita-app .v-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 22px;background:var(--v-surface);border-bottom:1px solid var(--v-line)}
+#visita-app .v-brand{display:flex;align-items:center;gap:9px;font-size:21px;font-weight:750;letter-spacing:-.6px}
+#visita-app .v-logo{width:35px;height:35px;border-radius:11px;background:#1a2c45;color:#fff;display:grid;place-items:center}
+#visita-app .v-company{font-size:12px;font-weight:500;color:var(--v-muted);letter-spacing:.1px}
+#visita-app .v-demo{font-size:12px;padding:5px 9px;border:1px solid var(--v-line);border-radius:20px;color:var(--v-muted)}
+#visita-app .v-content{padding:22px;min-height:540px}
+#visita-app .v-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}
+#visita-app .v-muted{color:var(--v-muted);font-size:14px}
+#visita-app .v-eyebrow{color:var(--v-blue);font-size:12px;letter-spacing:1.3px;font-weight:700;text-transform:uppercase;margin-bottom:7px}
+#visita-app .v-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--v-line);border-radius:12px;background:var(--v-surface);padding:11px 14px;min-height:44px;font-size:14px;font-weight:600;text-decoration:none}
+#visita-app .v-primary{background:#1a2c45;border-color:#1a2c45;color:#fff}
+#visita-app .v-quiet{background:transparent;border:0;color:var(--v-blue);padding:10px 4px}
+#visita-app .v-iconbtn{width:44px;height:44px;display:grid;place-items:center;padding:0;background:var(--v-surface);border:1px solid var(--v-line);border-radius:12px}
+#visita-app .v-row{display:flex;align-items:center;gap:10px;min-width:0}
+#visita-app .v-between{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#visita-app .v-statbar{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--v-surface);border:1px solid var(--v-line);border-radius:16px;margin-bottom:20px;padding:15px 4px}
+#visita-app .v-stat{padding:0 12px;border-right:1px solid var(--v-line)}
+#visita-app .v-stat:last-child{border:0}
+#visita-app .v-stat strong{display:block;font-size:23px;line-height:1.25;font-weight:650}
+#visita-app .v-stat span{font-size:12px;color:var(--v-muted)}
+#visita-app .v-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:12px 0 19px}
+#visita-app .v-day{border:1px solid var(--v-line);background:var(--v-surface);padding:9px 0 8px;border-radius:13px;min-height:75px;display:flex;flex-direction:column;align-items:center;gap:3px}
+#visita-app .v-day span{font-size:12px;color:var(--v-muted)}
+#visita-app .v-day strong{font-size:19px;font-weight:650}
+#visita-app .v-day small{font-size:10px;min-height:13px;color:var(--v-muted)}
+#visita-app .v-day[aria-pressed=true]{background:#1a2c45;border-color:#1a2c45;color:#fff;box-shadow:0 4px 12px #1a2c4522}
+#visita-app .v-day[aria-pressed=true] span,#visita-app .v-day[aria-pressed=true] small{color:#e5edff}
+#visita-app .v-field{display:grid;gap:7px;font-size:14px;font-weight:500;margin-bottom:15px}
+#visita-app .v-input{display:block;width:100%;min-width:0;background:var(--v-surface);color:var(--v-text);border:1px solid var(--v-line);border-radius:12px;padding:12px 13px;min-height:46px;font-size:16px;font-weight:400}
+#visita-app .v-input::placeholder{color:var(--v-muted)}
+#visita-app .v-search{position:relative;margin-bottom:12px}
+#visita-app .v-search svg{position:absolute;top:14px;left:13px;color:var(--v-muted)}
+#visita-app .v-search input{padding-left:42px}
+#visita-app .v-filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:17px}
+#visita-app .v-filters select{font-size:14px}
+#visita-app .v-list{display:grid;gap:11px;margin-top:13px}
+#visita-app .v-appt{display:grid;grid-template-columns:53px minmax(0,1fr);gap:11px}
+#visita-app .v-time{padding-top:16px;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+#visita-app .v-time small{display:block;font-size:11px;font-weight:400;color:var(--v-muted);margin-top:2px}
+#visita-app .v-apptbody{padding:15px;background:var(--v-surface);border:1px solid var(--v-line);border-left:3px solid var(--advisor-color,var(--v-blue));border-radius:0 15px 15px 0;min-width:0}
+#visita-app .v-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 7px;border-radius:6px;color:var(--v-green);background:var(--v-greenbg);white-space:nowrap}
+#visita-app .v-tag-neutral{color:var(--v-muted);background:var(--v-bg)}
+#visita-app .v-apptmeta{display:flex;align-items:center;flex-wrap:wrap;gap:5px 10px;color:var(--v-muted);font-size:12px;margin:6px 0 10px}
+#visita-app .v-apptmeta svg{width:13px;height:13px}
+#visita-app .v-avatar{width:31px;height:31px;border-radius:50%;display:inline-grid;place-items:center;background:var(--v-tint);color:var(--v-blue);font-weight:700;font-size:11px;flex-shrink:0}
+#visita-app .v-advisorname{font-size:12px;font-weight:500}
+#visita-app .v-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:9px;padding-top:8px;border-top:1px solid var(--v-line)}
+#visita-app .v-actions button{background:none;border:0;padding:4px 0;min-height:32px;font-size:12px;color:var(--v-blue)}
+#visita-app .v-actions button.v-danger{color:var(--v-red)}
+#visita-app .v-nav{display:grid;grid-template-columns:repeat(3,1fr);padding:9px 12px 12px;background:var(--v-surface);border-top:1px solid var(--v-line)}
+#visita-app .v-nav button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border:0;background:transparent;color:var(--v-muted);border-radius:12px;font-size:13px;font-weight:600}
+#visita-app .v-nav button[aria-current=page]{background:var(--v-tint);color:var(--v-blue)}
+#visita-app .v-property{background:var(--v-surface);border:1px solid var(--v-line);border-radius:16px;padding:15px;min-width:0}
+#visita-app .v-propertyhead{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+#visita-app .v-building{width:49px;height:54px;background:var(--v-tint);color:var(--v-blue);border-radius:12px;display:grid;place-items:center;flex-shrink:0}
+#visita-app .v-building svg{width:26px;height:26px}
+#visita-app .v-property h3{font-size:16px}
+#visita-app .v-details{font-size:12px;color:var(--v-muted);margin-top:4px}
+#visita-app .v-price{font-size:17px;font-weight:650;letter-spacing:-.3px}
+#visita-app .v-price small{font-size:11px;font-weight:400;color:var(--v-muted)}
+#visita-app .v-cardfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:12px;border-top:1px solid var(--v-line)}
+#visita-app .v-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#visita-app .v-pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:18px;color:var(--v-muted);font-size:13px}
+#visita-app .v-teamcard{background:var(--v-surface);border:1px solid var(--v-line);border-radius:17px;padding:17px}
+#visita-app .v-teamcard .v-avatar{width:45px;height:45px;font-size:14px}
+#visita-app .v-teammeta{display:flex;gap:16px;margin:15px 0;color:var(--v-muted);font-size:13px}
+#visita-app .v-loadtrack{height:5px;border-radius:10px;background:var(--v-line);overflow:hidden;margin-bottom:14px}
+#visita-app .v-load{height:100%;background:var(--v-blue)}
+#visita-app .v-step{display:flex;align-items:center;gap:8px;color:var(--v-muted);font-size:12px;margin:0 0 20px}
+#visita-app .v-step b{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:var(--v-line);font-size:11px}
+#visita-app .v-step .active{color:var(--v-blue);font-weight:600;display:flex;align-items:center;gap:6px}
+#visita-app .v-step .active b{background:var(--v-blue);color:var(--v-surface)}
+#visita-app .v-bookinghero{background:var(--v-tint);border-radius:16px;padding:17px;margin-bottom:20px}
+#visita-app .v-bookinghero .v-muted{font-size:12px}
+#visita-app .v-sectiontitle{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:650;margin-bottom:12px}
+#visita-app .v-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 10px}
+#visita-app .v-slot{background:var(--v-surface);border:1px solid var(--v-line);border-radius:11px;min-height:44px;font-size:14px;font-weight:500}
+#visita-app .v-slot[aria-pressed=true]{background:#1a2c45;border-color:#1a2c45;color:#fff}
+#visita-app .v-slot:disabled{text-decoration:line-through}
+#visita-app .v-note{font-size:12px;color:var(--v-muted);margin-bottom:20px}
+#visita-app .v-bookinggrid{display:grid;grid-template-columns:1fr 1fr;gap:25px}
+#visita-app .v-full{width:100%}
+#visita-app .v-error{color:var(--v-red);font-size:14px;margin:10px 0}
+#visita-app .v-empty{padding:32px 18px;text-align:center;color:var(--v-muted);border:1px dashed var(--v-line);border-radius:16px;margin:14px 0}
+#visita-app .v-empty svg{width:32px;height:32px;margin-bottom:10px}
+#visita-app .v-success{background:var(--v-surface);border:1px solid var(--v-line);border-radius:22px;padding:26px 20px;max-width:480px;margin:15px auto;text-align:center}
+#visita-app .v-successicon{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:var(--v-greenbg);color:var(--v-green);margin:0 auto 16px}
+#visita-app .v-successicon svg{width:32px;height:32px}
+#visita-app .v-ticket{margin:23px 0;text-align:left;border-top:1px dashed var(--v-line);border-bottom:1px dashed var(--v-line);padding:18px 0;display:grid;gap:12px}
+#visita-app .v-ticket .v-row{align-items:flex-start}
+#visita-app .v-toast{padding:10px 22px;background:var(--v-greenbg);color:var(--v-green);font-size:14px}
+#visita-app .v-toast:empty{display:none}
+#visita-app .v-cancelbox{margin-top:10px;padding:12px;border:1px solid var(--v-line);border-radius:10px;font-size:13px}
+#visita-app .v-footnote{text-align:center;color:var(--v-muted);font-size:11px;padding:9px 15px;background:var(--v-surface)}
+@media(max-width:560px){#visita-app{border-radius:18px}#visita-app .v-header{padding:16px}#visita-app .v-content{padding:20px 15px;min-height:530px}#visita-app h2{font-size:26px}#visita-app .v-grid,#visita-app .v-bookinggrid{grid-template-columns:1fr}#visita-app .v-nav button{flex-direction:column;gap:3px;font-size:11px}#visita-app .v-appt{grid-template-columns:45px minmax(0,1fr);gap:7px}#visita-app .v-apptbody{padding:12px}#visita-app .v-day{border-radius:11px}#visita-app .v-days{gap:4px}#visita-app .v-actions button{min-height:44px}#visita-app .v-stat{padding:0 9px}#visita-app .v-bookinggrid{gap:8px}#visita-app .v-top>.v-btn{padding:11px;font-size:13px}#visita-app .v-company{font-size:11px}}
+@media(prefers-reduced-motion:no-preference){#visita-app .v-btn,#visita-app .v-day,#visita-app .v-slot{transition:background .15s,border-color .15s}#visita-app .v-primary:hover{background:#00a9a5}}
+</style>
+<div id="visita-app">
+  <header class="v-header">
+    <div class="v-row"><div class="v-logo"><i data-lucide="calendar-range" aria-hidden="true"></i></div><div><div class="v-brand">visita<span style="color:var(--v-blue)">.</span></div><div class="v-company">PATRIMONIOS · BOGOTÁ</div></div></div>
+    <span class="v-demo">Demo interactiva</span>
+  </header>
+  <nav class="v-nav" aria-label="Navegación principal">
+    <button type="button" data-view="agenda" aria-current="page"><i data-lucide="calendar-days" aria-hidden="true"></i>Agenda</button>
+    <button type="button" data-view="properties"><i data-lucide="building-2" aria-hidden="true"></i>Inmuebles · 100</button>
+    <button type="button" data-view="team"><i data-lucide="users" aria-hidden="true"></i>Equipo · 10</button>
+  </nav>
+  <div id="v-toast" class="v-toast" role="status" aria-live="polite"></div>
+  <main id="v-main" class="v-content"></main>
+  <div class="v-footnote">Datos ficticios · Horarios de Bogotá · Cambios solo en esta sesión</div>
+</div>
+<script>
+(() => {
+  'use strict';
+  const root=document.getElementById('visita-app');
+  const main=root.querySelector('#v-main');
+  const toast=root.querySelector('#v-toast');
+  const duration=40, travel=30, baseDate='2026-09-07';
+  const tenantId='patrimonios-demo';
+  const names=['Valentina Ríos','Mateo Beltrán','Camila Torres','Daniel Acosta','Sofía Mendoza','Nicolás Vélez','Isabella Ruiz','Sebastián Mora','Mariana Castro','Tomás Herrera'];
+  const zones=['Cedritos','Chicó','Colina Campestre','Usaquén','Chapinero','Salitre','Santa Bárbara','Suba','Rosales','Teusaquillo'];
+  const colors=['#426fe2','#a66adc','#268979','#be7745','#ba6489','#578dce','#8b7bc7','#4e949e','#ab793e','#6b89a5'];
+  const advisors=names.map((name,i)=>({id:'a'+i,tenantId,name,zone:zones[i],color:colors[i],start:480+(i%3)*30,end:1050+(i%2)*30,initials:name.split(' ').map(n=>n[0]).join('')}));
+  const properties=Array.from({length:100},(_,i)=>({id:601+i,tenantId,advisorId:advisors[i%10].id,zone:zones[i%10],type:i%9===0?'Casa':i%7===0?'Local':'Apartamento',mode:i%4===0?'Venta':'Arriendo',area:45+(i*17)%210,rooms:1+i%4,baths:1+i%3,price:i%4===0?350000000+(i*23000000)%1900000000:1400000+(i*170000)%7200000,address:`${i%2?'Carrera':'Calle'} ${25+(i*7)%140} # ${8+(i*3)%60} – ${10+(i*11)%80}`,start:540+(i%3)*30,end:960+(i%3)*30,saturday:i%4!==0}));
+  const clients=['Laura Martínez','Andrés Gómez','Juliana Pérez','Carlos Moreno','Paula Medina','David López','Ana Vargas','Felipe Ortiz','Diana León','Santiago Díaz'];
+  let appointments=[];
+  let nextId=1;
+  const state={view:'agenda',date:baseDate,week:0,advisor:'all',query:'',zone:'all',mode:'all',page:0,limit:6,property:null,slot:null,editId:null,client:'',cancelId:null,successId:null};
+  const money=new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0});
+  const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const icon=name=>`<i data-lucide="${name}" aria-hidden="true"></i>`;
+  const prop=id=>properties.find(p=>p.id===Number(id));
+  const advisor=id=>advisors.find(a=>a.id===id);
+  const dateObj=s=>new Date(s+'T12:00:00Z');
+  const addDays=(s,n)=>{const d=dateObj(s);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+  const dateLabel=s=>new Intl.DateTimeFormat('es-CO',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'}).format(dateObj(s));
+  const time=n=>`${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;
+  const activeAppointments=()=>appointments.filter(a=>a.tenantId===tenantId&&a.status!=='cancelled');
+  function windowFor(p,date){
+    const day=dateObj(date).getUTCDay(),a=advisor(p.advisorId);
+    if(day===0||(day===6&&!p.saturday))return null;
+    return {start:Math.max(a.start,p.start),end:Math.min(day===6?780:a.end,day===6?780:p.end)};
+  }
+  function canBook(p,date,start,ignoreId=null){
+    const w=windowFor(p,date);
+    if(!w||start<w.start||start+duration>w.end)return false;
+    return !activeAppointments().some(b=>{
+      if(b.id===ignoreId||b.date!==date)return false;
+      if(b.advisorId!==p.advisorId&&b.propertyId!==p.id)return false;
+      const buffer=b.propertyId===p.id?0:travel;
+      return start<b.start+duration+buffer&&start+duration+buffer>b.start;
+    });
+  }
+  function slotsFor(p,date,ignoreId=null){
+    const w=windowFor(p,date);if(!w)return [];
+    const result=[];for(let t=Math.ceil(w.start/30)*30;t+duration<=w.end;t+=30)result.push({time:t,available:canBook(p,date,t,ignoreId)});return result;
+  }
+  // Seed appointments through the same scheduling rules used by the booking form.
+  for(let d=0;d<14;d++){
+    const date=addDays(baseDate,d);
+    advisors.forEach((a,i)=>{
+      const p=properties[(d%10)*10+i];
+      for(const start of [600,840])if(canBook(p,date,start))appointments.push({id:'v'+nextId++,tenantId,propertyId:p.id,advisorId:a.id,date,start,client:clients[(i+d)%clients.length],status:'confirmed'});
+    });
+  }
+  function avatar(a){return `<span class="v-avatar">${a.initials}</span>`}
+  function notify(text){toast.textContent=text}
+  function refreshIcons(){if(typeof lucide!=='undefined')lucide.createIcons({attrs:{'stroke-width':1.8}})}
+  function nav(){root.querySelectorAll('[data-view]').forEach(b=>{if(b.dataset.view===state.view||(state.view==='booking'&&b.dataset.view==='properties'))b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')})}
+  function setView(view){state.view=view;state.cancelId=null;state.limit=6;notify('');render()}
+  function dateStrip(booking=false){
+    const first=addDays(baseDate,state.week*7);
+    return `<div class="v-between"><div><strong style="font-size:14px">Septiembre 2026</strong><div class="v-muted" style="font-size:12px">${booking?'Elige el día de visita':'Semana de demostración'}</div></div><div class="v-row"><button class="v-iconbtn" data-week="-1" aria-label="Semana anterior" ${state.week===0?'disabled':''}>${icon('chevron-left')}</button><button class="v-iconbtn" data-week="1" aria-label="Semana siguiente" ${state.week===1?'disabled':''}>${icon('chevron-right')}</button></div></div>
+    <div class="v-days">${Array.from({length:7},(_,i)=>{
+      const date=addDays(first,i),d=dateObj(date),count=booking?slotsFor(prop(state.property),date,state.editId).filter(s=>s.available).length:activeAppointments().filter(a=>a.date===date&&(state.advisor==='all'||a.advisorId===state.advisor)).length;
+      return `<button type="button" class="v-day" data-date="${date}" aria-pressed="${state.date===date}" aria-label="${dateLabel(date)}, ${count} ${booking?'horarios libres':'citas'}"><span>${['dom','lun','mar','mié','jue','vie','sáb'][d.getUTCDay()]}</span><strong>${d.getUTCDate()}</strong><small>${count?count+(booking?' libres':' citas'):'—'}</small></button>`}).join('')}</div>`;
+  }
+  function appointmentCard(b){
+    const p=prop(b.propertyId),a=advisor(b.advisorId);
+    return `<article class="v-appt"><div class="v-time">${time(b.start)}<small>${time(b.start+duration)}</small></div><div class="v-apptbody" style="--advisor-color:${a.color}">
+      <div class="v-between"><span class="v-muted" style="font-size:11px">#${p.id} · ${p.mode}</span><span class="v-tag ${b.status==='completed'?'v-tag-neutral':''}">${b.status==='completed'?'Realizada':'Confirmada'}</span></div>
+      <h3 style="margin-top:6px">${p.type} en ${p.zone}</h3><div class="v-apptmeta"><span>${b.client?escape(b.client):'Cliente de prueba'}</span><span>· ${duration} min</span></div>
+      <div class="v-row">${avatar(a)}<span class="v-advisorname">${a.name}</span></div>
+      ${b.status==='completed'?'':`<div class="v-actions"><button data-edit="${b.id}">Reprogramar</button><button data-complete="${b.id}">Realizada</button><button class="v-danger" data-cancel="${b.id}">Cancelar</button></div>`}
+      ${state.cancelId===b.id?`<div class="v-cancelbox">¿Cancelar esta visita y liberar el horario?<div class="v-actions"><button class="v-danger" data-confirmcancel="${b.id}">Sí, cancelar</button><button data-keep="${b.id}">Conservar</button></div></div>`:''}
+    </div></article>`;
+  }
+  function renderAgenda(){
+    const today=activeAppointments().filter(a=>a.date===state.date&&(state.advisor==='all'||a.advisorId===state.advisor)).sort((a,b)=>a.start-b.start||a.advisorId.localeCompare(b.advisorId));
+    const completed=today.filter(a=>a.status==='completed').length;
+    main.innerHTML=`<div class="v-top"><div><div class="v-eyebrow">Tu operación, al día</div><h2>Agenda de visitas</h2></div><button class="v-btn v-primary" data-new>${icon('plus')}Nueva cita</button></div>
+      <div class="v-statbar"><div class="v-stat"><strong>${today.length}</strong><span>Citas del día</span></div><div class="v-stat"><strong>${new Set(today.map(a=>a.advisorId)).size}</strong><span>Asesores con citas</span></div><div class="v-stat"><strong>${completed}</strong><span>Realizadas</span></div></div>
+      ${dateStrip()}<label class="v-field" for="v-advisor">Ver agenda de<select id="v-advisor" class="v-input"><option value="all">Todo el equipo · 10 asesores</option>${advisors.map(a=>`<option value="${a.id}" ${state.advisor===a.id?'selected':''}>${a.name} · ${a.zone}</option>`).join('')}</select></label>
+      <div class="v-between"><h3 style="text-transform:capitalize">${dateLabel(state.date).split(' de septiembre')[0]}</h3><span class="v-muted">${today.length} visitas</span></div>
+      <div class="v-list">${today.length?today.slice(0,state.limit).map(appointmentCard).join(''):`<div class="v-empty">${icon('calendar-check')}<h3>Agenda despejada</h3><p style="margin-top:8px">No hay visitas para este día y asesor.</p><button class="v-btn v-primary" data-new style="margin-top:16px">Agendar una visita</button></div>`}</div>
+      ${today.length>state.limit?`<button class="v-btn v-full" data-more style="margin-top:15px">Ver ${today.length-state.limit} citas más ${icon('chevron-down')}</button>`:''}`;
+  }
+  function propertyCard(p){const a=advisor(p.advisorId);return `<article class="v-property"><div class="v-propertyhead"><div class="v-building">${icon(p.type==='Casa'?'house':p.type==='Local'?'store':'building-2')}</div><div style="min-width:0"><div class="v-muted" style="font-size:11px;margin-bottom:3px">#${p.id} · ${p.mode}</div><h3>${p.type} en ${p.zone}</h3><div class="v-details">${p.area} m² · ${p.type==='Local'?'Espacio comercial':p.rooms+' hab. · '+p.baths+' baños'}</div></div></div><div class="v-between" style="margin-bottom:12px"><div class="v-price">${money.format(p.price)}<small>${p.mode==='Arriendo'?' / mes':''}</small></div></div><div class="v-cardfoot"><div class="v-row">${avatar(a)}<span class="v-advisorname">${a.name.split(' ')[0]}</span></div><button class="v-btn v-primary" data-book="${p.id}">Ver horarios ${icon('arrow-up-right')}</button></div></article>`}
+  function filteredProperties(){const q=state.query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();return properties.filter(p=>p.tenantId===tenantId&&(state.zone==='all'||p.zone===state.zone)&&(state.mode==='all'||p.mode===state.mode)&&`${p.id} ${p.zone} ${p.type} ${p.address} ${advisor(p.advisorId).name}`.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q))}
+  function renderPropertyResults(){const list=filteredProperties(),total=Math.max(1,Math.ceil(list.length/6));state.page=Math.min(state.page,total-1);root.querySelector('#v-property-results').innerHTML=`<div class="v-between" style="margin-bottom:12px"><span class="v-muted">${list.length} inmuebles</span><span class="v-muted" style="font-size:12px">Asesor asignado automáticamente</span></div><div class="v-grid">${list.slice(state.page*6,state.page*6+6).map(propertyCard).join('')}</div>${list.length?'':`<div class="v-empty">${icon('search')}<h3>No encontramos inmuebles</h3><p style="margin-top:8px">Prueba otro código, barrio o filtro.</p></div>`}<div class="v-pagination"><button class="v-btn" data-page="-1" ${state.page===0?'disabled':''}>${icon('chevron-left')}Anterior</button><span>${state.page+1} / ${total}</span><button class="v-btn" data-page="1" ${state.page>=total-1?'disabled':''}>Siguiente${icon('chevron-right')}</button></div>`;refreshIcons()}
+  function renderProperties(){main.innerHTML=`<div class="v-top"><div><div class="v-eyebrow">Encuentra la próxima visita</div><h2>100 oportunidades</h2><p class="v-muted" style="margin-top:6px">Elige un inmueble para ver su disponibilidad.</p></div></div><label class="v-field" for="v-search"><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">Buscar por código, barrio o asesor</span><div class="v-search"><input id="v-search" class="v-input" value="${escape(state.query)}" placeholder="Código, barrio o asesor…" type="search">${icon('search')}</div></label><div class="v-filters"><select class="v-input" id="v-zone" aria-label="Filtrar por barrio"><option value="all">Todos los barrios</option>${zones.map(z=>`<option ${z===state.zone?'selected':''}>${z}</option>`).join('')}</select><select class="v-input" id="v-mode" aria-label="Filtrar por operación"><option value="all">Venta y arriendo</option><option ${state.mode==='Arriendo'?'selected':''}>Arriendo</option><option ${state.mode==='Venta'?'selected':''}>Venta</option></select></div><div id="v-property-results"></div>`;renderPropertyResults()}
+  function startBooking(id,editId=null){state.property=Number(id);state.editId=editId;state.slot=null;state.client='';if(editId){const b=appointments.find(a=>a.id===editId);state.date=b.date;state.slot=b.start;state.client=b.client;state.week=Math.floor((dateObj(b.date)-dateObj(baseDate))/86400000/7)}state.view='booking';notify('');render()}
+  function renderBooking(){
+    const p=prop(state.property),a=advisor(p.advisorId),slots=slotsFor(p,state.date,state.editId),free=slots.filter(s=>s.available),w=windowFor(p,state.date);
+    if(state.slot!==null&&!canBook(p,state.date,state.slot,state.editId))state.slot=null;
+    main.innerHTML=`<div class="v-top"><button class="v-btn v-quiet" data-back>${icon('arrow-left')}Volver</button><span class="v-demo">${state.editId?'Reprogramar':'Nueva visita'}</span></div><div class="v-step"><span class="active"><b>1</b>Inmueble</span><span>—</span><span class="active"><b>2</b>Horario y cliente</span></div><div class="v-bookinghero"><div class="v-muted">#${p.id} · ${p.mode}</div><h3 style="font-size:20px;margin:4px 0">${p.type} en ${p.zone}</h3><div class="v-muted">${p.address} · ${p.area} m²</div><div class="v-row" style="margin-top:14px">${avatar(a)}<div><div style="font-size:14px;font-weight:600">${a.name}</div><div class="v-muted">Asesor asignado · ${a.zone}</div></div></div></div><div class="v-bookinggrid"><section aria-label="Fecha y disponibilidad">${dateStrip(true)}<div class="v-between"><div class="v-sectiontitle" style="margin:0">${icon('clock-3')}Horarios disponibles</div><span class="v-muted">${free.length} libres</span></div><div class="v-slots">${slots.map(s=>`<button type="button" class="v-slot" data-slot="${s.time}" aria-pressed="${state.slot===s.time}" ${s.available?'':'disabled'} aria-label="${time(s.time)}${s.available?' disponible':' no disponible'}">${time(s.time)}</button>`).join('')}</div>${!slots.length?`<div class="v-empty"><h3>Sin atención este día</h3><p style="margin-top:7px">El inmueble o el asesor no recibe visitas. Elige otra fecha.</p></div>`:!free.length?`<div class="v-empty">Todos los horarios están ocupados. Prueba otro día.</div>`:''}<p class="v-note">Visita de 40 min · 30 min de traslado entre inmuebles.<br>${w?'Ventana de visita: '+time(w.start)+'–'+time(w.end)+'. Horas tachadas: cita o traslado.':'Domingos sin atención; sábados según el inmueble.'}</p></section><section aria-label="Datos de la visita"><form id="v-book-form"><div class="v-sectiontitle">${icon('user-round')}¿Quién visitará el inmueble?</div><label class="v-field" for="v-client">Nombre del cliente<input class="v-input" id="v-client" value="${escape(state.client)}" maxlength="80" placeholder="Ej. Andrea Gómez" autocomplete="off" required></label><div style="padding:15px 0;border-top:1px solid var(--v-line);border-bottom:1px solid var(--v-line);margin:20px 0"><div class="v-muted" style="font-size:12px">TU SELECCIÓN</div><div style="font-size:15px;text-transform:capitalize;margin-top:6px">${dateLabel(state.date)}</div><div id="v-selected-time" style="font-size:23px;font-weight:650;color:var(--v-blue);margin-top:4px">${state.slot===null?'Elige una hora':time(state.slot)+' – '+time(state.slot+duration)}</div></div><div id="v-book-error" class="v-error" role="alert"></div><button class="v-btn v-primary v-full" type="submit" ${state.slot===null?'disabled':''}>${icon('calendar-check')}${state.editId?'Guardar nuevo horario':'Confirmar visita'}</button><p class="v-note" style="margin-top:12px">Reserva de prueba. No envía mensajes ni crea eventos externos.</p></form></section></div>`;
+  }
+  function renderTeam(){main.innerHTML=`<div class="v-top"><div><div class="v-eyebrow">Personas detrás de cada visita</div><h2>Tu equipo</h2><p class="v-muted" style="margin-top:6px">10 asesores · 10 inmuebles por asesor</p></div></div><div class="v-grid">${advisors.map(a=>{const count=activeAppointments().filter(b=>b.advisorId===a.id&&b.date===state.date).length;return `<article class="v-teamcard"><div class="v-row">${avatar(a)}<div><h3>${a.name}</h3><p class="v-muted">${a.zone}</p></div></div><div class="v-teammeta"><span><strong style="color:var(--v-text)">10</strong> inmuebles</span><span><strong style="color:var(--v-text)">${count}</strong> citas el ${dateObj(state.date).getUTCDate()} sep.</span></div><div class="v-loadtrack" aria-label="${count*duration} minutos de visitas en la fecha seleccionada"><div class="v-load" style="width:${Math.min(100,count*duration/(a.end-a.start)*100)}%"></div></div><p class="v-muted" style="font-size:12px;margin-bottom:14px">Lun–vie ${time(a.start)}–${time(a.end)}<br>Sábados hasta las 13:00 · Domingo libre</p><button class="v-btn v-full" data-team="${a.id}">${icon('calendar-days')}Ver agenda</button></article>`}).join('')}</div>`}
+  function renderSuccess(){const b=appointments.find(a=>a.id===state.successId),p=prop(b.propertyId),a=advisor(b.advisorId);main.innerHTML=`<section class="v-success"><div class="v-successicon">${icon('check')}</div><div class="v-eyebrow">Todo listo</div><h2>${state.editId?'Visita reprogramada':'Visita confirmada'}</h2><p class="v-muted" style="margin-top:10px">El horario quedó reservado para ${escape(b.client)}.</p><div class="v-ticket"><div class="v-row">${icon('building-2')}<div><h3>${p.type} en ${p.zone}</h3><p class="v-muted">#${p.id} · ${p.address}</p></div></div><div class="v-row">${icon('calendar-days')}<div><div style="text-transform:capitalize">${dateLabel(b.date)}</div><strong>${time(b.start)} – ${time(b.start+duration)}</strong></div></div><div class="v-row">${avatar(a)}<div><div>${a.name}</div><div class="v-muted">Asesor responsable</div></div></div></div><button class="v-btn v-primary v-full" data-gotoagenda>Ver en la agenda ${icon('arrow-right')}</button><button class="v-btn v-quiet" data-new style="margin-top:9px">Agendar otra visita</button><p class="v-note" style="margin:12px 0 0">Reserva simulada ${b.id.toUpperCase()} · Sin notificaciones externas</p></section>`}
+  function render(){nav();if(state.view==='agenda')renderAgenda();else if(state.view==='properties')renderProperties();else if(state.view==='team')renderTeam();else if(state.view==='booking')renderBooking();else renderSuccess();refreshIcons()}
+  root.addEventListener('input',e=>{
+    if(e.target.id==='v-search'){state.query=e.target.value;state.page=0;renderPropertyResults()}
+    if(e.target.id==='v-client')state.client=e.target.value;
+  });
+  root.addEventListener('change',e=>{
+    if(e.target.id==='v-advisor'){state.advisor=e.target.value;state.limit=6;render()}
+    if(e.target.id==='v-zone'){state.zone=e.target.value;state.page=0;renderPropertyResults()}
+    if(e.target.id==='v-mode'){state.mode=e.target.value;state.page=0;renderPropertyResults()}
+  });
+  root.addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b||b.disabled||!root.contains(b))return;
+    if(b.dataset.view){setView(b.dataset.view);return}
+    if(b.hasAttribute('data-new')){state.query='';state.zone='all';state.mode='all';state.page=0;state.editId=null;setView('properties');return}
+    if(b.dataset.week){state.week=Math.max(0,Math.min(1,state.week+Number(b.dataset.week)));state.date=addDays(baseDate,state.week*7);state.slot=null;state.limit=6;render();return}
+    if(b.dataset.date){state.date=b.dataset.date;state.slot=null;state.limit=6;render();return}
+    if(b.dataset.page){state.page+=Number(b.dataset.page);renderPropertyResults();return}
+    if(b.hasAttribute('data-more')){state.limit=100;render();return}
+    if(b.dataset.book){startBooking(b.dataset.book);return}
+    if(b.hasAttribute('data-back')){setView(state.editId?'agenda':'properties');return}
+    if(b.dataset.slot){state.slot=Number(b.dataset.slot);root.querySelectorAll('[data-slot]').forEach(el=>el.setAttribute('aria-pressed',Number(el.dataset.slot)===state.slot));root.querySelector('#v-selected-time').textContent=time(state.slot)+' – '+time(state.slot+duration);root.querySelector('#v-book-form button[type=submit]').disabled=false;root.querySelector('#v-book-error').textContent='';return}
+    if(b.dataset.team){state.advisor=b.dataset.team;setView('agenda');return}
+    if(b.dataset.edit){const apt=appointments.find(a=>a.id===b.dataset.edit);startBooking(apt.propertyId,apt.id);return}
+    if(b.dataset.complete){appointments.find(a=>a.id===b.dataset.complete).status='completed';notify('Visita marcada como realizada.');render();return}
+    if(b.dataset.cancel){state.cancelId=b.dataset.cancel;render();return}
+    if(b.dataset.keep){state.cancelId=null;render();return}
+    if(b.dataset.confirmcancel){appointments.find(a=>a.id===b.dataset.confirmcancel).status='cancelled';state.cancelId=null;notify('Visita cancelada. El horario vuelve a estar disponible.');render();return}
+    if(b.hasAttribute('data-gotoagenda')){const apt=appointments.find(a=>a.id===state.successId);state.date=apt.date;state.advisor=apt.advisorId;state.week=Math.floor((dateObj(apt.date)-dateObj(baseDate))/86400000/7);setView('agenda')}
+  });
+  root.addEventListener('submit',e=>{
+    if(e.target.id!=='v-book-form')return;e.preventDefault();
+    const p=prop(state.property),name=state.client.trim(),err=root.querySelector('#v-book-error');
+    if(name.length<2){err.textContent='Escribe un nombre de al menos dos caracteres.';root.querySelector('#v-client').focus();return}
+    if(state.slot===null||!canBook(p,state.date,state.slot,state.editId)){err.textContent='Este horario ya no está disponible. Selecciona otro.';return}
+    if(state.editId){const apt=appointments.find(a=>a.id===state.editId);Object.assign(apt,{date:state.date,start:state.slot,client:name});state.successId=apt.id}
+    else{const apt={id:'v'+nextId++,tenantId,propertyId:p.id,advisorId:p.advisorId,date:state.date,start:state.slot,client:name,status:'confirmed'};appointments.push(apt);state.successId=apt.id}
+    state.view='success';render();
+  });
+  render();
+})();
+</script>
+</div></section>
+ <footer class="pa-foot">Bogotá · Barranquilla · Medellín</footer>
+</div>
+<script>
+(()=>{const r=document.getElementById('pat-access'),q=s=>r.querySelector(s),m=q('#pa-message'),p=q('#pa-password');q('#pa-form').addEventListener('submit',e=>{e.preventDefault();p.value='';m.textContent='El inicio de sesión se activará al conectar Supabase. Puedes explorar la demostración sin credenciales.'});q('#pa-reset').onclick=()=>{m.textContent='La recuperación por correo estará disponible al activar la conexión. En esta prueba no se envían correos.'};q('#pa-reveal').onclick=e=>{const show=p.type==='password';p.type=show?'text':'password';e.currentTarget.textContent=show?'Ocultar':'Mostrar';e.currentTarget.setAttribute('aria-pressed',String(show))};q('#pa-demo').onclick=()=>{q('#pa-form').reset();q('#pa-login').hidden=true;q('#pa-agenda').hidden=false};q('#pa-back').onclick=()=>{q('#pa-login').hidden=false;q('#pa-agenda').hidden=true;m.textContent='';};})();
+</script>

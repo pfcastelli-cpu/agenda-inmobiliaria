@@ -1,0 +1,322 @@
+#visita-app {
+  --v-bg: light-dark(#f4f4f4, #111725);
+  --v-surface: light-dark(#fff, #1a2233);
+  --v-text: light-dark(#15233b, #edf2ff);
+  --v-muted: light-dark(#586780, #a5b3cd);
+  --v-line: light-dark(#e2e8f2, #303d54);
+  --v-blue: light-dark(#1a2c45, #8eb0ff);
+  --v-tint: light-dark(#e3f8f7, #253555);
+  --v-green: light-dark(#177153, #78dab5);
+  --v-greenbg: light-dark(#e8f6ef, #203f36);
+  --v-red: light-dark(#b32f43, #ffa4ad);
+  font: 400 16px/1.45 Poppins, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--v-text);
+  background: var(--v-bg);
+  isolation: isolate;
+  text-align: left;
+}
+#visita-app [hidden] { display: none !important; }
+#visita-app * { box-sizing: border-box; }
+#visita-app button, #visita-app input, #visita-app select { font: inherit; }
+#visita-app button { cursor: pointer; color: inherit; }
+#visita-app button:disabled { cursor: not-allowed; opacity: .4; }
+#visita-app h2, #visita-app h3, #visita-app p { margin: 0; }
+#visita-app h2 { font-size: 28px; line-height: 1.2; font-weight: 650; letter-spacing: -.8px; }
+#visita-app h3 { font-size: 17px; font-weight: 600; line-height: 1.35; }
+#visita-app svg { width: 20px; height: 20px; flex-shrink: 0; }
+#visita-app .v-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px;
+  background: var(--v-surface);
+  border-bottom: 1px solid var(--v-line);
+}
+#visita-app .v-brand { display: flex; align-items: center; gap: 9px; font-size: 21px; font-weight: 750; letter-spacing: -.6px; }
+#visita-app .v-logo {
+  width: 35px;
+  height: 35px;
+  border-radius: 11px;
+  background: #1a2c45;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+#visita-app .v-company { font-size: 14px; font-weight: 500; color: var(--v-muted); letter-spacing: .1px; }
+#visita-app .v-demo { font-size: 14px; padding: 5px 9px; border: 1px solid var(--v-line); border-radius: 20px; color: var(--v-muted); }
+#visita-app .v-content { padding: 22px; min-height: 540px; }
+#visita-app .v-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
+#visita-app .v-muted { color: var(--v-muted); font-size: 14px; }
+#visita-app .v-eyebrow { color: var(--v-blue); font-size: 14px; letter-spacing: 1.3px; font-weight: 700; text-transform: uppercase; margin-bottom: 7px; }
+#visita-app .v-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 11px 14px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+#visita-app .v-primary { background: #1a2c45; border-color: #1a2c45; color: #fff; }
+#visita-app .v-quiet { background: transparent; border: 0; color: var(--v-blue); padding: 10px 4px; }
+#visita-app .v-iconbtn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--v-surface);
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+}
+#visita-app .v-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#visita-app .v-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#visita-app .v-statbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  background: var(--v-surface);
+  border: 1px solid var(--v-line);
+  border-radius: 16px;
+  margin-bottom: 20px;
+  padding: 15px 4px;
+}
+#visita-app .v-stat { padding: 0 12px; border-right: 1px solid var(--v-line); }
+#visita-app .v-stat:last-child { border: 0; }
+#visita-app .v-stat strong { display: block; font-size: 23px; line-height: 1.25; font-weight: 650; }
+#visita-app .v-stat span { font-size: 14px; color: var(--v-muted); }
+#visita-app .v-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 12px 0 19px; }
+#visita-app .v-day {
+  border: 1px solid var(--v-line);
+  background: var(--v-surface);
+  padding: 9px 0 8px;
+  border-radius: 13px;
+  min-height: 75px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+#visita-app .v-day span { font-size: 14px; color: var(--v-muted); }
+#visita-app .v-day strong { font-size: 19px; font-weight: 650; }
+#visita-app .v-day small { font-size: 12px; min-height: 13px; color: var(--v-muted); }
+#visita-app .v-day[aria-pressed=true] {
+  background: #1a2c45;
+  border-color: #1a2c45;
+  color: #fff;
+  box-shadow: 0 4px 12px #1a2c4522;
+}
+#visita-app .v-day[aria-pressed=true] span,
+#visita-app .v-day[aria-pressed=true] small { color: #e5edff; }
+#visita-app .v-field { display: grid; gap: 7px; font-size: 14px; font-weight: 500; margin-bottom: 15px; }
+#visita-app .v-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  background: var(--v-surface);
+  color: var(--v-text);
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  padding: 12px 13px;
+  min-height: 46px;
+  font-size: 16px;
+  font-weight: 400;
+}
+#visita-app .v-input::placeholder { color: var(--v-muted); }
+#visita-app .v-search { position: relative; margin-bottom: 12px; }
+#visita-app .v-search svg { position: absolute; top: 14px; left: 13px; color: var(--v-muted); }
+#visita-app .v-search input { padding-left: 42px; }
+#visita-app .v-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 17px; }
+#visita-app .v-filters select { font-size: 14px; }
+#visita-app .v-list { display: grid; gap: 11px; margin-top: 13px; }
+#visita-app .v-appt { display: grid; grid-template-columns: 53px minmax(0, 1fr); gap: 11px; }
+#visita-app .v-time { padding-top: 16px; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#visita-app .v-time small { display: block; font-size: 13px; font-weight: 400; color: var(--v-muted); margin-top: 2px; }
+#visita-app .v-apptbody {
+  padding: 15px;
+  background: var(--v-surface);
+  border: 1px solid var(--v-line);
+  border-left: 3px solid var(--advisor-color, var(--v-blue));
+  border-radius: 0 15px 15px 0;
+  min-width: 0;
+}
+#visita-app .v-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 6px;
+  color: var(--v-green);
+  background: var(--v-greenbg);
+  white-space: nowrap;
+}
+#visita-app .v-tag-neutral { color: var(--v-muted); background: var(--v-bg); }
+#visita-app .v-apptmeta { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 10px; color: var(--v-muted); font-size: 14px; margin: 6px 0 10px; }
+#visita-app .v-apptmeta svg { width: 13px; height: 13px; }
+#visita-app .v-avatar {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  background: var(--v-tint);
+  color: var(--v-blue);
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+#visita-app .v-advisorname { font-size: 14px; font-weight: 500; }
+#visita-app .v-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--v-line); }
+#visita-app .v-actions button { background: none; border: 0; padding: 4px 0; min-height: 32px; font-size: 14px; color: var(--v-blue); }
+#visita-app .v-actions button.v-danger { color: var(--v-red); }
+#visita-app .v-link { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 14px; color: var(--v-blue); text-decoration: none; }
+#visita-app .v-link svg, #visita-app .v-link i { width: 13px; height: 13px; }
+#visita-app .v-nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 9px 12px 12px;
+  background: var(--v-surface);
+  border-top: 1px solid var(--v-line);
+}
+#visita-app .v-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--v-muted);
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+#visita-app .v-nav button[aria-current=page] { background: var(--v-tint); color: var(--v-blue); }
+#visita-app .v-property { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 16px; padding: 15px; min-width: 0; }
+#visita-app .v-propertyhead { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+#visita-app .v-building {
+  width: 49px;
+  height: 54px;
+  background: var(--v-tint);
+  color: var(--v-blue);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+#visita-app .v-building svg { width: 26px; height: 26px; }
+#visita-app .v-property h3 { font-size: 16px; }
+#visita-app .v-details { font-size: 14px; color: var(--v-muted); margin-top: 4px; }
+#visita-app .v-price { font-size: 17px; font-weight: 650; letter-spacing: -.3px; }
+#visita-app .v-price small { font-size: 13px; font-weight: 400; color: var(--v-muted); }
+#visita-app .v-cardfoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; border-top: 1px solid var(--v-line); }
+#visita-app .v-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+#visita-app .v-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 18px; color: var(--v-muted); font-size: 13px; }
+#visita-app .v-teamcard { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 17px; padding: 17px; }
+#visita-app .v-teamcard .v-avatar { width: 45px; height: 45px; font-size: 14px; }
+#visita-app .v-teammeta { display: flex; gap: 16px; margin: 15px 0; color: var(--v-muted); font-size: 13px; }
+#visita-app .v-loadtrack { height: 5px; border-radius: 10px; background: var(--v-line); overflow: hidden; margin-bottom: 14px; }
+#visita-app .v-load { height: 100%; background: var(--v-blue); }
+#visita-app .v-step { display: flex; align-items: center; gap: 8px; color: var(--v-muted); font-size: 14px; margin: 0 0 20px; }
+#visita-app .v-step b { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--v-line); font-size: 13px; }
+#visita-app .v-step .active { color: var(--v-blue); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+#visita-app .v-step .active b { background: var(--v-blue); color: var(--v-surface); }
+#visita-app .v-bookinghero { background: var(--v-tint); border-radius: 16px; padding: 17px; margin-bottom: 20px; }
+#visita-app .v-bookinghero .v-muted { font-size: 14px; }
+#visita-app .v-sectiontitle { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 650; margin-bottom: 12px; }
+#visita-app .v-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0 10px; }
+#visita-app .v-slot { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 11px; min-height: 44px; font-size: 14px; font-weight: 500; }
+#visita-app .v-slot[aria-pressed=true] { background: #1a2c45; border-color: #1a2c45; color: #fff; }
+#visita-app .v-slot:disabled { text-decoration: line-through; }
+#visita-app .v-note { font-size: 14px; color: var(--v-muted); margin-bottom: 20px; }
+#visita-app .v-bookinggrid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+#visita-app .v-full { width: 100%; }
+#visita-app .v-error { color: var(--v-red); font-size: 14px; margin: 10px 0; }
+#visita-app .v-empty { padding: 32px 18px; text-align: center; color: var(--v-muted); border: 1px dashed var(--v-line); border-radius: 16px; margin: 14px 0; }
+#visita-app .v-empty svg { width: 32px; height: 32px; margin-bottom: 10px; }
+#visita-app .v-success { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 22px; padding: 26px 20px; max-width: 480px; margin: 15px auto; text-align: center; }
+#visita-app .v-successicon {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: var(--v-greenbg);
+  color: var(--v-green);
+  margin: 0 auto 16px;
+}
+#visita-app .v-successicon svg { width: 32px; height: 32px; }
+#visita-app .v-ticket {
+  margin: 23px 0;
+  text-align: left;
+  border-top: 1px dashed var(--v-line);
+  border-bottom: 1px dashed var(--v-line);
+  padding: 18px 0;
+  display: grid;
+  gap: 12px;
+}
+#visita-app .v-ticket .v-row { align-items: flex-start; }
+#visita-app .v-toast { padding: 10px 22px; background: var(--v-greenbg); color: var(--v-green); font-size: 14px; }
+#visita-app .v-toast:empty { display: none; }
+#visita-app .v-cancelbox { margin-top: 10px; padding: 12px; border: 1px solid var(--v-line); border-radius: 10px; font-size: 13px; }
+#visita-app .v-footnote { text-align: center; color: var(--v-muted); font-size: 13px; padding: 9px 15px; background: var(--v-surface); }
+@media (max-width: 560px) {
+  #visita-app .v-header { padding: 16px; }
+  #visita-app .v-content { padding: 20px 15px; min-height: 530px; }
+  #visita-app h2 { font-size: 26px; }
+  #visita-app .v-grid, #visita-app .v-bookinggrid { grid-template-columns: 1fr; }
+  #visita-app .v-nav button { flex-direction: column; gap: 3px; font-size: 13px; }
+  #visita-app .v-appt { grid-template-columns: 45px minmax(0, 1fr); gap: 7px; }
+  #visita-app .v-apptbody { padding: 12px; }
+  #visita-app .v-day { border-radius: 11px; }
+  #visita-app .v-days { gap: 4px; }
+  #visita-app .v-actions button { min-height: 44px; }
+  #visita-app .v-stat { padding: 0 9px; }
+  #visita-app .v-bookinggrid { gap: 8px; }
+  #visita-app .v-top > .v-btn { padding: 11px; font-size: 13px; }
+  #visita-app .v-company { font-size: 13px; }
+  #visita-app .v-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #visita-app .v-slot { font-size: 13px; padding: 6px 4px; }
+  #visita-app .v-slot small { font-size: 13px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #visita-app .v-btn, #visita-app .v-day, #visita-app .v-slot { transition: background .15s, border-color .15s; }
+  #visita-app .v-primary:hover { background: #00a9a5; }
+}
+#visita-app .v-viewtoggle { display: inline-flex; gap: 4px; background: var(--v-tint); border-radius: 12px; padding: 4px; margin: 14px 0; }
+#visita-app .v-viewtoggle button { min-height: 34px; padding: 6px 14px; font-size: 13px; font-weight: 600; border-radius: 9px; background: transparent; color: var(--v-muted); }
+#visita-app .v-viewtoggle button[aria-pressed="true"] { background: var(--v-surface); color: var(--v-blue); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+#visita-app .v-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 4px 0 14px; }
+#visita-app .v-legenditem { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--v-muted); }
+#visita-app .v-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+#visita-app .v-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+#visita-app .v-weekday { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 12px; padding: 8px; min-height: 140px; }
+#visita-app .v-weekday.v-hoy { border-color: var(--v-blue); }
+#visita-app .v-weekdayhead { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; text-transform: uppercase; color: var(--v-muted); background: none; padding: 4px 0 8px; border-bottom: 1px solid var(--v-line); margin-bottom: 6px; }
+#visita-app .v-weekdayhead strong { font-size: 16px; text-transform: none; color: var(--v-text); }
+#visita-app .v-weeklist { display: grid; gap: 5px; }
+#visita-app .v-chip { display: flex; align-items: center; gap: 5px; width: 100%; text-align: left; background: var(--v-bg); border: 1px solid var(--v-line); border-left: 3px solid var(--advisor-color, var(--v-blue)); border-radius: 0 8px 8px 0; padding: 4px 6px; font-size: 13px; }
+#visita-app .v-chip .v-chipdot { display: none; }
+#visita-app .v-chiptime { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#visita-app .v-chiptxt { color: var(--v-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#visita-app .v-monthhead { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 10px; font-size: 13px; text-transform: uppercase; color: var(--v-muted); text-align: center; }
+#visita-app .v-monthgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 6px; }
+#visita-app .v-monthday { display: flex; flex-direction: column; align-items: center; gap: 5px; background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 10px; padding: 8px 4px; min-height: 58px; }
+#visita-app .v-monthday.v-hoy { border-color: var(--v-blue); }
+#visita-app .v-monthday.v-otromes { opacity: .38; }
+#visita-app .v-monthdaynum { font-size: 13px; font-weight: 600; }
+#visita-app .v-monthdots { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; min-height: 9px; }
+#visita-app .v-check { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 500; padding: 6px 10px; border: 1px solid var(--v-line); border-radius: 9px; background: var(--v-surface); cursor: pointer; }
+@media (max-width: 650px) {
+  #visita-app .v-week { grid-template-columns: repeat(7, minmax(70px, 1fr)); overflow-x: auto; }
+  #visita-app .v-chiptxt { display: none; }
+  #visita-app .v-monthday { padding: 6px 2px; min-height: 46px; }
+  #visita-app .v-monthdaynum { font-size: 13px; }
+}

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agenda Patrimonios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./estilos/acceso.css">
+  <link rel="stylesheet" href="./estilos/agenda.css">
+  <style>
+    html, body { margin: 0; min-height: 100%; background: #f4f4f4; }
+  </style>
+</head>
+<body>
+<div id="pat-access">
+  <header class="pa-head">
+    <div><strong>PATRIMONIOS</strong><small>INMOBILIARIOS</small></div>
+  </header>
+
+  <section id="pa-login" class="pa-form">
+    <h2>Bienvenido a tu agenda</h2>
+    <p>Accede con el correo y la contraseña de tu cuenta. El rol lo asigna la empresa; no se elige en esta pantalla.</p>
+    <form id="pa-form" autocomplete="username">
+      <label for="pa-email">Correo electrónico</label>
+      <input id="pa-email" name="email" type="email" placeholder="nombre@empresa.com" required autocomplete="username">
+      <label for="pa-password">Contraseña</label>
+      <div class="pa-pass">
+        <input id="pa-password" name="password" type="password" placeholder="Escribe tu contraseña aquí" required autocomplete="current-password">
+        <button id="pa-reveal" type="button" aria-pressed="false">Mostrar</button>
+      </div>
+      <button class="pa-link" type="button" id="pa-reset">Olvidé mi contraseña</button>
+      <button type="submit" class="pa-main" id="pa-entrar">Iniciar sesión</button>
+    </form>
+    <div id="pa-message" role="status" aria-live="polite"></div>
+    <p style="margin:22px 0 0;font-size:12px">Tu contraseña se transmite cifrada. Nunca la compartas por chat, correo o mensajes.</p>
+  </section>
+
+  <section id="pa-sin-acceso" class="pa-form" hidden>
+    <h2>Acceso no habilitado</h2>
+    <p>Tu cuenta está autenticada, pero no tiene una membresía activa en ninguna empresa. Un administrador debe habilitarte; el rol no se puede asignar desde aquí.</p>
+    <button type="button" class="pa-main" id="pa-salir-sin-acceso">Cerrar sesión</button>
+  </section>
+
+  <section id="pa-agenda" hidden>
+    <div class="pa-toolbar">
+      <div class="pa-sesion" id="pa-resumen-sesion"></div>
+      <span class="pa-badge" id="pa-empresa-identificada">Agenda de demostración</span>
+      <button type="button" class="pa-link" id="pa-logout" hidden>Cerrar sesión</button>
+      <button type="button" class="pa-link" id="pa-back" hidden>Volver al inicio</button>
+    </div>
+    <div id="pa-agenda-content">
+      <div id="visita-app">
+        <header class="v-header">
+          <div class="v-row">
+            <div class="v-logo"><i data-lucide="calendar-range" aria-hidden="true"></i></div>
+            <div>
+              <div class="v-brand">visita<span style="color:var(--v-blue)">.</span></div>
+              <div class="v-company"></div>
+            </div>
+          </div>
+          <span class="v-demo">Datos ficticios</span>
+        </header>
+        <nav class="v-nav" aria-label="Navegación principal">
+          <button type="button" data-view="agenda" aria-current="page"><i data-lucide="calendar-days" aria-hidden="true"></i>Agenda</button>
+          <button type="button" data-view="properties"><i data-lucide="building-2" aria-hidden="true"></i>Inmuebles · 100</button>
+          <button type="button" data-view="team"><i data-lucide="users" aria-hidden="true"></i>Equipo · 10</button>
+        </nav>
+        <div id="v-toast" class="v-toast" role="status" aria-live="polite"></div>
+        <main id="v-main" class="v-content"></main>
+        <div class="v-footnote">Demostración identificada · reservas ficticias · no se guardan en Supabase</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="pa-foot">Bogotá · Barranquilla · Medellín</footer>
+</div>
+<script type="module" src="./js/principal.js"></script>
+</body>
+</html>

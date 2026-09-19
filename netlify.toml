@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/inmuebles/*"
+  to = "/reservar.html"
+  status = 200
+
+[[redirects]]
+  from = "/"
+  to = "/reservar.html"
+  status = 200

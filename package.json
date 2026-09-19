@@ -1,0 +1,18 @@
+{
+  "name": "agenda-inmobiliaria",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "lucide": "^0.544.0"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}
