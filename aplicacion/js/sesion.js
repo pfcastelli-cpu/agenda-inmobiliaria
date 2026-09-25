@@ -97,3 +97,74 @@ export async function cerrarSesion() {
     throw new Error('No se pudo cerrar la sesión. Inténtalo de nuevo.');
   }
 }
+
+export async function solicitarRecuperacion(correo) {
+  if (!supabase) {
+    throw new Error(MENSAJE_CONFIG);
+  }
+  const { error } = await supabase.auth.resetPasswordForEmail(correo.trim(), {
+    redirectTo: window.location.origin + '/',
+  });
+  if (error) {
+    throw new Error('No se pudo enviar el correo de recuperación. Verifica el correo e inténtalo de nuevo.');
+  }
+}
+
+export async function establecerNuevaContrasena(nuevaContrasena) {
+  if (!supabase) {
+    throw new Error(MENSAJE_CONFIG);
+  }
+  if (!nuevaContrasena || nuevaContrasena.length < 8) {
+    throw new Error('La contraseña debe tener al menos 8 caracteres.');
+  }
+  const { error } = await supabase.auth.updateUser({ password: nuevaContrasena });
+  if (error) {
+    throw new Error('No se pudo guardar la nueva contraseña. Vuelve a intentarlo.');
+  }
+}
+
+async function llamarGestionAccesos(accion, datos = {}) {
+  if (!supabase) {
+    throw new Error(MENSAJE_CONFIG);
+  }
+  const { data, error } = await supabase.functions.invoke('gestion-accesos', {
+    body: { accion, ...datos },
+  });
+  if (error) {
+    throw new Error('No se pudo conectar con el servicio de accesos. Inténtalo de nuevo.');
+  }
+  if (!data?.ok) {
+    throw new Error(data?.error || 'No se pudo completar la operación.');
+  }
+  return data;
+}
+
+export function listarAccesos(empresaId) {
+  return llamarGestionAccesos('listar', { empresa_id: empresaId });
+}
+
+export function crearAcceso(empresaId, { nombre, correo, rol }) {
+  return llamarGestionAccesos('crear', {
+    empresa_id: empresaId,
+    nombre,
+    correo,
+    rol,
+    redirect_to: window.location.origin + '/',
+  });
+}
+
+export function cambiarPasswordDeUsuario(empresaId, usuarioId, password) {
+  return llamarGestionAccesos('cambiar_password', { empresa_id: empresaId, usuario_id: usuarioId, password });
+}
+
+export function reenviarInvitacion(empresaId, usuarioId) {
+  return llamarGestionAccesos('reenviar_invitacion', {
+    empresa_id: empresaId,
+    usuario_id: usuarioId,
+    redirect_to: window.location.origin + '/',
+  });
+}
+
+export function alternarActivoAcceso(empresaId, usuarioId, activo) {
+  return llamarGestionAccesos('alternar_activo', { empresa_id: empresaId, usuario_id: usuarioId, activo });
+}

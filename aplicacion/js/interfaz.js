@@ -2,15 +2,20 @@ import { iniciarAdministracion, limpiarAdministracion } from './administracion.j
 import {
   cerrarSesion,
   consultarAccesoActual,
+  establecerNuevaContrasena,
   iniciarSesionConCorreo,
   obtenerMensajeConfiguracion,
+  solicitarRecuperacion,
 } from './sesion.js';
+import { esEnlaceDeInvitacionORecuperacion } from './cliente-supabase.js';
 import { detenerAgendaReal, iniciarAgendaReal } from './agenda-real.js';
 
 const raiz = document.getElementById('pat-access');
 const login = document.getElementById('pa-login');
 const sinAcceso = document.getElementById('pa-sin-acceso');
+const nuevaClave = document.getElementById('pa-nueva-clave');
 const agenda = document.getElementById('pa-agenda');
+let claveYaDefinida = false;
 const formulario = document.getElementById('pa-form');
 const campoCorreo = document.getElementById('pa-email');
 const campoContrasena = document.getElementById('pa-password');
@@ -24,6 +29,7 @@ const botonVolver = document.getElementById('pa-back');
 function mostrar(seccion) {
   login.hidden = seccion !== 'login';
   sinAcceso.hidden = seccion !== 'sin-acceso';
+  nuevaClave.hidden = seccion !== 'nueva-clave';
   agenda.hidden = seccion !== 'agenda';
 }
 
@@ -42,6 +48,11 @@ function aplicarAcceso(acceso) {
   detenerAgendaReal();
   if (!acceso.usuario) {
     mostrar('login');
+    return;
+  }
+
+  if (esEnlaceDeInvitacionORecuperacion() && !claveYaDefinida) {
+    mostrar('nueva-clave');
     return;
   }
 
@@ -111,10 +122,56 @@ export async function arrancarInterfaz() {
     evento.currentTarget.setAttribute('aria-pressed', String(mostrarTexto));
   });
 
-  document.getElementById('pa-reset').addEventListener('click', () => {
-    pintarMensaje(
-      'La recuperación de contraseña todavía no está activa. Escríbele a tu administrador para que te ayude a restablecerla. No se ha enviado ningún mensaje.',
-    );
+  document.getElementById('pa-reset').addEventListener('click', async () => {
+    const correo = campoCorreo.value.trim();
+    if (!correo) {
+      pintarMensaje('Escribe tu correo arriba y vuelve a hacer clic en "Olvidé mi contraseña".', true);
+      return;
+    }
+    pintarMensaje('Enviando enlace de recuperación…');
+    try {
+      await solicitarRecuperacion(correo);
+      pintarMensaje('Listo. Revisa el correo ' + correo + ' para elegir una nueva contraseña.');
+    } catch (error) {
+      pintarMensaje(error.message, true);
+    }
+  });
+
+  document.getElementById('pa-nueva-clave-form').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const f = evento.target;
+    const mensajeEl = document.getElementById('pa-nueva-clave-mensaje');
+    const boton = document.getElementById('pa-nueva-clave-guardar');
+    mensajeEl.textContent = '';
+    mensajeEl.classList.remove('pa-aviso-error');
+    if (f.clave1.value !== f.clave2.value) {
+      mensajeEl.textContent = 'Las dos contraseñas no coinciden.';
+      mensajeEl.classList.add('pa-aviso-error');
+      return;
+    }
+    boton.disabled = true;
+    try {
+      await establecerNuevaContrasena(f.clave1.value);
+      claveYaDefinida = true;
+      f.reset();
+      const acceso = await consultarAccesoActual();
+      aplicarAcceso(acceso);
+    } catch (error) {
+      mensajeEl.textContent = error.message;
+      mensajeEl.classList.add('pa-aviso-error');
+    } finally {
+      boton.disabled = false;
+    }
+  });
+
+  document.getElementById('pa-nueva-clave-reveal').addEventListener('click', (evento) => {
+    const campo1 = document.getElementById('pa-nueva-clave-1');
+    const campo2 = document.getElementById('pa-nueva-clave-2');
+    const mostrarTexto = campo1.type === 'password';
+    campo1.type = mostrarTexto ? 'text' : 'password';
+    campo2.type = mostrarTexto ? 'text' : 'password';
+    evento.currentTarget.textContent = mostrarTexto ? 'Ocultar' : 'Mostrar';
+    evento.currentTarget.setAttribute('aria-pressed', String(mostrarTexto));
   });
 
   document.getElementById('pa-back').addEventListener('click', () => {

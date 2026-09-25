@@ -1,5 +1,12 @@
 import { supabase } from './cliente-supabase.js';
 import { invalidarDominioPublico } from './agenda-real.js';
+import {
+ listarAccesos,
+ crearAcceso,
+ cambiarPasswordDeUsuario,
+ reenviarInvitacion,
+ alternarActivoAcceso,
+} from './sesion.js';
 import '../estilos/administracion.css';
 let root, acceso, config, asesores = [], ciudades = [], asesorCiudades = {}, coberturas = [], asesorCoberturas = {}, revision = 0;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,7 +34,7 @@ export async function iniciarAdministracion(a){
  if(turno!==revision)return;
  if(data)config=data;marca();
  if(a.membresia.rol!=='administrador')return;
- root=document.createElement('section');root.className='ad';root.innerHTML=`<nav aria-label="Administración"><button data-tab="agenda" aria-pressed="true" class="ad-volver">← Volver a la agenda</button><span class="ad-nav-sep"></span><button data-tab="config" aria-pressed="false" class="ad-gear" title="Configuración" aria-label="Configuración"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></button></nav><p role="status" aria-live="polite"></p><div class="ad-body" hidden><nav class="ad-subnav" aria-label="Configuración"><button data-subtab="equipo" aria-pressed="true">Equipo</button><button data-subtab="ciudades" aria-pressed="false">Ciudades y festivos</button><button data-subtab="marca" aria-pressed="false">Empresa</button><button data-subtab="correo" aria-pressed="false">Correo</button></nav><div class="ad-subbody"></div></div>`;
+ root=document.createElement('section');root.className='ad';root.innerHTML=`<nav aria-label="Administración"><button data-tab="agenda" aria-pressed="true" class="ad-volver">← Volver a la agenda</button><span class="ad-nav-sep"></span><button data-tab="config" aria-pressed="false" class="ad-gear" title="Configuración" aria-label="Configuración"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></button></nav><p role="status" aria-live="polite"></p><div class="ad-body" hidden><nav class="ad-subnav" aria-label="Configuración"><button data-subtab="equipo" aria-pressed="true">Equipo</button><button data-subtab="ciudades" aria-pressed="false">Ciudades y festivos</button><button data-subtab="marca" aria-pressed="false">Empresa</button><button data-subtab="correo" aria-pressed="false">Correo</button><button data-subtab="accesos" aria-pressed="false">Accesos</button></nav><div class="ad-subbody"></div></div>`;
  document.getElementById('pa-agenda-content').before(root);
  root.querySelector('nav').addEventListener('click',async e=>{const t=e.target.closest('button')?.dataset.tab;if(!t)return;root.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===t)));const body=root.querySelector('.ad-body');body.hidden=t==='agenda';document.getElementById('pa-agenda-content').hidden=t!=='agenda';aviso('');if(t==='config')await abrirSubtab(root.querySelector('.ad-subnav [aria-pressed=true]')?.dataset.subtab||'equipo');});
  root.querySelector('.ad-subnav').addEventListener('click',async e=>{const st=e.target.closest('button')?.dataset.subtab;if(!st)return;await abrirSubtab(st);});
@@ -66,6 +73,7 @@ async function abrirSubtab(st){
  if(st==='ciudades')await ciudadesTab();
  if(st==='marca')marcaForm();
  if(st==='correo')await correoForm();
+ if(st==='accesos')await accesosTab();
 }
 async function equipo(){
  const container=root.querySelector('.ad-subbody');container.innerHTML='<p>Cargando equipo…</p>';const turno=revision;
@@ -325,4 +333,118 @@ async function correoForm(){
   aviso('Configuración de correo guardada.');
   await correoForm();
  };
+}
+
+let accesosCache = null;
+let accesoClaveAbiertaId = null;
+
+function formatearFechaAcceso(iso) {
+ if (!iso) return '';
+ try { return new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }); }
+ catch { return ''; }
+}
+
+async function accesosTab() {
+ const el = root.querySelector('.ad-subbody');
+ el.innerHTML = '<p class="ad-muted">Cargando accesos…</p>';
+ let miembros;
+ try {
+  const respuesta = await listarAccesos(config.empresa_id);
+  accesosCache = respuesta.miembros || [];
+  miembros = accesosCache;
+ } catch (e) {
+  el.innerHTML = `<p class="error">${esc(e.message)}</p>`;
+  return;
+ }
+ const fila = m => {
+  const abierta = accesoClaveAbiertaId === m.usuario_id;
+  const estado = m.ultimo_acceso
+   ? `Último acceso: ${formatearFechaAcceso(m.ultimo_acceso)}`
+   : 'Invitación enviada · nunca ha iniciado sesión';
+  return `<li>
+   <div class="ad-acceso-info"><strong>${esc(m.nombre)}</strong><span class="ad-muted">${esc(m.correo)}</span>
+    <span class="ad-pill">${esc(m.rol)}</span><span class="ad-pill">${m.activo ? 'Activo' : 'Inactivo'}</span>
+    <span class="ad-muted">${esc(estado)}</span></div>
+   <div class="ad-acceso-botones">
+    ${abierta
+     ? `<form class="ad-acceso-clave-form" data-clave-form="${m.usuario_id}"><input type="password" name="clave" placeholder="Nueva contraseña (mín. 8)" minlength="8" required autocomplete="new-password"><button type="submit" class="ad-primary">Guardar</button><button type="button" data-cancelar-clave>Cancelar</button></form>`
+     : `<button type="button" data-cambiar-pass="${m.usuario_id}">Cambiar contraseña</button>`}
+    ${!m.ultimo_acceso ? `<button type="button" data-reenviar="${m.usuario_id}">Reenviar invitación</button>` : ''}
+    <button type="button" data-alternar="${m.usuario_id}" data-activo-actual="${m.activo ? '1' : '0'}">${m.activo ? 'Desactivar' : 'Reactivar'}</button>
+   </div>
+  </li>`;
+ };
+ el.innerHTML = `<h2>Accesos</h2>
+ <p>Aquí administras quién puede iniciar sesión en la agenda. Es independiente de la ficha de cada asesor en Equipo: crear a alguien en Equipo no le da acceso por sí solo, hay que crearle también su acceso aquí. Al crear un acceso nuevo, le llega un correo para que defina su propia contraseña.</p>
+ <ul class="ad-accesos">${miembros.length ? miembros.map(fila).join('') : '<p class="ad-muted">Todavía no hay accesos creados.</p>'}</ul>
+ <h3 style="margin-top:26px">Crear acceso nuevo</h3>
+ <form id="ad-acceso-form" class="ad-grid" style="margin-top:10px">
+  <label>Nombre<input name="nombre" required maxlength="120" placeholder="Nombre completo"></label>
+  <label>Correo<input name="correo" type="email" required placeholder="nombre@empresa.com"></label>
+  <label>Rol<select name="rol"><option value="asesor">Asesor</option><option value="coordinador">Coordinador</option><option value="administrador">Administrador</option></select></label>
+  <button type="submit" class="ad-primary" style="align-self:end">Crear e invitar por correo</button>
+ </form>
+ <p class="ad-note">La persona recibe un correo con un enlace de un solo uso para elegir su propia contraseña. Si no le llega o el enlace expira, usa "Reenviar invitación". Tú también puedes ponerle una contraseña directamente con "Cambiar contraseña", sin esperar a que ella la defina.</p>`;
+
+ el.querySelectorAll('[data-cambiar-pass]').forEach(b => b.addEventListener('click', () => {
+  accesoClaveAbiertaId = b.dataset.cambiarPass;
+  accesosTab();
+ }));
+ el.querySelectorAll('[data-cancelar-clave]').forEach(b => b.addEventListener('click', () => {
+  accesoClaveAbiertaId = null;
+  accesosTab();
+ }));
+ el.querySelectorAll('[data-clave-form]').forEach(f => f.addEventListener('submit', async e => {
+  e.preventDefault();
+  const usuarioId = f.dataset.claveForm;
+  const boton = f.querySelector('button[type=submit]');
+  boton.disabled = true;
+  try {
+   await cambiarPasswordDeUsuario(config.empresa_id, usuarioId, f.clave.value);
+   accesoClaveAbiertaId = null;
+   aviso('Contraseña actualizada.');
+   await accesosTab();
+  } catch (err) {
+   aviso(err.message, true);
+   boton.disabled = false;
+  }
+ }));
+ el.querySelectorAll('[data-reenviar]').forEach(b => b.addEventListener('click', async () => {
+  b.disabled = true;
+  try {
+   await reenviarInvitacion(config.empresa_id, b.dataset.reenviar);
+   aviso('Invitación reenviada.');
+  } catch (err) {
+   aviso(err.message, true);
+  } finally {
+   b.disabled = false;
+  }
+ }));
+ el.querySelectorAll('[data-alternar]').forEach(b => b.addEventListener('click', async () => {
+  const activoActual = b.dataset.activoActual === '1';
+  b.disabled = true;
+  try {
+   await alternarActivoAcceso(config.empresa_id, b.dataset.alternar, !activoActual);
+   aviso(activoActual ? 'Acceso desactivado.' : 'Acceso reactivado.');
+   await accesosTab();
+  } catch (err) {
+   aviso(err.message, true);
+   b.disabled = false;
+  }
+ }));
+ el.querySelector('#ad-acceso-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  const boton = f.querySelector('button[type=submit]');
+  boton.disabled = true;
+  try {
+   await crearAcceso(config.empresa_id, { nombre: f.nombre.value.trim(), correo: f.correo.value.trim(), rol: f.rol.value });
+   aviso('Acceso creado. Le llegará un correo de invitación.');
+   f.reset();
+   await accesosTab();
+  } catch (err) {
+   aviso(err.message, true);
+   boton.disabled = false;
+  }
+ });
 }

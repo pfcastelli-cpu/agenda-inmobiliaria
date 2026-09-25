@@ -43,6 +43,22 @@
     <button type="button" class="pa-main" id="pa-salir-sin-acceso">Cerrar sesión</button>
   </section>
 
+  <section id="pa-nueva-clave" class="pa-form" hidden>
+    <h2>Define tu contraseña</h2>
+    <p>Este enlace te dio acceso temporal. Antes de continuar, crea la contraseña que vas a usar de ahora en adelante para iniciar sesión.</p>
+    <form id="pa-nueva-clave-form" autocomplete="off">
+      <label for="pa-nueva-clave-1">Nueva contraseña</label>
+      <div class="pa-pass">
+        <input id="pa-nueva-clave-1" name="clave1" type="password" placeholder="Mínimo 8 caracteres" required minlength="8" autocomplete="new-password">
+        <button type="button" id="pa-nueva-clave-reveal" aria-pressed="false">Mostrar</button>
+      </div>
+      <label for="pa-nueva-clave-2">Repite la contraseña</label>
+      <input id="pa-nueva-clave-2" name="clave2" type="password" placeholder="Escríbela de nuevo" required minlength="8" autocomplete="new-password">
+      <button type="submit" class="pa-main" id="pa-nueva-clave-guardar">Guardar contraseña y entrar</button>
+    </form>
+    <div id="pa-nueva-clave-mensaje" role="status" aria-live="polite"></div>
+  </section>
+
   <section id="pa-agenda" hidden>
     <div class="pa-toolbar">
       <div class="pa-sesion" id="pa-resumen-sesion"></div>
