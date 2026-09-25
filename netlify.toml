@@ -6,8 +6,3 @@
   from = "/inmuebles/*"
   to = "/reservar.html"
   status = 200
-
-[[redirects]]
-  from = "/"
-  to = "/reservar.html"
-  status = 200

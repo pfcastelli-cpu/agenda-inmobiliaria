@@ -283,6 +283,7 @@ function tarjetaInmueble() {
       <div style="font-size:13px;color:var(--pu-muted)">Inmueble ${i.numero_inmueble}</div>
       <h2 style="margin-top:4px">${i.direccion_limpia || ubicacion || i.ciudad || 'Ubicación disponible con tu asesor'}</h2>
       ${ubicacion ? `<div style="font-size:13px;color:var(--pu-muted)">${ubicacion}</div>` : ''}
+      ${i.enlace_ficha_completa ? `<a class="pu-ver-inmueble" href="${i.enlace_ficha_completa}" target="_blank" rel="noopener">Ver este inmueble en nuestro sitio</a>` : ''}
       ${i.posible_ocupado ? `<div class="pu-aviso" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#fff4e5;color:#8a5200;font-size:13px">Este inmueble podría estar ocupado actualmente. Es posible que debamos reprogramar tu visita; tu asesor te confirmará antes de la cita.</div>` : ''}
       ${i.visita_rapida ? `<div class="pu-aviso" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#fff4e5;color:#8a5200;font-size:13px">Esta visita es breve (~${i.duracion_minutos} min). Tu asesor puede tener otra cita cerca de esta hora, así que te pedimos ser puntual.</div>` : ''}
     </div>

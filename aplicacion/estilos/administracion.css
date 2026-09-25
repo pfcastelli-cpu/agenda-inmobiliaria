@@ -5,3 +5,27 @@
 .ad-check{flex-direction:row;align-items:center;gap:10px}.ad-check input{width:auto;min-height:auto;flex-shrink:0}
 .ad fieldset{border:1px solid #dbe4e9;border-radius:12px;padding:12px 16px;margin:6px 0;grid-column:1 / -1}.ad fieldset legend{font-size:13px;color:#526575;padding:0 6px}.ad-horarios{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:end}.ad-horarios h4{grid-column:1 / -1;margin:10px 0 0;font-size:15px}.ad-ciudades{list-style:none;padding:0;margin:12px 0}.ad-ciudades li{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border:1px solid #dbe4e9;border-radius:10px;margin-bottom:6px;font-size:14px}.ad-ciudades li button{min-height:32px;padding:4px 10px;font-size:14px}.ad-ausencias{list-style:none;padding:0;margin:10px 0}.ad-ausencias li{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border:1px solid #dbe4e9;border-radius:10px;margin-bottom:6px;font-size:13.5px}@media(max-width:650px){.ad-horarios{grid-template-columns:1fr}}
 
+.ad-correo-estado{padding:14px 18px;border-radius:12px;font-size:14.5px;font-weight:600;margin:14px 0 24px;line-height:1.5}
+.ad-correo-estado-pruebas{background:#FEF3C7;color:#92400E}
+.ad-correo-estado-ok{background:#DCFCE7;color:#166534}
+.ad-correo-estado-pendiente{background:#FEE2E2;color:#991B1B}
+.ad-correo-provs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}
+.ad-correo-prov{display:flex;align-items:center;gap:10px;justify-content:flex-start;padding:14px 16px;border-radius:14px;border:2px solid #dbe4e9;background:white;font-weight:600;font-size:14.5px;text-align:left}
+.ad-correo-prov[aria-pressed=true]{background:white}
+.ad-correo-prov-activo{border-color:var(--empresa-accion,#00a9a5);background:#f0fdfc;box-shadow:0 0 0 1px var(--empresa-accion,#00a9a5)}
+.ad-correo-prov-punto{width:12px;height:12px;border-radius:50%;flex-shrink:0;background:#94a3b8}
+.ad-correo-prov[data-prov=gmail] .ad-correo-prov-punto{background:#EA4335}
+.ad-correo-prov[data-prov=outlook] .ad-correo-prov-punto{background:#0078D4}
+.ad-correo-prov[data-prov=otro] .ad-correo-prov-punto{background:#64748B}
+.ad-correo-instrucciones{background:#eef4f7;border-radius:14px;padding:18px 20px;margin:6px 0 8px}
+.ad-correo-instrucciones h4{font-size:15px;margin:0 0 10px}
+.ad-correo-instrucciones ol{margin:0;padding-left:20px;font-size:14px;line-height:1.7}
+.ad-correo-instrucciones li{margin-bottom:6px}
+.ad-toggle{flex-direction:row;align-items:center;gap:12px;cursor:pointer;font-size:14.5px}
+.ad-toggle input{position:absolute;opacity:0;width:1px;height:1px}
+.ad-toggle-track{position:relative;flex-shrink:0;width:46px;height:26px;border-radius:20px;background:#c9d6df;transition:background .15s}
+.ad-toggle-thumb{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:white;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.ad-toggle input:checked+.ad-toggle-track{background:#D97706}
+.ad-toggle input:checked+.ad-toggle-track .ad-toggle-thumb{transform:translateX(20px)}
+.ad-toggle input:focus-visible+.ad-toggle-track{outline:3px solid #7599bf;outline-offset:2px}
+@media(max-width:650px){.ad-correo-provs{grid-template-columns:1fr}}

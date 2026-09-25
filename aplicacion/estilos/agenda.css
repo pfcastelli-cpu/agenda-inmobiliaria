@@ -9,6 +9,8 @@
   --v-green: light-dark(#177153, #78dab5);
   --v-greenbg: light-dark(#e8f6ef, #203f36);
   --v-red: light-dark(#b32f43, #ffa4ad);
+  --v-amber: light-dark(#8a5200, #ffc98a);
+  --v-amberbg: light-dark(#fff4e5, #3a2c12);
   font: 400 16px/1.45 Poppins, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--v-text);
   background: var(--v-bg);
@@ -158,6 +160,8 @@
   white-space: nowrap;
 }
 #visita-app .v-tag-neutral { color: var(--v-muted); background: var(--v-bg); }
+#visita-app .v-tag-captacion { color: var(--v-amber); background: var(--v-amberbg); }
+#visita-app .v-appt-captacion .v-apptbody { border-left-color: var(--v-amber); background: var(--v-amberbg); }
 #visita-app .v-apptmeta { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 10px; color: var(--v-muted); font-size: 14px; margin: 6px 0 10px; }
 #visita-app .v-apptmeta svg { width: 13px; height: 13px; }
 #visita-app .v-avatar {
@@ -304,6 +308,7 @@
 #visita-app .v-weeklist { display: grid; gap: 5px; }
 #visita-app .v-chip { display: flex; align-items: center; gap: 5px; width: 100%; text-align: left; background: var(--v-bg); border: 1px solid var(--v-line); border-left: 3px solid var(--advisor-color, var(--v-blue)); border-radius: 0 8px 8px 0; padding: 4px 6px; font-size: 13px; }
 #visita-app .v-chip .v-chipdot { display: none; }
+#visita-app .v-chip-captacion { border-left-color: var(--v-amber); background: var(--v-amberbg); }
 #visita-app .v-chiptime { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #visita-app .v-chiptxt { color: var(--v-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #visita-app .v-monthhead { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 10px; font-size: 13px; text-transform: uppercase; color: var(--v-muted); text-align: center; }

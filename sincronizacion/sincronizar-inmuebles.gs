@@ -18,17 +18,18 @@
  *                            que usa la aplicación en el navegador.
  * EMPRESA_ID se busca solo, la primera vez que corra, y se guarda aquí mismo.
  *
- * Ajusta NOMBRE_HOJA abajo al nombre real de la pestaña con los datos
- * (la que tiene la fila de encabezados "Numero inmueble", "Estado Inmueble", etc).
+ * Si la pestaña con los datos (la que tiene la fila de encabezados
+ * "Numero inmueble", "Estado Inmueble", etc) no se llama "Hoja1", agrega
+ * también la propiedad de script NOMBRE_HOJA con el nombre real de esa
+ * pestaña (tal cual aparece en la etiqueta de abajo en Google Sheets).
  */
-
-const NOMBRE_HOJA = 'Hoja1'; // <-- revisar y ajustar al nombre real de la pestaña
 
 function sincronizarInmuebles() {
   const props = PropertiesService.getScriptProperties();
   const hojaId = props.getProperty('HOJA_INMUEBLES_ID');
   const supabaseUrl = props.getProperty('SUPABASE_URL');
   const serviceKey = props.getProperty('SUPABASE_SERVICE_KEY');
+  const nombreHoja = props.getProperty('NOMBRE_HOJA') || 'Hoja1';
   let empresaId = props.getProperty('EMPRESA_ID');
 
   if (!hojaId || !supabaseUrl || !serviceKey) {
@@ -40,9 +41,9 @@ function sincronizarInmuebles() {
     props.setProperty('EMPRESA_ID', empresaId);
   }
 
-  const hoja = SpreadsheetApp.openById(hojaId).getSheetByName(NOMBRE_HOJA);
+  const hoja = SpreadsheetApp.openById(hojaId).getSheetByName(nombreHoja);
   if (!hoja) {
-    throw new Error('No existe una pestaña llamada "' + NOMBRE_HOJA + '" en esa hoja. Ajusta NOMBRE_HOJA.');
+    throw new Error('No existe una pestaña llamada "' + nombreHoja + '" en esa hoja. Agrega la propiedad de script NOMBRE_HOJA con el nombre real de la pestaña.');
   }
   // getValues() ya interpreta los números (incluida la coma decimal) de forma
   // correcta: no hay que leer el texto de la celda ni parsear comas a mano.

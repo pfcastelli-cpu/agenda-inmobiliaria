@@ -74,6 +74,24 @@
   cursor: pointer;
   padding: 0;
 }
+#pub-app .pu-ver-inmueble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border: 1.5px solid var(--pu-navy);
+  border-radius: 10px;
+  background: none;
+  color: var(--pu-navy);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+}
+#pub-app .pu-ver-inmueble:hover { background: light-dark(rgba(26,44,69,.05), rgba(255,255,255,.06)); }
 #pub-app .pu-error {
   background: light-dark(#fdecec, #3a1f22);
   color: light-dark(#a02020, #ff8a8a);

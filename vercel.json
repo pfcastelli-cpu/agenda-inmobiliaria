@@ -2,7 +2,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/", "destination": "/reservar.html" },
     { "source": "/inmuebles/:numero", "destination": "/reservar.html" }
   ]
 }

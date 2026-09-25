@@ -44,6 +44,7 @@ let iniciada = false;
 let contexto = null; // { empresaId, rol, nombreEmpresa }
 let inmueblesCache = null;
 let asesoresCache = null;
+let coberturasCache = null;
 let configPublicaCache = null;
 let buscarInmueblesDebounce = null;
 
@@ -79,6 +80,7 @@ export function detenerAgendaReal() {
   inmueblesCache = null;
   todosInmueblesCache = null;
   asesoresCache = null;
+  coberturasCache = null;
   configPublicaCache = null;
 }
 
@@ -89,6 +91,7 @@ export function iniciarAgendaReal(acceso) {
   inmueblesCache = null;
   todosInmueblesCache = null;
   asesoresCache = null;
+  coberturasCache = null;
   configPublicaCache = null;
   cargarDominioPublico();
 
@@ -154,7 +157,7 @@ const state = {
   moveHora: '',
   moveError: '',
   completarId: null,
-  interna: { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: hoyISO(), hora: '09:00', duracion: '', titulo: '', notas: '' },
+  interna: { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: hoyISO(), hora: '09:00', duracion: '', titulo: '', notas: '', coberturaId: '', propietarioNombre: '', propietarioTelefono: '', tipoInmuebleCaptacion: '', valorEstimado: '', origenCaptacion: '', mandatoExclusivo: false, slotsCaptacion: [], slotSeleccionado: null, buscandoSlots: false, errorSlots: '' },
   errorInterna: '',
   restriccionId: null,
   errorRestriccion: '',
@@ -283,6 +286,18 @@ async function cargarAsesores() {
   return asesoresCache;
 }
 
+async function cargarCoberturas() {
+  if (coberturasCache) return coberturasCache;
+  const { data, error } = await supabase
+    .from('agenda_coberturas')
+    .select('*, agenda_ciudades(nombre)')
+    .eq('empresa_id', contexto.empresaId)
+    .order('nombre');
+  if (error) throw new Error('No se pudieron cargar las coberturas: ' + error.message);
+  coberturasCache = (data || []).map((cb) => ({ ...cb, ciudadNombre: cb.agenda_ciudades?.nombre || '' }));
+  return coberturasCache;
+}
+
 async function cargarCitas(fecha) {
   const { data, error } = await supabase
     .from('agenda_citas')
@@ -358,18 +373,19 @@ function citaCard(c) {
   const inmueble = c.agenda_inmuebles;
   const asesor = c.agenda_asesores;
   const esInterna = c.tipo_cita && c.tipo_cita !== 'visita_cliente';
+  const esCaptacion = c.tipo_cita === 'captacion';
   const direccion = inmueble ? inmueble.direccion : (c.direccion_libre || 'Sin dirección');
   const etiquetaTipo = TIPOS_CITA[c.tipo_cita] || TIPOS_CITA.visita_cliente;
-  return `<article class="v-appt" style="--advisor-color:${asesor?.color || '#64748b'}"><div class="v-time">${horaFmt(c.hora_inicio)}<small>${horaFmt(c.hora_fin)}</small></div><div class="v-apptbody">
+  return `<article class="v-appt${esCaptacion ? ' v-appt-captacion' : ''}" style="--advisor-color:${asesor?.color || '#64748b'}"><div class="v-time">${horaFmt(c.hora_inicio)}<small>${horaFmt(c.hora_fin)}</small></div><div class="v-apptbody">
     <div class="v-between"><span class="v-muted" style="font-size:13px">${inmueble ? '#' + inmueble.numero_inmueble + ' · ' + inmueble.tipo_oferta : (esInterna ? escape(c.ciudad_libre || '') : 'Inmueble no disponible')}</span><span class="v-tag ${c.estado === 'completada' ? 'v-tag-neutral' : ''}">${c.estado === 'completada' ? 'Realizada' : 'Confirmada'}</span></div>
-    ${esInterna ? `<span class="v-tag v-tag-neutral" style="margin-top:6px">${escape(etiquetaTipo)}</span>` : ''}
+    ${esCaptacion ? `<span class="v-tag v-tag-captacion" style="margin-top:6px">${icon('key-round')}CAPTACIÓN · PRIORIDAD TOTAL</span>` : esInterna ? `<span class="v-tag v-tag-neutral" style="margin-top:6px">${escape(etiquetaTipo)}</span>` : ''}
     <h3 style="margin-top:6px">${escape(esInterna && c.titulo ? c.titulo : direccion)}</h3>
     <div class="v-apptmeta"><span>${esInterna ? escape(direccion) : escape(c.cliente_nombre)}</span></div>
     <div class="v-row"><span class="v-avatar">${asesor ? escape(asesor.nombre.slice(0, 1)) : '?'}</span><span class="v-advisorname">${asesor ? escape(asesor.nombre) : 'Sin asesor'}${asesor && asesor.tipo_vinculacion === 'freelance' ? ' · freelance' : ''}</span></div>
     ${inmueble ? `<a class="v-link" href="${linkPublico(inmueble.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver inmueble</a>` : ''}
     ${c.estado === 'completada' ? (c.feedback_cliente ? `<p class="v-muted" style="margin-top:8px;font-size:12.5px">Comentario del cliente: ${escape(c.feedback_cliente)}</p>` : '') : `<div class="v-actions"><button data-completar="${c.id}">Realizada</button><button data-mover="${c.id}">Mover</button><button class="v-danger" data-cancelar="${c.id}">Cancelar</button></div>`}
-    ${state.moveId === c.id ? `<div class="v-cancelbox"><label class="v-field">Nueva fecha<input type="date" id="v-mover-fecha" class="v-input" value="${state.moveFecha}"></label><label class="v-field">Nueva hora<input type="time" id="v-mover-hora" class="v-input" value="${state.moveHora}"></label>${state.moveError ? `<p class="v-error">${escape(state.moveError)}</p>` : ''}<div class="v-actions"><button class="v-primary" data-confirmarmover="${c.id}">Guardar nuevo horario</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
-    ${state.cancelId === c.id ? `<div class="v-cancelbox">¿Cancelar esta ${esInterna ? 'actividad' : 'visita'} y liberar el horario?<div class="v-actions"><button class="v-danger" data-confirmarcancelar="${c.id}">Sí, cancelar</button><button data-mantener="${c.id}">Conservar</button></div></div>` : ''}
+    ${state.moveId === c.id ? `<div class="v-cancelbox">${esCaptacion ? '<p style="margin:0 0 8px;font-weight:600">Esta es una cita de captación con prioridad total.</p>' : ''}<label class="v-field">Nueva fecha<input type="date" id="v-mover-fecha" class="v-input" value="${state.moveFecha}"></label><label class="v-field">Nueva hora<input type="time" id="v-mover-hora" class="v-input" value="${state.moveHora}"></label>${state.moveError ? `<p class="v-error">${escape(state.moveError)}</p>` : ''}<div class="v-actions"><button class="v-primary" data-confirmarmover="${c.id}">Guardar nuevo horario</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
+    ${state.cancelId === c.id ? `<div class="v-cancelbox">${esCaptacion ? 'Esta es una cita de captación con prioridad total. ' : ''}¿Cancelar esta ${esInterna ? 'actividad' : 'visita'} y liberar el horario?<div class="v-actions"><button class="v-danger" data-confirmarcancelar="${c.id}">Sí, cancelar</button><button data-mantener="${c.id}">Conservar</button></div></div>` : ''}
     ${state.completarId === c.id ? `<div class="v-cancelbox"><label class="v-field">¿Qué dijo el cliente? (para el informe al propietario)<textarea id="v-feedback-texto" class="v-input" rows="3" placeholder="Ej: le gustó mucho, va a decidir con su familia…"></textarea></label><div class="v-actions"><button class="v-primary" data-guardarrealizada="${c.id}">Guardar y marcar como realizada</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
   </div></article>`;
 }
@@ -378,9 +394,10 @@ function citaChip(c) {
   const inmueble = c.agenda_inmuebles;
   const asesor = c.agenda_asesores;
   const esInterna = c.tipo_cita && c.tipo_cita !== 'visita_cliente';
-  const etiqueta = inmueble ? '#' + inmueble.numero_inmueble : escape(c.titulo || (TIPOS_CITA[c.tipo_cita] || 'Actividad'));
-  const titulo = `${asesor ? asesor.nombre : 'Sin asesor'} · ${horaFmt(c.hora_inicio)}${inmueble ? ' · #' + inmueble.numero_inmueble : ''}`;
-  return `<button type="button" class="v-chip" data-verdia="${c.fecha}" title="${escape(titulo)}" style="--advisor-color:${asesor?.color || '#64748b'}"><span class="v-chipdot"></span><span class="v-chiptime">${horaFmt(c.hora_inicio)}</span><span class="v-chiptxt">${etiqueta}</span></button>`;
+  const esCaptacion = c.tipo_cita === 'captacion';
+  const etiqueta = esCaptacion ? 'Captación' : inmueble ? '#' + inmueble.numero_inmueble : escape(c.titulo || (TIPOS_CITA[c.tipo_cita] || 'Actividad'));
+  const titulo = `${esCaptacion ? 'Captación (prioridad total) · ' : ''}${asesor ? asesor.nombre : 'Sin asesor'} · ${horaFmt(c.hora_inicio)}${inmueble ? ' · #' + inmueble.numero_inmueble : ''}`;
+  return `<button type="button" class="v-chip${esCaptacion ? ' v-chip-captacion' : ''}" data-verdia="${c.fecha}" title="${escape(titulo)}" style="--advisor-color:${asesor?.color || '#64748b'}"><span class="v-chipdot"></span><span class="v-chiptime">${horaFmt(c.hora_inicio)}</span><span class="v-chiptxt">${etiqueta}</span></button>`;
 }
 
 function leyendaAsesores(asesores) {
@@ -633,7 +650,10 @@ async function renderInterna() {
   main().innerHTML = '<p class="v-muted">Cargando…</p>';
   const asesores = await cargarAsesores();
   const inmuebles = await cargarTodosInmuebles();
+  const coberturas = await cargarCoberturas();
   const it = state.interna;
+  const esCaptacion = it.tipo === 'captacion';
+  const slotElegido = it.slotSeleccionado;
   main().innerHTML = `<div class="v-top"><button class="v-btn v-quiet" data-volver-agenda>${icon('arrow-left')}Volver</button><span class="v-demo">Actividad interna</span></div>
     <form id="v-interna-form">
       <div class="v-sectiontitle">${icon('clipboard-list')}¿Qué actividad es?</div>
@@ -643,25 +663,55 @@ async function renderInterna() {
         <option value="captacion" ${it.tipo === 'captacion' ? 'selected' : ''}>Captación de un inmueble nuevo</option>
         <option value="otro" ${it.tipo === 'otro' ? 'selected' : ''}>Otra actividad</option>
       </select></label>
-      <label class="v-field" for="v-interna-asesor">Asesor<select class="v-input" id="v-interna-asesor" required><option value="">Selecciona un asesor</option>${asesores
-        .filter((a) => a.activo)
-        .map((a) => `<option value="${a.id}" ${it.asesorId === a.id ? 'selected' : ''}>${escape(a.nombre)}</option>`)
-        .join('')}</select></label>
       ${
-        it.tipo === 'captacion'
-          ? `<label class="v-field" for="v-interna-direccion">Dirección<input class="v-input" id="v-interna-direccion" type="text" value="${escape(it.direccionLibre)}" placeholder="Dirección del inmueble a captar"></label>
-      <label class="v-field" for="v-interna-ciudad">Ciudad<input class="v-input" id="v-interna-ciudad" type="text" value="${escape(it.ciudadLibre)}" placeholder="Ciudad"></label>`
-          : `<label class="v-field" for="v-interna-inmueble">Inmueble<select class="v-input" id="v-interna-inmueble" required><option value="">Selecciona un inmueble</option>${inmuebles
-              .map((i) => `<option value="${i.id}" ${it.inmuebleId === i.id ? 'selected' : ''}>#${i.numero_inmueble} · ${escape(i.direccion)}</option>`)
-              .join('')}</select></label>`
+        esCaptacion
+          ? `<p class="v-note">Las citas de captación tienen prioridad total: se les ofrece el primer horario real disponible del asesor, sin mover ni cancelar ninguna cita ya confirmada. Duran 90 minutos.</p>
+      <label class="v-field" for="v-interna-cobertura">Cobertura (zona)<select class="v-input" id="v-interna-cobertura" required><option value="">Selecciona una cobertura</option>${coberturas
+        .map((cb) => `<option value="${cb.id}" ${it.coberturaId === cb.id ? 'selected' : ''}>${escape(cb.nombre)} · ${escape(cb.ciudadNombre)}</option>`)
+        .join('')}</select></label>
+      ${!coberturas.length ? `<p class="v-note">Todavía no hay coberturas creadas. Ve a Configuración → Ciudades y festivos → Coberturas para crearlas.</p>` : ''}
+      <label class="v-field" for="v-interna-direccion">Dirección del propietario<input class="v-input" id="v-interna-direccion" type="text" value="${escape(it.direccionLibre)}" placeholder="Dirección del inmueble a captar"></label>
+      <label class="v-field" for="v-interna-ciudad">Ciudad<input class="v-input" id="v-interna-ciudad" type="text" value="${escape(it.ciudadLibre)}" placeholder="Ciudad"></label>
+      <label class="v-field" for="v-interna-propietario-nombre">Nombre del propietario<input class="v-input" id="v-interna-propietario-nombre" type="text" value="${escape(it.propietarioNombre)}" placeholder="Nombre completo"></label>
+      <label class="v-field" for="v-interna-propietario-telefono">Celular del propietario<input class="v-input" id="v-interna-propietario-telefono" type="tel" value="${escape(it.propietarioTelefono)}" placeholder="+573001234567"></label>
+      <label class="v-field" for="v-interna-tipo-inmueble">Tipo de inmueble<select class="v-input" id="v-interna-tipo-inmueble"><option value="">Selecciona</option>${['Apartamento', 'Casa', 'Local', 'Oficina', 'Lote', 'Otro']
+        .map((t) => `<option value="${t}" ${it.tipoInmuebleCaptacion === t ? 'selected' : ''}>${t}</option>`)
+        .join('')}</select></label>
+      <label class="v-field" for="v-interna-valor-estimado">Valor esperado por el propietario<input class="v-input" id="v-interna-valor-estimado" type="number" min="0" step="10000" value="${escape(it.valorEstimado)}" placeholder="$"></label>
+      <label class="v-field" for="v-interna-origen">Origen del prospecto<select class="v-input" id="v-interna-origen"><option value="">Selecciona</option>${['Referido', 'Portal inmobiliario', 'Letrero', 'Base fría', 'Otro']
+        .map((o) => `<option value="${o}" ${it.origenCaptacion === o ? 'selected' : ''}>${o}</option>`)
+        .join('')}</select></label>
+      <label class="v-check"><input type="checkbox" id="v-interna-mandato-exclusivo" ${it.mandatoExclusivo ? 'checked' : ''}> El propietario ofrece el inmueble en mandato exclusivo</label>
+      <label class="v-field" for="v-interna-fecha">Fecha<input class="v-input" id="v-interna-fecha" type="date" value="${it.fecha}"></label>
+      <button class="v-btn" type="button" data-buscar-slots-captacion>${icon('search')}Buscar horarios disponibles</button>
+      ${it.buscandoSlots ? '<p class="v-muted">Buscando horarios…</p>' : ''}
+      ${it.errorSlots ? `<p class="v-error">${escape(it.errorSlots)}</p>` : ''}
+      ${
+        it.slotsCaptacion.length
+          ? `<div class="v-slots" style="margin-top:10px">${it.slotsCaptacion
+              .map(
+                (s, idx) =>
+                  `<button type="button" class="v-slot" data-slot-captacion="${idx}" aria-pressed="${!!(slotElegido && slotElegido.asesorId === s.asesorId && slotElegido.horaInicio === s.horaInicio)}">${horaFmt(s.horaInicio)}–${horaFmt(s.horaFin)}<br><small>${escape(s.asesorNombre)}</small></button>`
+              )
+              .join('')}</div>`
+          : ''
       }
+      ${slotElegido ? `<p class="v-note" style="margin-top:8px">Horario elegido: ${horaFmt(slotElegido.horaInicio)} – ${horaFmt(slotElegido.horaFin)} con ${escape(slotElegido.asesorNombre)}.</p>` : ''}`
+          : `<label class="v-field" for="v-interna-asesor">Asesor<select class="v-input" id="v-interna-asesor" required><option value="">Selecciona un asesor</option>${asesores
+              .filter((a) => a.activo)
+              .map((a) => `<option value="${a.id}" ${it.asesorId === a.id ? 'selected' : ''}>${escape(a.nombre)}</option>`)
+              .join('')}</select></label>
+      <label class="v-field" for="v-interna-inmueble">Inmueble<select class="v-input" id="v-interna-inmueble" required><option value="">Selecciona un inmueble</option>${inmuebles
+        .map((i) => `<option value="${i.id}" ${it.inmuebleId === i.id ? 'selected' : ''}>#${i.numero_inmueble} · ${escape(i.direccion)}</option>`)
+        .join('')}</select></label>
       <label class="v-field" for="v-interna-titulo">Título corto<input class="v-input" id="v-interna-titulo" type="text" maxlength="120" value="${escape(it.titulo)}" placeholder="Ej. Inventario de salida"></label>
       <label class="v-field" for="v-interna-fecha">Fecha<input class="v-input" id="v-interna-fecha" type="date" value="${it.fecha}"></label>
       <label class="v-field" for="v-interna-hora">Hora<input class="v-input" id="v-interna-hora" type="time" value="${it.hora}"></label>
-      <label class="v-field" for="v-interna-duracion">Duración (minutos)<input class="v-input" id="v-interna-duracion" type="number" min="5" step="5" placeholder="Por defecto, la misma que una visita" value="${it.duracion}"></label>
+      <label class="v-field" for="v-interna-duracion">Duración (minutos)<input class="v-input" id="v-interna-duracion" type="number" min="5" step="5" placeholder="Por defecto, la misma que una visita" value="${it.duracion}"></label>`
+      }
       <label class="v-field" for="v-interna-notas">Notas (opcional)<textarea class="v-input" id="v-interna-notas">${escape(it.notas)}</textarea></label>
       <div id="v-interna-error" class="v-error" role="alert">${escape(state.errorInterna)}</div>
-      <button class="v-btn v-primary v-full" type="submit">${icon('check')}Guardar actividad</button>
+      <button class="v-btn v-primary v-full" type="submit"${esCaptacion && !slotElegido ? ' disabled' : ''}>${icon('check')}Guardar actividad</button>
       <p class="v-note" style="margin-top:12px">Queda registrada en la agenda del asesor con trazabilidad completa (quién la creó, si se mueve o se cancela).</p>
     </form>`;
 }
@@ -692,6 +742,9 @@ function adjuntarEventos(rootEl) {
     if (e.target.id === 'v-interna-direccion') state.interna.direccionLibre = e.target.value;
     if (e.target.id === 'v-interna-ciudad') state.interna.ciudadLibre = e.target.value;
     if (e.target.id === 'v-interna-notas') state.interna.notas = e.target.value;
+    if (e.target.id === 'v-interna-propietario-nombre') state.interna.propietarioNombre = e.target.value;
+    if (e.target.id === 'v-interna-propietario-telefono') state.interna.propietarioTelefono = e.target.value;
+    if (e.target.id === 'v-interna-valor-estimado') state.interna.valorEstimado = e.target.value;
   });
 
   rootEl.addEventListener('change', async (e) => {
@@ -717,12 +770,31 @@ function adjuntarEventos(rootEl) {
     }
     if (e.target.id === 'v-interna-tipo') {
       state.interna.tipo = e.target.value;
+      state.interna.slotsCaptacion = [];
+      state.interna.slotSeleccionado = null;
+      state.interna.errorSlots = '';
       render();
     }
     if (e.target.id === 'v-interna-asesor') state.interna.asesorId = e.target.value;
     if (e.target.id === 'v-interna-inmueble') state.interna.inmuebleId = e.target.value;
-    if (e.target.id === 'v-interna-fecha') state.interna.fecha = e.target.value;
+    if (e.target.id === 'v-interna-fecha') {
+      state.interna.fecha = e.target.value;
+      state.interna.slotsCaptacion = [];
+      state.interna.slotSeleccionado = null;
+      state.interna.errorSlots = '';
+      render();
+    }
     if (e.target.id === 'v-interna-hora') state.interna.hora = e.target.value;
+    if (e.target.id === 'v-interna-cobertura') {
+      state.interna.coberturaId = e.target.value;
+      state.interna.slotsCaptacion = [];
+      state.interna.slotSeleccionado = null;
+      state.interna.errorSlots = '';
+      render();
+    }
+    if (e.target.id === 'v-interna-tipo-inmueble') state.interna.tipoInmuebleCaptacion = e.target.value;
+    if (e.target.id === 'v-interna-origen') state.interna.origenCaptacion = e.target.value;
+    if (e.target.id === 'v-interna-mandato-exclusivo') state.interna.mandatoExclusivo = e.target.checked;
   });
 
   rootEl.addEventListener('click', async (e) => {
@@ -743,13 +815,54 @@ function adjuntarEventos(rootEl) {
       return;
     }
     if (b.hasAttribute('data-new-interna')) {
-      state.interna = { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: state.fecha, hora: '09:00', duracion: '', titulo: '', notas: '' };
+      state.interna = { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: state.fecha, hora: '09:00', duracion: '', titulo: '', notas: '', coberturaId: '', propietarioNombre: '', propietarioTelefono: '', tipoInmuebleCaptacion: '', valorEstimado: '', origenCaptacion: '', mandatoExclusivo: false, slotsCaptacion: [], slotSeleccionado: null, buscandoSlots: false, errorSlots: '' };
       state.errorInterna = '';
       setView('interna');
       return;
     }
     if (b.hasAttribute('data-volver-agenda')) {
       setView('agenda');
+      return;
+    }
+    if (b.hasAttribute('data-buscar-slots-captacion')) {
+      const it = state.interna;
+      if (!it.coberturaId) {
+        it.errorSlots = 'Selecciona una cobertura primero.';
+        render();
+        return;
+      }
+      it.buscandoSlots = true;
+      it.errorSlots = '';
+      it.slotsCaptacion = [];
+      it.slotSeleccionado = null;
+      render();
+      const { data, error } = await supabase.rpc('agenda_sugerir_horarios_captacion', {
+        p_empresa_id: contexto.empresaId,
+        p_cobertura_id: it.coberturaId,
+        p_fecha: it.fecha,
+      });
+      it.buscandoSlots = false;
+      if (error) {
+        it.errorSlots = 'No se pudieron buscar horarios: ' + error.message;
+        render();
+        return;
+      }
+      it.slotsCaptacion = (data || [])
+        .map((s) => ({ asesorId: s.asesor_id, asesorNombre: s.asesor_nombre, horaInicio: s.hora_inicio, horaFin: s.hora_fin }))
+        .sort((a, b2) => (a.horaInicio < b2.horaInicio ? -1 : a.horaInicio > b2.horaInicio ? 1 : 0));
+      if (!it.slotsCaptacion.length) it.errorSlots = 'No hay horarios disponibles ese día para esta cobertura. Intenta otra fecha.';
+      render();
+      return;
+    }
+    if (b.dataset.slotCaptacion) {
+      const idx = Number(b.dataset.slotCaptacion);
+      const slot = state.interna.slotsCaptacion[idx];
+      if (slot) {
+        state.interna.slotSeleccionado = slot;
+        state.interna.asesorId = slot.asesorId;
+        state.interna.hora = slot.horaInicio.slice(0, 5);
+      }
+      render();
       return;
     }
     if (b.dataset.mover) {
@@ -887,20 +1000,34 @@ function adjuntarEventos(rootEl) {
     if (e.target.id === 'v-interna-form') {
       e.preventDefault();
       const it = state.interna;
-      if (!it.asesorId) {
-        state.errorInterna = 'Selecciona un asesor.';
-        render();
-        return;
-      }
-      if (it.tipo === 'captacion' && !it.direccionLibre.trim()) {
-        state.errorInterna = 'Escribe la dirección del inmueble a captar.';
-        render();
-        return;
-      }
-      if (it.tipo !== 'captacion' && !it.inmuebleId) {
-        state.errorInterna = 'Selecciona un inmueble.';
-        render();
-        return;
+      const esCaptacion = it.tipo === 'captacion';
+      if (esCaptacion) {
+        if (!it.coberturaId) {
+          state.errorInterna = 'Selecciona una cobertura.';
+          render();
+          return;
+        }
+        if (!it.direccionLibre.trim()) {
+          state.errorInterna = 'Escribe la dirección del inmueble a captar.';
+          render();
+          return;
+        }
+        if (!it.slotSeleccionado) {
+          state.errorInterna = 'Busca horarios disponibles y elige uno.';
+          render();
+          return;
+        }
+      } else {
+        if (!it.asesorId) {
+          state.errorInterna = 'Selecciona un asesor.';
+          render();
+          return;
+        }
+        if (!it.inmuebleId) {
+          state.errorInterna = 'Selecciona un inmueble.';
+          render();
+          return;
+        }
       }
       const boton = e.target.querySelector('button[type=submit]');
       boton.disabled = true;
@@ -909,17 +1036,28 @@ function adjuntarEventos(rootEl) {
         p_asesor_id: it.asesorId,
         p_fecha: it.fecha,
         p_hora_inicio: it.hora,
-        p_inmueble_id: it.tipo === 'captacion' ? null : it.inmuebleId,
+        p_inmueble_id: esCaptacion ? null : it.inmuebleId,
         p_tipo_cita: it.tipo,
         p_titulo: it.titulo.trim(),
-        p_direccion_libre: it.tipo === 'captacion' ? it.direccionLibre.trim() : '',
-        p_ciudad_libre: it.tipo === 'captacion' ? it.ciudadLibre.trim() : '',
+        p_direccion_libre: esCaptacion ? it.direccionLibre.trim() : '',
+        p_ciudad_libre: esCaptacion ? it.ciudadLibre.trim() : '',
         p_notas: it.notas.trim(),
-        p_duracion_minutos: it.duracion ? Number(it.duracion) : null,
+        p_duracion_minutos: esCaptacion ? null : it.duracion ? Number(it.duracion) : null,
+        p_cobertura_id: esCaptacion ? it.coberturaId : null,
+        p_cliente_nombre: esCaptacion ? it.propietarioNombre.trim() : '',
+        p_cliente_telefono: esCaptacion ? it.propietarioTelefono.trim() : '',
+        p_tipo_inmueble_captacion: esCaptacion ? it.tipoInmuebleCaptacion || null : null,
+        p_valor_estimado_captacion: esCaptacion && it.valorEstimado ? Number(it.valorEstimado) : null,
+        p_mandato_exclusivo: esCaptacion ? it.mandatoExclusivo : null,
+        p_origen_captacion: esCaptacion ? it.origenCaptacion || null : null,
       });
       boton.disabled = false;
       if (error) {
-        state.errorInterna = error.message.includes('ya no está disponible') || error.message.includes('ya tiene una cita') ? 'El asesor ya tiene algo agendado en ese horario.' : mensajeAmigable(error, 'No se pudo guardar la actividad. Intenta de nuevo.');
+        state.errorInterna = error.message.includes('ya no está disponible') || error.message.includes('ya tiene una cita') || error.message.includes('anticipación') || error.message.includes('almuerzo') ? 'Ese horario ya no está disponible; vuelve a buscar horarios.' : mensajeAmigable(error, 'No se pudo guardar la actividad. Intenta de nuevo.');
+        if (esCaptacion) {
+          it.slotsCaptacion = [];
+          it.slotSeleccionado = null;
+        }
         render();
         return;
       }
