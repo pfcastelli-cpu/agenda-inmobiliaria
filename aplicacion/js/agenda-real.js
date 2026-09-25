@@ -639,10 +639,10 @@ async function renderReserva() {
     <section aria-label="Datos de la visita"><form id="v-reserva-form"><div class="v-sectiontitle">${icon('user-round')}¿Quién visitará el inmueble?</div>
       <label class="v-field" for="v-cliente">Nombre del cliente<input class="v-input" id="v-cliente" value="${escape(state.cliente)}" maxlength="120" required></label>
       <label class="v-field" for="v-telefono">Celular<input class="v-input" id="v-telefono" value="${escape(state.telefono)}" maxlength="20"></label>
-      <label class="v-field" for="v-correo">Correo (opcional)<input class="v-input" id="v-correo" type="email" value="${escape(state.correo)}"></label>
+      <label class="v-field" for="v-correo">Correo electrónico<input class="v-input" id="v-correo" type="email" value="${escape(state.correo)}" required></label>
       <div id="v-reserva-error" class="v-error" role="alert"></div>
       <button class="v-btn v-primary v-full" type="submit" ${state.slot === null ? 'disabled' : ''}>${icon('calendar-check')}Confirmar visita</button>
-      <p class="v-note" style="margin-top:12px">Esto crea la cita real en la agenda. Todavía no envía correo al cliente ni al propietario, ni crea el evento en Google Calendar — eso sigue siendo un paso aparte por ahora.</p>
+      <p class="v-note" style="margin-top:12px">Esto crea la cita real en la agenda y le envía al cliente el correo de confirmación con la dirección y los datos del asesor. El correo al propietario y el evento en Google Calendar siguen siendo un paso aparte por ahora.</p>
     </form></section></div>`;
 }
 
@@ -1120,6 +1120,10 @@ function adjuntarEventos(rootEl) {
     const nombre = state.cliente.trim();
     if (nombre.length < 2) {
       err.textContent = 'Escribe un nombre de al menos dos caracteres.';
+      return;
+    }
+    if (!state.correo.trim() || !/\S+@\S+\.\S+/.test(state.correo.trim())) {
+      err.textContent = 'Escribe un correo electrónico válido. Allí le llegará al cliente la confirmación de la visita.';
       return;
     }
     if (state.slot === null || !state.slots[state.slot]) {

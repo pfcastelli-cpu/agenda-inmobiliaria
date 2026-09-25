@@ -310,14 +310,22 @@ async function correoForm(){
   <div class="ad-grid">${campo('correo_remitente_nombre','Nombre que verá el destinatario',config.correo_remitente_nombre||'Patrimonios Inmobiliarios','text','required placeholder="Patrimonios Inmobiliarios"')}${campo('correo_remitente_email','Correo remitente',config.correo_remitente_email||'info@patrimonios.co','email','required placeholder="info@patrimonios.co"')}</div>
   <h3 style="margin-top:26px">3. Datos SMTP</h3>
   <div class="ad-grid">${campo('correo_smtp_host','Host SMTP',config.correo_smtp_host||'','text','required placeholder="smtp.gmail.com"')}${campo('correo_smtp_puerto','Puerto',config.correo_smtp_puerto||465,'number','required min="1"')}<label>Seguridad<select name="correo_smtp_seguridad"><option value="ssl">SSL</option><option value="tls">TLS</option><option value="ninguna">Ninguna</option></select></label>${campo('correo_smtp_usuario','Usuario SMTP',config.correo_smtp_usuario||config.correo_remitente_email||'info@patrimonios.co','text','required')}</div>
-  <div class="ad-grid"><label>Contraseña / clave de aplicación${tienePassword?' · <small class="ad-muted">ya guardada, deja este campo vacío para conservarla</small>':''}<input name="correo_password" type="password" placeholder="${tienePassword?'••••••••••••••••':'Pega aquí la clave de aplicación'}" autocomplete="new-password"></label></div>
+  <div class="ad-grid"><label>Contraseña / clave de aplicación${tienePassword?' · <small class="ad-muted">ya guardada, deja este campo vacío para conservarla</small>':''}<span class="ad-correo-password-row"><input name="correo_password" type="password" placeholder="${tienePassword?'••••••••••••••••':'Pega aquí la clave de aplicación'}" autocomplete="new-password"><button type="button" class="ad-link-btn" data-reveal-password>Mostrar</button></span></label></div>
+  <p class="ad-note" style="margin-top:-6px">Por seguridad, una contraseña ya guardada no se puede volver a mostrar aquí — ni siquiera un administrador puede leerla directamente desde el navegador. El botón "Mostrar" solo revela lo que estás escribiendo en este momento. Si no la recuerdas, usa "Probar configuración" abajo para confirmar que sigue funcionando, o vuelve a pegarla para reemplazarla.</p>
   <h3 style="margin-top:26px">4. Modo de pruebas</h3>
   <label class="ad-toggle"><input type="checkbox" name="correo_modo_pruebas"><span class="ad-toggle-track"><span class="ad-toggle-thumb"></span></span><span>Mientras ajustamos el diseño, enviar TODOS los correos (cliente y propietario) a un solo correo de pruebas</span></label>
   <div class="ad-grid" style="margin-top:14px">${campo('correo_pruebas_destino','Correo donde quieres recibir las pruebas',config.correo_pruebas_destino||'pf.castelli@patrimonios.co','email','placeholder="tu-correo@patrimonios.co"')}</div>
   <p class="ad-note">Con el modo de pruebas activo, ningún cliente ni propietario recibe correos todavía: absolutamente todo llega al correo de arriba, para que revises el contenido y el diseño antes de salir a producción. Cuando estés listo, apaga el interruptor y los correos empezarán a llegar a los destinatarios reales.</p>
   <button class="ad-primary" type="submit" style="margin-top:20px">Guardar configuración de correo</button>
  </form>
- <h3 style="margin-top:34px">5. Bitácora de envíos</h3>
+ <h3 style="margin-top:34px">5. Probar la configuración</h3>
+ <p class="ad-note">Manda un correo de prueba de inmediato con los datos ya guardados, para confirmar que el host, el usuario y la contraseña son correctos sin tener que agendar una visita.</p>
+ <div class="ad-probar-correo">
+  <input type="email" class="ad-probar-correo-destino" placeholder="Correo de destino" value="${esc(config.correo_pruebas_destino||'')}">
+  <button type="button" class="ad-secondary" data-probar-correo>Enviar correo de prueba</button>
+ </div>
+ <div class="ad-probar-correo-resultado" role="status"></div>
+ <h3 style="margin-top:34px">6. Bitácora de envíos</h3>
  <p class="ad-note">Aquí ves los últimos intentos de envío del correo de confirmación a clientes, incluidas las fallas, para poder revisar qué pasó cuando alguien reserve una visita.</p>
  ${bitacoraCorreoHtml(logCorreos)}`;
  el.querySelector('[name=correo_smtp_seguridad]').value=config.correo_smtp_seguridad||PROVEEDORES_CORREO[proveedorInicial].seguridad;
@@ -333,8 +341,34 @@ async function correoForm(){
   f.correo_smtp_puerto.value=p.puerto;
   f.correo_smtp_seguridad.value=p.seguridad;
  }));
+ el.querySelector('[data-reveal-password]').addEventListener('click',ev=>{
+  const inp=el.querySelector('[name=correo_password]');
+  const mostrar=inp.type==='password';
+  inp.type=mostrar?'text':'password';
+  ev.currentTarget.textContent=mostrar?'Ocultar':'Mostrar';
+ });
+ el.querySelector('[data-probar-correo]').addEventListener('click',async ev=>{
+  const boton=ev.currentTarget;const destino=el.querySelector('.ad-probar-correo-destino').value.trim();
+  const resultado=el.querySelector('.ad-probar-correo-resultado');
+  boton.disabled=true;resultado.textContent='Enviando…';resultado.classList.remove('error');
+  try{
+   const {data,error}=await supabase.functions.invoke('probar-correo-config',{
+    body:{empresa_id:config.empresa_id,destino},
+   });
+   if(error||!data?.ok){
+    resultado.textContent='❌ '+(data?.error||'No se pudo enviar el correo de prueba.');
+    resultado.classList.add('error');
+   }else{
+    resultado.textContent='✅ Correo de prueba enviado a '+data.destino+'. Revisa esa bandeja (y la de spam).';
+   }
+  }catch(e){
+   resultado.textContent='❌ No se pudo conectar con el servicio de correo.';
+   resultado.classList.add('error');
+  }
+  boton.disabled=false;
+ });
  el.querySelector('form').onsubmit=async e=>{
-  e.preventDefault();const f=e.target;const b=f.querySelector('button');b.disabled=true;
+  e.preventDefault();const f=e.target;const b=f.querySelector('button[type=submit]');b.disabled=true;
   const provKey=el.querySelector('.ad-correo-prov-activo')?.dataset.prov||proveedorInicial;
   const {error}=await supabase.rpc('agenda_guardar_credenciales_correo',{
    p_empresa_id:config.empresa_id,
