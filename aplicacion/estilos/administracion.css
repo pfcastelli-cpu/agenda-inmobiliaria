@@ -38,3 +38,14 @@
 .ad-acceso-clave-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .ad-acceso-clave-form input{min-height:38px;width:200px}
 @media(max-width:650px){.ad-accesos li{flex-direction:column;align-items:flex-start}.ad-acceso-clave-form input{width:100%}}
+.ad-bitacora-correo{list-style:none;padding:0;margin:14px 0;display:flex;flex-direction:column;gap:8px}
+.ad-bitacora-correo li{border:1px solid #dbe4e9;border-radius:12px;padding:10px 14px;font-size:13.5px;border-left:4px solid #c9d6df}
+.ad-bitacora-correo li.ad-log-enviado{border-left-color:#059669}
+.ad-bitacora-correo li.ad-log-fallido{border-left-color:#DC2626;background:#FEF2F2}
+.ad-bitacora-correo li.ad-log-omitido{border-left-color:#D97706}
+.ad-bitacora-linea1{display:flex;justify-content:space-between;gap:10px;font-weight:600}
+.ad-bitacora-fecha{color:#7a8b96;font-weight:400}
+.ad-bitacora-linea2{color:#526575;margin-top:2px}
+.ad-bitacora-pruebas{color:#92400E;font-weight:600}
+.ad-bitacora-asunto{color:#1A2C45;margin-top:4px}
+.ad-bitacora-error{color:#B91C1C;margin-top:4px;font-family:monospace;font-size:12px;word-break:break-word}

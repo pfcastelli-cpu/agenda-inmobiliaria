@@ -241,6 +241,10 @@ async function confirmarCita() {
     cargarHorarios();
     return;
   }
+  // Se dispara sin esperar la respuesta: si el correo falla no debe bloquear
+  // la confirmación visual de la cita; el intento (o la falla) queda
+  // registrado en agenda_correos_log para revisión en el panel de administración.
+  supabase.functions.invoke('enviar-correo-cita', { body: { cita_id: data } }).catch(() => {});
   state.confirmacion = {
     id: data,
     fecha: state.fechaSel,

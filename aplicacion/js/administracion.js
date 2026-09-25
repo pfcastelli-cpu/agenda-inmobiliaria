@@ -269,10 +269,29 @@ const PROVEEDORES_CORREO = {
  },
 };
 
+function formatearFechaCorreo(iso){
+ if(!iso)return'';
+ const d=new Date(iso);
+ return d.toLocaleString('es-CO',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+const ETIQUETAS_ESTADO_CORREO={enviado:{texto:'✅ Enviado',clase:'ad-log-enviado'},fallido:{texto:'❌ Falló',clase:'ad-log-fallido'},omitido:{texto:'⏭️ Omitido',clase:'ad-log-omitido'}};
+function bitacoraCorreoHtml(filas){
+ if(!filas||!filas.length)return'<p class="ad-muted">Todavía no se ha intentado enviar ningún correo de citas.</p>';
+ return `<ul class="ad-bitacora-correo">${filas.map(f=>{
+  const est=ETIQUETAS_ESTADO_CORREO[f.estado]||{texto:f.estado,clase:''};
+  return `<li class="${est.clase}">
+   <div class="ad-bitacora-linea1"><span class="ad-bitacora-estado">${est.texto}</span><span class="ad-bitacora-fecha">${formatearFechaCorreo(f.creado_en)}</span></div>
+   <div class="ad-bitacora-linea2">${esc(f.destinatario_email||'(sin destinatario)')}${f.modo_pruebas?' · <span class="ad-bitacora-pruebas">modo pruebas</span>':''}</div>
+   ${f.asunto?`<div class="ad-bitacora-asunto">${esc(f.asunto)}</div>`:''}
+   ${f.detalle_error?`<div class="ad-bitacora-error">${esc(f.detalle_error)}</div>`:''}
+  </li>`;
+ }).join('')}</ul>`;
+}
 async function correoForm(){
  const el=root.querySelector('.ad-subbody');
  el.innerHTML='<p class="ad-muted">Cargando…</p>';
  const {data:tienePassword}=await supabase.rpc('agenda_correo_tiene_password',{p_empresa_id:config.empresa_id});
+ const {data:logCorreos}=await supabase.from('agenda_correos_log').select('*').eq('empresa_id',config.empresa_id).order('creado_en',{ascending:false}).limit(20);
  const turno=revision;
  if(turno!==revision)return;
  const proveedorInicial=config.correo_proveedor&&PROVEEDORES_CORREO[config.correo_proveedor]?config.correo_proveedor:'gmail';
@@ -297,7 +316,10 @@ async function correoForm(){
   <div class="ad-grid" style="margin-top:14px">${campo('correo_pruebas_destino','Correo donde quieres recibir las pruebas',config.correo_pruebas_destino||'pf.castelli@patrimonios.co','email','placeholder="tu-correo@patrimonios.co"')}</div>
   <p class="ad-note">Con el modo de pruebas activo, ningún cliente ni propietario recibe correos todavía: absolutamente todo llega al correo de arriba, para que revises el contenido y el diseño antes de salir a producción. Cuando estés listo, apaga el interruptor y los correos empezarán a llegar a los destinatarios reales.</p>
   <button class="ad-primary" type="submit" style="margin-top:20px">Guardar configuración de correo</button>
- </form>`;
+ </form>
+ <h3 style="margin-top:34px">5. Bitácora de envíos</h3>
+ <p class="ad-note">Aquí ves los últimos intentos de envío del correo de confirmación a clientes, incluidas las fallas, para poder revisar qué pasó cuando alguien reserve una visita.</p>
+ ${bitacoraCorreoHtml(logCorreos)}`;
  el.querySelector('[name=correo_smtp_seguridad]').value=config.correo_smtp_seguridad||PROVEEDORES_CORREO[proveedorInicial].seguridad;
  el.querySelector('[name=correo_modo_pruebas]').checked=modoPruebas;
  const actualizarInstrucciones=key=>{const p=PROVEEDORES_CORREO[key];el.querySelector('[data-prov-nombre]').textContent=p.etiqueta;el.querySelector('[data-prov-pasos]').innerHTML=p.pasos.map(t=>`<li>${esc(t)}</li>`).join('');};
