@@ -2,6 +2,7 @@ import { supabase } from './cliente-supabase.js';
 import {
   ArrowLeft,
   ArrowUpRight,
+  Ban,
   Building2,
   CalendarCheck,
   CalendarDays,
@@ -23,6 +24,7 @@ import {
 const icons = {
   ArrowLeft,
   ArrowUpRight,
+  Ban,
   Building2,
   CalendarCheck,
   CalendarDays,
@@ -161,6 +163,9 @@ const state = {
   errorInterna: '',
   restriccionId: null,
   errorRestriccion: '',
+  noDisponibleId: null,
+  noDisponibleEnviando: false,
+  errorNoDisponible: '',
 };
 
 const TIPOS_CITA = {
@@ -252,6 +257,7 @@ async function cargarInmuebles() {
     .select('*')
     .eq('empresa_id', contexto.empresaId)
     .eq('disponible', true)
+    .eq('no_disponible_manual', false)
     .order('numero_inmueble');
   if (error) throw new Error('No se pudo cargar el inventario: ' + error.message);
   inmueblesCache = data || [];
@@ -498,12 +504,31 @@ function restriccionEditor(inm) {
   </form>`;
 }
 
+const MOTIVOS_NO_DISPONIBLE = {
+  arrendado: 'Se arrendó',
+  vendido: 'Se vendió',
+  papeles_radicados: 'Papeles radicados por otra persona',
+  otro: 'Otro motivo',
+};
+
+function noDisponibleEditor(inm) {
+  return `<form id="v-nodisponible-form" data-inmueble="${inm.id}" style="margin:10px 0 16px;padding:14px;border:1px solid #F3B4AE;border-radius:12px;background:#FEF2F2">
+    <div class="v-sectiontitle" style="margin-bottom:8px;color:#B3261E">${icon('ban')}Marcar #${inm.numero_inmueble} como no disponible</div>
+    <p class="v-muted" style="font-size:14px;margin-bottom:10px">Esto cancela automáticamente todas las citas futuras de clientes para este inmueble y les envía un correo explicando la situación (con disculpas y, si hay, opciones de inmuebles similares). No se puede deshacer desde aquí.</p>
+    <label class="v-field">Motivo<select class="v-input" name="motivo">${Object.entries(MOTIVOS_NO_DISPONIBLE).map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label>
+    <label class="v-field" style="margin-top:8px">Detalle (opcional, se puede mencionar en el correo)<textarea class="v-input" name="detalle" rows="2" placeholder="Ej: el propietario firmó contrato el 28 de septiembre"></textarea></label>
+    <div id="v-nodisponible-error" class="v-error" role="alert">${escape(state.errorNoDisponible)}</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="v-btn v-danger" type="submit" ${state.noDisponibleEnviando ? 'disabled' : ''}>${icon('ban')}${state.noDisponibleEnviando ? 'Procesando…' : 'Confirmar, ya no está disponible'}</button><button class="v-btn v-quiet" type="button" data-cerrar-nodisponible ${state.noDisponibleEnviando ? 'disabled' : ''}>Cancelar</button></div>
+  </form>`;
+}
+
 function inmuebleCard(inm) {
   return `<article class="v-property"><div class="v-propertyhead"><div class="v-building">${icon(inm.tipo_inmueble === 'Casa' ? 'house' : inm.tipo_inmueble === 'Local' ? 'store' : 'building-2')}</div><div style="min-width:0"><div class="v-muted" style="font-size:13px;margin-bottom:3px">#${inm.numero_inmueble} · ${escape(inm.tipo_oferta)}</div><h3>${escape(inm.direccion)}</h3><div class="v-details">${escape(inm.ciudad)}${inm.barrio ? ' · ' + escape(inm.barrio) : ''}${inm.habitaciones ? ' · ' + inm.habitaciones + ' hab.' : ''}</div></div></div>
     <div class="v-between" style="margin-bottom:12px"><div class="v-price">${inm.tipo_oferta === 'Arriendo' ? (inm.valor_canon ? money.format(inm.valor_canon) + '<small> / mes</small>' : 'Sin valor de canon') : inm.valor_venta ? money.format(inm.valor_venta) : 'Sin valor de venta'}</div></div>
     <div class="v-muted" style="font-size:14px;margin-bottom:10px">${icon('clock-3')} ${escape(restriccionResumen(inm))} <button type="button" class="v-link" data-restriccion="${inm.id}" style="margin-left:4px">Editar</button></div>
     ${state.restriccionId === inm.id ? restriccionEditor(inm) : ''}
-    <div class="v-cardfoot"><a class="v-btn v-quiet" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha completa</a><span class="v-muted" style="font-size:14px">${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor asignado en Sedi'}</span><button class="v-btn v-primary" data-reservar="${inm.id}">Ver horarios ${icon('arrow-up-right')}</button></div></article>`;
+    ${state.noDisponibleId === inm.id ? noDisponibleEditor(inm) : ''}
+    <div class="v-cardfoot"><a class="v-btn v-quiet" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha completa</a><span class="v-muted" style="font-size:14px">${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor asignado en Sedi'}</span>${contexto.rol === 'administrador' || contexto.rol === 'coordinador' ? `<button type="button" class="v-btn v-quiet" data-nodisponible="${inm.id}" style="color:#B3261E">${icon('ban')}No disponible</button>` : ''}<button class="v-btn v-primary" data-reservar="${inm.id}">Ver horarios ${icon('arrow-up-right')}</button></div></article>`;
 }
 
 async function renderInmuebles() {
@@ -910,6 +935,18 @@ function adjuntarEventos(rootEl) {
       renderInmuebles();
       return;
     }
+    if (b.dataset.nodisponible) {
+      state.noDisponibleId = state.noDisponibleId === b.dataset.nodisponible ? null : b.dataset.nodisponible;
+      state.errorNoDisponible = '';
+      renderInmuebles();
+      return;
+    }
+    if (b.hasAttribute('data-cerrar-nodisponible')) {
+      state.noDisponibleId = null;
+      state.errorNoDisponible = '';
+      renderInmuebles();
+      return;
+    }
     if (b.dataset.reservar) {
       startReserva(b.dataset.reservar);
       return;
@@ -1064,6 +1101,46 @@ function adjuntarEventos(rootEl) {
       state.fecha = it.fecha;
       toast('Actividad guardada en la agenda.');
       setView('agenda');
+      return;
+    }
+    if (e.target.id === 'v-nodisponible-form') {
+      e.preventDefault();
+      const inmuebleId = e.target.dataset.inmueble;
+      const motivo = e.target.querySelector('[name=motivo]').value;
+      const detalle = e.target.querySelector('[name=detalle]').value.trim();
+      state.noDisponibleEnviando = true;
+      state.errorNoDisponible = '';
+      renderInmuebles();
+      const { data, error } = await supabase.functions.invoke('marcar-inmueble-no-disponible', {
+        body: { inmueble_id: inmuebleId, motivo, detalle },
+      });
+      state.noDisponibleEnviando = false;
+      if (error) {
+        state.errorNoDisponible = 'No se pudo marcar el inmueble. Intenta de nuevo.' + (error.message ? ' (' + error.message + ')' : '');
+        renderInmuebles();
+        return;
+      }
+      if (!data || data.ok !== true) {
+        state.errorNoDisponible = (data && data.error) || 'No se pudo marcar el inmueble.';
+        renderInmuebles();
+        return;
+      }
+      state.noDisponibleId = null;
+      [inmueblesCache, todosInmueblesCache].forEach((cache) => {
+        const fila = cache?.find((i) => i.id === inmuebleId);
+        if (fila) {
+          fila.disponible = false;
+          fila.no_disponible_manual = true;
+        }
+      });
+      if (inmueblesCache) inmueblesCache = inmueblesCache.filter((i) => i.id !== inmuebleId);
+      const n = data.citas_canceladas || 0;
+      toast(
+        n > 0
+          ? `Inmueble marcado como no disponible. Se cancelaron ${n} cita${n === 1 ? '' : 's'} y se avisó a ${n === 1 ? 'ese cliente' : 'esos clientes'} por correo.`
+          : 'Inmueble marcado como no disponible.',
+      );
+      renderInmuebles();
       return;
     }
     if (e.target.id === 'v-restriccion-form') {
