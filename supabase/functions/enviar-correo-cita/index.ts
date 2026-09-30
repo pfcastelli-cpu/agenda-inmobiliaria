@@ -10,6 +10,8 @@ import nodemailer from 'npm:nodemailer@6.9.16';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+const IMAGEN_ENCABEZADO = 'https://adminpaxzu.patrimonios.co/uploads/images/Cita.jpg';
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -21,6 +23,16 @@ function json(cuerpo: unknown, status = 200) {
     status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   });
+}
+
+function escaparHtml(valor: string | null | undefined): string {
+  if (!valor) return '';
+  return String(valor)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function formatearFecha(fecha: string) {
@@ -38,6 +50,33 @@ function formatearHora(hora: string) {
   const ampm = h >= 12 ? 'p. m.' : 'a. m.';
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+// Genera un botón de ancho completo con estilos en línea (compatible con
+// Gmail, Apple Mail, Outlook.com y clientes móviles) envuelto en una tabla
+// para que también se vea bien en Outlook de escritorio.
+function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: string, texto: string): string {
+  return `
+      <tr><td style="padding:7px 0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td align="center" bgcolor="${colorFondo}" style="border-radius:12px">
+            <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${colorTexto};text-decoration:none;border-radius:12px">
+              ${icono}&nbsp;&nbsp;${texto}
+            </a>
+          </td>
+        </tr></table>
+      </td></tr>`;
+}
+
+function filaDato(icono: string, etiqueta: string, valor: string): string {
+  return `
+      <tr>
+        <td style="padding:11px 0;font-size:20px;width:32px;vertical-align:top">${icono}</td>
+        <td style="padding:11px 0;vertical-align:top">
+          <div style="font-size:11.5px;color:#8492a6;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${etiqueta}</div>
+          <div style="font-size:15px;color:#1A2C45;font-weight:700;line-height:1.35">${valor}</div>
+        </td>
+      </tr>`;
 }
 
 async function registrarLog(
@@ -148,47 +187,111 @@ Deno.serve(async (req) => {
 
   let direccion = cita.direccion_libre || '';
   let ciudad = cita.ciudad_libre || '';
+  let latitud: number | string | null = null;
+  let longitud: number | string | null = null;
   if (cita.inmueble_id) {
     const { data: inmueble } = await admin
       .from('agenda_inmuebles')
-      .select('direccion, ciudad, barrio')
+      .select('direccion, ciudad, barrio, latitud, longitud')
       .eq('id', cita.inmueble_id)
       .maybeSingle();
     if (inmueble) {
       direccion = inmueble.direccion || direccion;
       ciudad = [inmueble.barrio, inmueble.ciudad].filter(Boolean).join(', ') || ciudad;
+      latitud = inmueble.latitud;
+      longitud = inmueble.longitud;
     }
   }
 
   const destinatarioReal = cita.cliente_email;
   const destinatarioEnvio = modoPruebas ? config.correo_pruebas_destino || destinatarioReal : destinatarioReal;
 
-  const asunto = `Confirmación de tu visita — ${formatearFecha(cita.fecha)} a las ${formatearHora(cita.hora_inicio.slice(0, 5))}`;
+  const fechaTexto = formatearFecha(cita.fecha);
+  const horaTexto = formatearHora(cita.hora_inicio.slice(0, 5));
+  const direccionCompleta = [direccion, ciudad].filter(Boolean).join(', ');
+
+  const asunto = `Confirmación de tu visita — ${fechaTexto} a las ${horaTexto}`;
 
   const bannerPruebas = modoPruebas
-    ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:20px;font-size:13px;font-weight:600">
-        🧪 MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${destinatarioReal}
+    ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
+        🧪 MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}
       </div>`
     : '';
 
+  // Botones de acción: solo se muestran los que sí tienen a dónde apuntar.
+  const tieneCoordenadas = latitud !== null && latitud !== undefined && longitud !== null && longitud !== undefined;
+  const wazeUrl = tieneCoordenadas
+    ? `https://waze.com/ul?ll=${latitud},${longitud}&navigate=yes`
+    : direccionCompleta
+      ? `https://waze.com/ul?q=${encodeURIComponent(`${direccionCompleta}, Colombia`)}&navigate=yes`
+      : null;
+  const mapsUrl = tieneCoordenadas
+    ? `https://www.google.com/maps/search/?api=1&query=${latitud},${longitud}`
+    : direccionCompleta
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${direccionCompleta}, Colombia`)}`
+      : null;
+  const celularLimpio = asesorCelular ? asesorCelular.replace(/[^0-9]/g, '') : '';
+  const mensajeWhatsapp = `Hola${asesorNombre ? ' ' + asesorNombre : ''}, te escribo por mi visita del ${fechaTexto} a las ${horaTexto}.`;
+  const whatsappUrl = celularLimpio ? `https://wa.me/${celularLimpio}?text=${encodeURIComponent(mensajeWhatsapp)}` : null;
+  const llamarUrl = asesorCelular ? `tel:${asesorCelular.replace(/\s+/g, '')}` : null;
+
+  let filasBotones = '';
+  if (wazeUrl) filasBotones += filaBoton(wazeUrl, '#05C3DD', '#ffffff', '🚗', 'Ver ruta en Waze');
+  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#4285F4', '#ffffff', '🧭', 'Ver ruta en Google Maps');
+  if (whatsappUrl)
+    filasBotones += filaBoton(
+      whatsappUrl,
+      '#25D366',
+      '#ffffff',
+      '💬',
+      `Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp`,
+    );
+  if (llamarUrl) filasBotones += filaBoton(llamarUrl, '#1A2C45', '#ffffff', '📞', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`);
+
+  let filasDatos = filaDato('📅', 'Fecha', escaparHtml(fechaTexto));
+  filasDatos += filaDato('🕐', 'Hora', escaparHtml(horaTexto));
+  if (direccion) {
+    filasDatos += filaDato('📍', 'Dirección', `${escaparHtml(direccion)}${ciudad ? `, ${escaparHtml(ciudad)}` : ''}`);
+  }
+  if (asesorNombre) {
+    filasDatos += filaDato(
+      '🧑‍💼',
+      'Tu asesor',
+      `${escaparHtml(asesorNombre)}${asesorCelular ? ` · ${escaparHtml(asesorCelular)}` : ''}`,
+    );
+  }
+
   const html = `<!doctype html>
-<html><body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,Helvetica,sans-serif">
-<div style="max-width:520px;margin:0 auto;padding:28px 20px">
+<html>
+<body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
+<div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:16px;padding:28px;border:1px solid #dbe4e9">
-    <h1 style="color:#1A2C45;font-size:20px;margin:0 0 4px">Tu visita quedó confirmada</h1>
-    <p style="color:#526575;font-size:14px;margin:0 0 22px">Hola ${cita.cliente_nombre || ''}, estos son los detalles:</p>
-    <table style="width:100%;font-size:14px;color:#1A2C45;border-collapse:collapse">
-      <tr><td style="padding:8px 0;color:#526575;width:120px">Fecha</td><td style="padding:8px 0;font-weight:600">${formatearFecha(cita.fecha)}</td></tr>
-      <tr><td style="padding:8px 0;color:#526575">Hora</td><td style="padding:8px 0;font-weight:600">${formatearHora(cita.hora_inicio.slice(0, 5))}</td></tr>
-      ${direccion ? `<tr><td style="padding:8px 0;color:#526575">Dirección</td><td style="padding:8px 0;font-weight:600">${direccion}${ciudad ? `, ${ciudad}` : ''}</td></tr>` : ''}
-      ${asesorNombre ? `<tr><td style="padding:8px 0;color:#526575">Tu asesor</td><td style="padding:8px 0;font-weight:600">${asesorNombre}${asesorCelular ? ` · ${asesorCelular}` : ''}</td></tr>` : ''}
-    </table>
-    <p style="color:#526575;font-size:12.5px;margin-top:24px">Si necesitas cambiar o cancelar tu visita, comunícate con tu asesor.</p>
+  <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
+    <img src="${IMAGEN_ENCABEZADO}" alt="Tu visita quedó confirmada" width="580" style="width:100%;max-width:580px;height:auto;display:block" />
+    <div style="padding:28px 26px 8px">
+      <h1 style="color:#1A2C45;font-size:21px;margin:0 0 4px">¡Tu visita quedó confirmada!</h1>
+      <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, estos son los detalles de tu cita:</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
+        ${filasDatos}
+      </table>
+    </div>
+    ${
+      filasBotones
+        ? `<div style="padding:6px 26px 26px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${filasBotones}
+      </table>
+    </div>`
+        : ''
+    }
+    <div style="background:#f4f6f8;padding:16px 26px;border-top:1px solid #e6eaee">
+      <p style="color:#8492a6;font-size:12px;margin:0">Si necesitas cambiar o cancelar tu visita, comunícate directamente con tu asesor usando los botones de arriba.</p>
+    </div>
   </div>
-  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:16px">${config.correo_remitente_nombre || 'Patrimonios Inmobiliarios'}</p>
+  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
 </div>
-</body></html>`;
+</body>
+</html>`;
 
   let password: string | null = null;
   try {
