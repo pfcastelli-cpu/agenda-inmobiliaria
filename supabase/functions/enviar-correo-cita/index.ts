@@ -52,6 +52,21 @@ function formatearHora(hora: string) {
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
+// Quita torre/apto/oficina/etc. de la dirección antes de mostrarla al cliente
+// — solo debe ver la dirección "de calle", nunca el detalle interno de la unidad.
+const REGEX_UNIDAD_INTERNA =
+  /\b(AP|APTO|APT|APARTAMENTO|CS|CASA|IN|INTERIOR|PISO|T|TORRE|TO|BLOQUE|BQ|BL|OF|OFC|OFICINA|MZ|MANZANA|CONJ|CON|DP|CONS|CONSULTORIO|LC|LOCAL(ES)?|L)\s*\d+\b/gi;
+
+function limpiarDireccion(direccion: string | null | undefined): string {
+  if (!direccion) return '';
+  return direccion
+    .replace(REGEX_UNIDAD_INTERNA, ' ')
+    .replace(/[,-]{2,}/g, ',')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^[\s,-]+|[\s,-]+$/g, '')
+    .trim();
+}
+
 // Genera un botón de ancho completo con estilos en línea (compatible con
 // Gmail, Apple Mail, Outlook.com y clientes móviles) envuelto en una tabla
 // para que también se vea bien en Outlook de escritorio.
@@ -202,6 +217,7 @@ Deno.serve(async (req) => {
       longitud = inmueble.longitud;
     }
   }
+  direccion = limpiarDireccion(direccion);
 
   const destinatarioReal = cita.cliente_email;
   const destinatarioEnvio = modoPruebas ? config.correo_pruebas_destino || destinatarioReal : destinatarioReal;
