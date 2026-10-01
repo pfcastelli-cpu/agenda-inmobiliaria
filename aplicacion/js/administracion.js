@@ -34,7 +34,7 @@ export async function iniciarAdministracion(a){
  if(turno!==revision)return;
  if(data)config=data;marca();
  if(a.membresia.rol!=='administrador')return;
- root=document.createElement('section');root.className='ad';root.innerHTML=`<nav aria-label="Administración"><button data-tab="agenda" aria-pressed="true" class="ad-volver">← Volver a la agenda</button><span class="ad-nav-sep"></span><button data-tab="config" aria-pressed="false" class="ad-gear" title="Configuración" aria-label="Configuración"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></button></nav><p role="status" aria-live="polite"></p><div class="ad-body" hidden><nav class="ad-subnav" aria-label="Configuración"><button data-subtab="equipo" aria-pressed="true">Equipo</button><button data-subtab="ciudades" aria-pressed="false">Ciudades y festivos</button><button data-subtab="marca" aria-pressed="false">Empresa</button><button data-subtab="correo" aria-pressed="false">Correo</button><button data-subtab="accesos" aria-pressed="false">Accesos</button><button data-subtab="informes" aria-pressed="false">Informes</button></nav><div class="ad-subbody"></div></div>`;
+ root=document.createElement('section');root.className='ad';root.innerHTML=`<nav aria-label="Administración"><button data-tab="agenda" aria-pressed="true" class="ad-volver">← Volver a la agenda</button><span class="ad-nav-sep"></span><button data-tab="config" aria-pressed="false" class="ad-gear" title="Configuración" aria-label="Configuración"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></button></nav><p role="status" aria-live="polite"></p><div class="ad-body" hidden><nav class="ad-subnav" aria-label="Configuración"><button data-subtab="equipo" aria-pressed="true">Equipo</button><button data-subtab="ciudades" aria-pressed="false">Ciudades y festivos</button><button data-subtab="marca" aria-pressed="false">Empresa</button><button data-subtab="correo" aria-pressed="false">Correo</button><button data-subtab="accesos" aria-pressed="false">Accesos</button></nav><div class="ad-subbody"></div></div>`;
  document.getElementById('pa-agenda-content').before(root);
  root.querySelector('nav').addEventListener('click',async e=>{const t=e.target.closest('button')?.dataset.tab;if(!t)return;root.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===t)));const body=root.querySelector('.ad-body');body.hidden=t==='agenda';document.getElementById('pa-agenda-content').hidden=t!=='agenda';aviso('');if(t==='config')await abrirSubtab(root.querySelector('.ad-subnav [aria-pressed=true]')?.dataset.subtab||'equipo');});
  root.querySelector('.ad-subnav').addEventListener('click',async e=>{const st=e.target.closest('button')?.dataset.subtab;if(!st)return;await abrirSubtab(st);});
@@ -74,7 +74,6 @@ async function abrirSubtab(st){
  if(st==='marca')marcaForm();
  if(st==='correo')await correoForm();
  if(st==='accesos')await accesosTab();
- if(st==='informes')await informesTab();
 }
 async function equipo(){
  const container=root.querySelector('.ad-subbody');container.innerHTML='<p>Cargando equipo…</p>';const turno=revision;
@@ -506,90 +505,5 @@ async function accesosTab() {
    boton.disabled = false;
   }
  });
-}
-async function informesTab(){
- const el=root.querySelector('.ad-subbody');
- el.innerHTML='<p class="ad-muted">Cargando informes…</p>';
- const turno=revision;
- const [citasR,inmueblesR,correosR,propietariosR,asesoresR]=await Promise.all([
-  supabase.from('agenda_citas').select('estado,motivo_cancelacion').eq('empresa_id',config.empresa_id),
-  supabase.from('agenda_inmuebles').select('disponible,no_disponible_manual,no_disponible_motivo,habitaciones,latitud,longitud,valor_canon,valor_venta,ciudad,tipo_oferta').eq('empresa_id',config.empresa_id),
-  supabase.from('agenda_correos_log').select('destinatario_tipo,estado').eq('empresa_id',config.empresa_id),
-  supabase.from('agenda_propietarios').select('id',{count:'exact',head:true}).eq('empresa_id',config.empresa_id),
-  supabase.from('agenda_asesores').select('activo,tipo_vinculacion').eq('empresa_id',config.empresa_id),
- ]);
- if(turno!==revision || root.querySelector('[data-subtab=informes]')?.getAttribute('aria-pressed')!=='true')return;
- const citas=citasR.data||[];
- const inmuebles=inmueblesR.data||[];
- const correos=correosR.data||[];
- const totalPropietarios=propietariosR.count||0;
- const asesoresList=asesoresR.data||[];
-
- const citasPorEstado={};
- for(const c of citas)citasPorEstado[c.estado]=(citasPorEstado[c.estado]||0)+1;
- const citasCanceladas=citas.filter(c=>c.estado==='cancelada').length;
- const citasSinMotivo=citas.filter(c=>c.estado==='cancelada'&&!c.motivo_cancelacion).length;
-
- const totalInmuebles=inmuebles.length;
- const disponibles=inmuebles.filter(i=>i.disponible).length;
- const noDisponiblesManual=inmuebles.filter(i=>i.no_disponible_manual).length;
- const motivosManual={};
- for(const i of inmuebles){if(i.no_disponible_manual){const m=i.no_disponible_motivo||'otro';motivosManual[m]=(motivosManual[m]||0)+1;}}
-
- const conHabitaciones=inmuebles.filter(i=>i.habitaciones!=null).length;
- const conCoordenadas=inmuebles.filter(i=>i.latitud!=null&&i.longitud!=null).length;
- const conPrecio=inmuebles.filter(i=>(i.valor_canon!=null&&i.valor_canon>0)||(i.valor_venta!=null&&i.valor_venta>0)).length;
-
- const porCiudadTipo={};
- for(const i of inmuebles){const clave=`${i.ciudad||'Sin ciudad'} · ${i.tipo_oferta||'Sin tipo'}`;porCiudadTipo[clave]=(porCiudadTipo[clave]||0)+1;}
- const filasCiudadTipo=Object.entries(porCiudadTipo).sort((a,b)=>b[1]-a[1]);
-
- const correosPorTipoEstado={};
- for(const c of correos){const clave=c.destinatario_tipo||'desconocido';correosPorTipoEstado[clave]=correosPorTipoEstado[clave]||{enviado:0,fallido:0,omitido:0};correosPorTipoEstado[clave][c.estado]=(correosPorTipoEstado[clave][c.estado]||0)+1;}
-
- const asesoresActivos=asesoresList.filter(a=>a.activo).length;
- const asesoresPlanta=asesoresList.filter(a=>a.activo&&a.tipo_vinculacion==='planta').length;
- const asesoresFreelance=asesoresList.filter(a=>a.activo&&a.tipo_vinculacion==='freelance').length;
-
- const pct=(n,d)=>d?Math.round(n/d*100):0;
-
- el.innerHTML=`<h2>Informes</h2>
- <p class="ad-note">Estado actual de los datos capturados por Agenda de citas. Con el volumen de hoy esto es monitoreo operativo — todavía no hay suficiente historia para tendencias o comparativos por asesor o por zona.</p>
-
- <h3>Citas</h3>
- <div class="ad-cards">
-  <article><div><h3>${citas.length}</h3><p>Citas totales registradas</p></div></article>
-  <article><div><h3>${citasPorEstado.confirmada||0}</h3><p>Confirmadas</p></div></article>
-  <article><div><h3>${citasCanceladas}</h3><p>Canceladas${citasCanceladas?` · ${citasSinMotivo} sin motivo registrado`:''}</p></div></article>
-  <article><div><h3>${citasPorEstado.completada||0}</h3><p>Completadas</p></div></article>
- </div>
-
- <h3 style="margin-top:24px">Inventario de inmuebles</h3>
- <div class="ad-cards">
-  <article><div><h3>${totalInmuebles}</h3><p>Inmuebles totales</p></div></article>
-  <article><div><h3>${disponibles}</h3><p>Disponibles</p></div></article>
-  <article><div><h3>${totalInmuebles-disponibles}</h3><p>No disponibles</p></div></article>
-  <article><div><h3>${noDisponiblesManual}</h3><p>Marcados manualmente no disponibles</p></div></article>
- </div>
- ${noDisponiblesManual?`<ul class="ad-ciudades">${Object.entries(motivosManual).map(([m,n])=>`<li><span>${esc(MOTIVOS_NO_DISPONIBLE_ETIQUETA[m]||m)}</span><span>${n}</span></li>`).join('')}</ul>`:''}
-
- <h3 style="margin-top:24px">Completitud de la ficha</h3>
- <ul class="ad-ciudades">
-  <li><span>Con precio cargado</span><span>${conPrecio} de ${totalInmuebles} (${pct(conPrecio,totalInmuebles)}%)</span></li>
-  <li><span>Con coordenadas</span><span>${conCoordenadas} de ${totalInmuebles} (${pct(conCoordenadas,totalInmuebles)}%)</span></li>
-  <li><span>Con número de habitaciones</span><span>${conHabitaciones} de ${totalInmuebles} (${pct(conHabitaciones,totalInmuebles)}%)</span></li>
- </ul>
-
- <h3 style="margin-top:24px">Inventario por ciudad y tipo de oferta</h3>
- <ul class="ad-ciudades">${filasCiudadTipo.length?filasCiudadTipo.map(([clave,n])=>`<li><span>${esc(clave)}</span><span>${n}</span></li>`).join(''):'<li class="ad-muted">Sin datos.</li>'}</ul>
-
- <h3 style="margin-top:24px">Bitácora de correos</h3>
- <ul class="ad-ciudades">${Object.keys(correosPorTipoEstado).length?Object.entries(correosPorTipoEstado).map(([tipo,e])=>`<li><span>${esc(ETIQUETA_DESTINATARIO[tipo]||tipo)}</span><span>✅ ${e.enviado||0} · ❌ ${e.fallido||0} · ⏭️ ${e.omitido||0}</span></li>`).join(''):'<li class="ad-muted">Todavía no se ha registrado ningún correo.</li>'}</ul>
-
- <h3 style="margin-top:24px">Equipo y propietarios</h3>
- <div class="ad-cards">
-  <article><div><h3>${asesoresActivos}</h3><p>Asesores activos (${asesoresPlanta} de planta, ${asesoresFreelance} freelance)</p></div></article>
-  <article><div><h3>${totalPropietarios}</h3><p>Propietarios registrados</p></div></article>
- </div>`;
 }
 

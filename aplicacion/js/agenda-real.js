@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarCheck,
   CalendarDays,
+  ChartColumn,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -28,6 +29,7 @@ const icons = {
   Building2,
   CalendarCheck,
   CalendarDays,
+  ChartColumn,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -102,16 +104,19 @@ export function iniciarAgendaReal(acceso) {
   if (insignia) insignia.textContent = 'Datos reales';
   const pie = root.querySelector('.v-footnote');
   if (pie) pie.textContent = 'Datos reales · las citas y cancelaciones se guardan en Supabase';
+  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes' };
   root.querySelectorAll('[data-view]').forEach((b) => {
     const textoIcono = b.querySelector('i');
-    const etiqueta = b.dataset.view === 'agenda' ? 'Agenda' : b.dataset.view === 'properties' ? 'Inmuebles' : 'Equipo';
+    const etiqueta = ETIQUETAS_NAV[b.dataset.view] || '';
     b.textContent = '';
     if (textoIcono) b.appendChild(textoIcono);
     b.appendChild(document.createTextNode(etiqueta));
     // Mientras se confirma la configuración real de la empresa, se asume el valor
     // por defecto (Equipo solo para administradores) para evitar que se vea un
-    // instante y luego se oculte.
+    // instante y luego se oculte. Informes usa el mismo criterio que el botón
+    // "No disponible" de la ficha del inmueble (administrador/coordinador).
     if (b.dataset.view === 'team') b.hidden = contexto.rol !== 'administrador';
+    if (b.dataset.view === 'informes') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
   });
 
   state.view = 'agenda';
@@ -169,6 +174,11 @@ const state = {
   errorNoDisponible: '',
   reactivarId: null,
   errorReactivar: '',
+  informesEditandoAlertas: false,
+  informesArriendoInput: '',
+  informesVentaInput: '',
+  informesGuardandoAlertas: false,
+  informesErrorAlertas: '',
 };
 
 const TIPOS_CITA = {
@@ -183,13 +193,20 @@ async function cargarDominioPublico() {
   if (configPublicaCache !== null) return configPublicaCache;
   const { data } = await supabase
     .from('agenda_configuracion')
-    .select('dominio_publico, plantilla_enlace_inmueble, formato_hora, equipo_visible_roles')
+    .select('dominio_publico, plantilla_enlace_inmueble, formato_hora, equipo_visible_roles, dias_alerta_sin_citas_arriendo, dias_alerta_sin_citas_venta')
     .eq('empresa_id', contexto.empresaId)
     .maybeSingle();
   configPublicaCache = {
     dominioPublico: data?.dominio_publico || 'citas.patrimonios.co',
     plantillaEnlaceInmueble: data?.plantilla_enlace_inmueble || '',
     formatoHora: data?.formato_hora === '24h' ? '24h' : '12h',
+    // Umbral (en días sin citas de cliente) que el panel de Informes usa para marcar
+    // un inmueble como "requiere atención". Mientras no se configure, 30 días para
+    // arriendo y 45 para venta son un punto de partida razonable, no una regla fija.
+    diasAlertaArriendo: data?.dias_alerta_sin_citas_arriendo ?? 30,
+    diasAlertaVenta: data?.dias_alerta_sin_citas_venta ?? 45,
+    diasAlertaArriendoConfigurado: data?.dias_alerta_sin_citas_arriendo ?? null,
+    diasAlertaVentaConfigurado: data?.dias_alerta_sin_citas_venta ?? null,
     equipoVisibleRoles: Array.isArray(data?.equipo_visible_roles) && data.equipo_visible_roles.length
       ? data.equipo_visible_roles
       : ['administrador'],
@@ -370,6 +387,7 @@ async function render() {
     else if (state.view === 'interna') await renderInterna();
     else if (state.view === 'properties') await renderInmuebles();
     else if (state.view === 'team') await renderEquipo();
+    else if (state.view === 'informes') await renderInformes();
     else if (state.view === 'reserva') await renderReserva();
     else if (state.view === 'exito') renderExito();
   } catch (error) {
@@ -791,6 +809,288 @@ function renderExito() {
     <button class="v-btn v-primary v-full" data-iragenda>Ver en la agenda ${icon('arrow-right')}</button></section>`;
 }
 
+// ---------------------------------------------------------------------------
+// Gráficos del panel de Informes, dibujados a mano en SVG (el proyecto no usa
+// ninguna librería de gráficos). Los colores reutilizan las variables de
+// estado que ya existen en agenda.css (--v-blue/--v-green/--v-red/--v-amber),
+// así que el significado es el mismo en toda la aplicación y funciona igual
+// en modo claro y oscuro. Cada barra/segmento lleva su etiqueta y su valor en
+// texto — la identidad nunca depende solo del color.
+// ---------------------------------------------------------------------------
+function graficoBarras(datos, titulo) {
+  const max = Math.max(1, ...datos.map((d) => d.valor));
+  const filaAlto = 34;
+  const totalAlto = datos.length * filaAlto;
+  const filas = datos
+    .map((d, i) => {
+      const y = i * filaAlto;
+      const ancho = Math.max(1.5, (d.valor / max) * 100);
+      return `<g>
+          <text x="0" y="${y + 13}" font-size="12.5" fill="var(--v-muted)">${escape(d.etiqueta)}</text>
+          <text x="320" y="${y + 13}" font-size="12.5" font-weight="700" fill="var(--v-text)" text-anchor="end">${d.valor}</text>
+          <rect x="0" y="${y + 18}" width="320" height="10" rx="5" fill="var(--v-line)"></rect>
+          <rect x="0" y="${y + 18}" width="${(ancho * 3.2).toFixed(1)}" height="10" rx="5" fill="${d.color}"></rect>
+        </g>`;
+    })
+    .join('');
+  return `<svg viewBox="0 0 320 ${totalAlto}" width="100%" height="${totalAlto}" role="img" aria-label="${escape(titulo || 'Gráfico de barras')}">${filas}</svg>`;
+}
+
+function graficoDona(segmentos, titulo) {
+  const total = segmentos.reduce((s, d) => s + d.valor, 0) || 1;
+  const r = 54;
+  const c = 2 * Math.PI * r;
+  let acumulado = 0;
+  const circulos = segmentos
+    .filter((s) => s.valor > 0)
+    .map((s) => {
+      const largo = (s.valor / total) * c;
+      const offset = c - acumulado;
+      acumulado += largo;
+      return `<circle cx="80" cy="80" r="${r}" fill="none" stroke="${s.color}" stroke-width="24" stroke-dasharray="${largo.toFixed(1)} ${(c - largo).toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" transform="rotate(-90 80 80)"></circle>`;
+    })
+    .join('');
+  const leyenda = segmentos
+    .map(
+      (s) =>
+        `<span style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--v-muted)"><span style="width:10px;height:10px;border-radius:50%;background:${s.color};display:inline-block;flex:none"></span>${escape(s.etiqueta)}: <strong style="color:var(--v-text)">${s.valor}</strong> <span>(${Math.round((s.valor / total) * 100)}%)</span></span>`,
+    )
+    .join('');
+  return `<div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap"><svg viewBox="0 0 160 160" width="140" height="140" role="img" aria-label="${escape(titulo || 'Gráfico circular')}" style="flex:none">
+      <circle cx="80" cy="80" r="${r}" fill="none" stroke="var(--v-line)" stroke-width="24"></circle>
+      ${circulos}
+      <text x="80" y="76" text-anchor="middle" font-size="20" font-weight="700" fill="var(--v-text)">${total}</text>
+      <text x="80" y="94" text-anchor="middle" font-size="10.5" fill="var(--v-muted)">total</text>
+    </svg><div style="display:flex;flex-direction:column;gap:8px">${leyenda}</div></div>`;
+}
+
+function diasDesdeISO(fechaISO) {
+  const hoy = hoyISO();
+  return Math.round((new Date(hoy + 'T00:00:00Z') - new Date(fechaISO + 'T00:00:00Z')) / 86400000);
+}
+
+function filaAtencion(x) {
+  const inm = x.inmueble;
+  const ultima = x.ultimaFecha ? `hace ${x.dias} día${x.dias === 1 ? '' : 's'} (${dateLabel(x.ultimaFecha)})` : 'nunca ha tenido una cita';
+  return `<tr>
+    <td style="padding:9px 10px;font-size:14px;white-space:nowrap">#${inm.numero_inmueble}</td>
+    <td style="padding:9px 10px;font-size:14px">${escape(inm.direccion)}<div class="v-muted" style="font-size:12.5px">${escape(inm.ciudad)}${inm.barrio ? ' · ' + escape(inm.barrio) : ''}</div></td>
+    <td style="padding:9px 10px;font-size:14px;white-space:nowrap">${escape(inm.tipo_oferta)}</td>
+    <td style="padding:9px 10px;font-size:14px;white-space:nowrap">${x.citas}</td>
+    <td style="padding:9px 10px;font-size:13.5px;color:#B3261E">${ultima}</td>
+    <td style="padding:9px 10px"><a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver</a></td>
+  </tr>`;
+}
+
+function filaTablaInmueble(x) {
+  const inm = x.inmueble;
+  return `<tr>
+    <td style="padding:8px 10px;font-size:13.5px;white-space:nowrap">#${inm.numero_inmueble}</td>
+    <td style="padding:8px 10px;font-size:13.5px">${escape(inm.direccion)}<div class="v-muted" style="font-size:12px">${escape(inm.ciudad)}${inm.barrio ? ' · ' + escape(inm.barrio) : ''}</div></td>
+    <td style="padding:8px 10px;font-size:13.5px;white-space:nowrap">${escape(inm.tipo_oferta)}</td>
+    <td style="padding:8px 10px;font-size:13.5px;text-align:center">${x.citas}</td>
+    <td style="padding:8px 10px;font-size:13.5px;text-align:center">${x.citas}</td>
+    <td style="padding:8px 10px;font-size:13px;white-space:nowrap">${x.ultimaFecha ? dateLabel(x.ultimaFecha) : '—'}</td>
+  </tr>`;
+}
+
+async function renderInformes() {
+  main().innerHTML = '<p class="v-muted">Cargando informes…</p>';
+  const puedeEditarAlertas = contexto.rol === 'administrador';
+
+  const [citasR, correosR, propietariosR, inmuebles, asesores] = await Promise.all([
+    supabase.from('agenda_citas').select('estado, motivo_cancelacion, tipo_cita, inmueble_id, fecha').eq('empresa_id', contexto.empresaId),
+    supabase.from('agenda_correos_log').select('destinatario_tipo, estado').eq('empresa_id', contexto.empresaId),
+    supabase.from('agenda_propietarios').select('id', { count: 'exact', head: true }).eq('empresa_id', contexto.empresaId),
+    cargarTodosInmuebles(),
+    cargarAsesores(),
+  ]);
+  await cargarDominioPublico();
+
+  const citas = citasR.data || [];
+  const correos = correosR.data || [];
+  const totalPropietarios = propietariosR.count || 0;
+
+  const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
+
+  const citasPorEstado = {};
+  for (const c of citas) citasPorEstado[c.estado] = (citasPorEstado[c.estado] || 0) + 1;
+  const citasCanceladas = citas.filter((c) => c.estado === 'cancelada').length;
+  const citasSinMotivo = citas.filter((c) => c.estado === 'cancelada' && !c.motivo_cancelacion).length;
+
+  const totalInmuebles = inmuebles.length;
+  const disponibles = inmuebles.filter((i) => i.disponible && !i.no_disponible_manual).length;
+  const noDisponiblesManual = inmuebles.filter((i) => i.no_disponible_manual).length;
+  const noDisponiblesSync = inmuebles.filter((i) => !i.disponible && !i.no_disponible_manual).length;
+  const motivosManual = {};
+  for (const i of inmuebles) {
+    if (i.no_disponible_manual) {
+      const m = i.no_disponible_motivo || 'otro';
+      motivosManual[m] = (motivosManual[m] || 0) + 1;
+    }
+  }
+
+  const conHabitaciones = inmuebles.filter((i) => i.habitaciones != null).length;
+  const conCoordenadas = inmuebles.filter((i) => i.latitud != null && i.longitud != null).length;
+  const conPrecio = inmuebles.filter((i) => (i.valor_canon != null && i.valor_canon > 0) || (i.valor_venta != null && i.valor_venta > 0)).length;
+
+  const porCiudadTipo = {};
+  for (const i of inmuebles) {
+    const clave = `${i.ciudad || 'Sin ciudad'} · ${i.tipo_oferta || 'Sin tipo'}`;
+    porCiudadTipo[clave] = (porCiudadTipo[clave] || 0) + 1;
+  }
+  const filasCiudadTipo = Object.entries(porCiudadTipo)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  const correosPorTipoEstado = {};
+  for (const c of correos) {
+    const clave = c.destinatario_tipo || 'desconocido';
+    correosPorTipoEstado[clave] = correosPorTipoEstado[clave] || { enviado: 0, fallido: 0, omitido: 0 };
+    correosPorTipoEstado[clave][c.estado] = (correosPorTipoEstado[clave][c.estado] || 0) + 1;
+  }
+
+  const asesoresActivos = asesores.filter((a) => a.activo).length;
+  const asesoresPlanta = asesores.filter((a) => a.activo && a.tipo_vinculacion === 'planta').length;
+  const asesoresFreelance = asesores.filter((a) => a.activo && a.tipo_vinculacion === 'freelance').length;
+
+  // --- Citas de cliente por inmueble: base para "atención", "sin citas" y la
+  // tabla inmueble por inmueble. Solo cuentan visitas de cliente (no
+  // inventarios/inspecciones/captaciones internas).
+  const citasCliente = citas.filter((c) => c.tipo_cita === 'visita_cliente' && c.inmueble_id);
+  const porInmueble = new Map();
+  for (const c of citasCliente) {
+    const fila = porInmueble.get(c.inmueble_id) || { total: 0, ultimaFecha: null };
+    fila.total += 1;
+    if (!fila.ultimaFecha || c.fecha > fila.ultimaFecha) fila.ultimaFecha = c.fecha;
+    porInmueble.set(c.inmueble_id, fila);
+  }
+
+  const diasAlertaArriendo = configPublicaCache?.diasAlertaArriendo ?? 30;
+  const diasAlertaVenta = configPublicaCache?.diasAlertaVenta ?? 45;
+
+  // Solo entran en "requiere atención" los inmuebles que hoy siguen en
+  // inventario activo — uno que ya se arrendó/vendió (no_disponible_manual)
+  // no necesita más citas.
+  const inmueblesActivos = inmuebles.filter((i) => !i.no_disponible_manual);
+  const conAtencion = inmueblesActivos
+    .map((i) => {
+      const info = porInmueble.get(i.id);
+      const umbral = i.tipo_oferta === 'Venta' ? diasAlertaVenta : diasAlertaArriendo;
+      const dias = info?.ultimaFecha ? diasDesdeISO(info.ultimaFecha) : null;
+      const requiereAtencion = !info || dias === null || dias >= umbral;
+      return { inmueble: i, citas: info?.total || 0, ultimaFecha: info?.ultimaFecha || null, dias, umbral, requiereAtencion };
+    })
+    .filter((x) => x.requiereAtencion)
+    .sort((a, b) => (b.dias ?? 999999) - (a.dias ?? 999999));
+
+  const sinCitasNunca = conAtencion.filter((x) => x.citas === 0);
+  const LIMITE_ATENCION = 40;
+
+  const tablaInmuebles = inmuebles
+    .map((i) => ({ inmueble: i, citas: porInmueble.get(i.id)?.total || 0, ultimaFecha: porInmueble.get(i.id)?.ultimaFecha || null }))
+    .filter((x) => x.citas > 0)
+    .sort((a, b) => b.citas - a.citas);
+  const LIMITE_TABLA = 50;
+
+  const graficoEstados = graficoBarras(
+    [
+      { etiqueta: 'Confirmadas', valor: citasPorEstado.confirmada || 0, color: 'var(--v-blue)' },
+      { etiqueta: 'Completadas', valor: citasPorEstado.completada || 0, color: 'var(--v-green)' },
+      { etiqueta: 'Canceladas', valor: citasCanceladas, color: 'var(--v-red)' },
+    ],
+    'Citas por estado',
+  );
+
+  const donaInventario = graficoDona(
+    [
+      { etiqueta: 'Disponibles', valor: disponibles, color: 'var(--v-green)' },
+      { etiqueta: 'No disponibles (sincronización)', valor: noDisponiblesSync, color: 'var(--v-amber)' },
+      { etiqueta: 'Marcados manualmente', valor: noDisponiblesManual, color: 'var(--v-red)' },
+    ],
+    'Disponibilidad del inventario',
+  );
+
+  const graficoCiudades = filasCiudadTipo.length
+    ? graficoBarras(
+        filasCiudadTipo.map(([clave, n]) => ({ etiqueta: clave, valor: n, color: 'var(--v-blue)' })),
+        'Inventario por ciudad y tipo de oferta',
+      )
+    : '';
+
+  const formAlertas = state.informesEditandoAlertas
+    ? `<form id="v-alertas-form" style="margin-top:10px;padding:14px;border:1px solid var(--v-line);border-radius:12px;background:var(--v-tint)">
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <label class="v-field" style="flex:1;min-width:200px">Días sin citas para alertar (Arriendo)<input type="number" min="1" step="1" class="v-input" id="v-alerta-arriendo" value="${diasAlertaArriendo}"></label>
+          <label class="v-field" style="flex:1;min-width:200px">Días sin citas para alertar (Venta)<input type="number" min="1" step="1" class="v-input" id="v-alerta-venta" value="${diasAlertaVenta}"></label>
+        </div>
+        <div id="v-alertas-error" class="v-error" role="alert">${escape(state.informesErrorAlertas)}</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="v-btn v-primary" type="submit" ${state.informesGuardandoAlertas ? 'disabled' : ''}>${icon('check')}${state.informesGuardandoAlertas ? 'Guardando…' : 'Guardar'}</button>
+          <button class="v-btn v-quiet" type="button" data-cerrar-alertas ${state.informesGuardandoAlertas ? 'disabled' : ''}>Cancelar</button>
+        </div>
+      </form>`
+    : `<p class="v-muted" style="margin-top:6px">Un inmueble disponible sin citas de cliente en los últimos <strong>${diasAlertaArriendo} días (Arriendo)</strong> o <strong>${diasAlertaVenta} días (Venta)</strong> aparece abajo como "requiere atención".${puedeEditarAlertas ? ` <button type="button" class="v-link" data-editar-alertas style="display:inline">Cambiar</button>` : ''}</p>`;
+
+  main().innerHTML = `<div class="v-top"><div><div class="v-eyebrow">Monitoreo operativo</div><h2>Informes</h2></div></div>
+    <p class="v-note">Estado actual de los datos capturados por Agenda de citas. Con el volumen de hoy esto es monitoreo operativo — todavía no hay suficiente historia para tendencias o comparativos sólidos por asesor o por zona.</p>
+
+    <h3 style="margin-top:8px">Inmuebles que requieren atención</h3>
+    ${formAlertas}
+    ${
+      conAtencion.length === 0
+        ? `<div class="v-empty" style="margin-top:12px">${icon('check')}<h3>Todo al día</h3><p style="margin-top:8px">Ningún inmueble disponible supera el umbral configurado sin citas.</p></div>`
+        : `<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;min-width:640px">
+            <thead><tr style="text-align:left;border-bottom:1px solid var(--v-line)"><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">#</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Inmueble</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Oferta</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Citas</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Última cita</th><th></th></tr></thead>
+            <tbody>${conAtencion.slice(0, LIMITE_ATENCION).map(filaAtencion).join('')}</tbody>
+          </table></div>
+          ${conAtencion.length > LIMITE_ATENCION ? `<p class="v-muted" style="font-size:13px;margin-top:6px">Mostrando los ${LIMITE_ATENCION} más urgentes de ${conAtencion.length}.</p>` : ''}
+          <p class="v-muted" style="font-size:13.5px;margin-top:10px">${sinCitasNunca.length} de esos ${conAtencion.length} nunca han tenido una cita de cliente.</p>`
+    }
+
+    <h3 style="margin-top:28px">Citas</h3>
+    <div class="v-statbar"><div class="v-stat"><strong>${citas.length}</strong><span>Citas totales registradas</span></div><div class="v-stat"><strong>${citasPorEstado.confirmada || 0}</strong><span>Confirmadas</span></div><div class="v-stat"><strong>${citasCanceladas}</strong><span>Canceladas${citasCanceladas ? ` · ${citasSinMotivo} sin motivo` : ''}</span></div><div class="v-stat"><strong>${citasPorEstado.completada || 0}</strong><span>Completadas</span></div></div>
+    <div style="margin-top:14px;max-width:420px">${graficoEstados}</div>
+
+    <h3 style="margin-top:28px">Inventario de inmuebles</h3>
+    <div class="v-statbar"><div class="v-stat"><strong>${totalInmuebles}</strong><span>Inmuebles totales</span></div><div class="v-stat"><strong>${disponibles}</strong><span>Disponibles</span></div><div class="v-stat"><strong>${totalInmuebles - disponibles}</strong><span>No disponibles</span></div><div class="v-stat"><strong>${noDisponiblesManual}</strong><span>Marcados manualmente</span></div></div>
+    <div style="margin-top:14px">${donaInventario}</div>
+    ${noDisponiblesManual ? `<ul style="list-style:none;padding:0;margin-top:14px;display:flex;flex-direction:column;gap:6px">${Object.entries(motivosManual).map(([m, n]) => `<li style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid var(--v-line)"><span>${escape(MOTIVOS_NO_DISPONIBLE[m] || m)}</span><span>${n}</span></li>`).join('')}</ul>` : ''}
+
+    <h3 style="margin-top:28px">Inmueble por inmueble (con alguna cita)</h3>
+    <p class="v-muted" style="font-size:13.5px">"Interesados" hoy se aproxima con el número de citas agendadas — es la única señal de interés que vive en Agenda de citas. El bot de WhatsApp ya registra más de 4.000 mensajes de clientes con pistas de qué buscan y en qué zonas, y los correos a propietarios podrían registrar más adelante quién respondió como interesado; conectar esas fuentes es un proyecto de integración aparte, no algo que esta vista pueda sumar todavía con una sola consulta.</p>
+    ${
+      tablaInmuebles.length === 0
+        ? `<p class="v-muted">Todavía no hay citas de cliente registradas.</p>`
+        : `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:560px">
+            <thead><tr style="text-align:left;border-bottom:1px solid var(--v-line)"><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">#</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Inmueble</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Oferta</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted);text-align:center">Citas</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted);text-align:center">Interesados (aprox.)</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Última cita</th></tr></thead>
+            <tbody>${tablaInmuebles.slice(0, LIMITE_TABLA).map(filaTablaInmueble).join('')}</tbody>
+          </table></div>
+          ${tablaInmuebles.length > LIMITE_TABLA ? `<p class="v-muted" style="font-size:13px;margin-top:6px">Mostrando los ${LIMITE_TABLA} con más citas, de ${tablaInmuebles.length} inmuebles con al menos una.</p>` : ''}`
+    }
+
+    <h3 style="margin-top:28px">Completitud de la ficha</h3>
+    <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:6px">
+      <li style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid var(--v-line)"><span>Con precio cargado</span><span>${conPrecio} de ${totalInmuebles} (${pct(conPrecio, totalInmuebles)}%)</span></li>
+      <li style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid var(--v-line)"><span>Con coordenadas</span><span>${conCoordenadas} de ${totalInmuebles} (${pct(conCoordenadas, totalInmuebles)}%)</span></li>
+      <li style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid var(--v-line)"><span>Con número de habitaciones</span><span>${conHabitaciones} de ${totalInmuebles} (${pct(conHabitaciones, totalInmuebles)}%)</span></li>
+    </ul>
+
+    <h3 style="margin-top:28px">Inventario por ciudad y tipo de oferta</h3>
+    ${graficoCiudades || '<p class="v-muted">Sin datos.</p>'}
+
+    <h3 style="margin-top:28px">Bitácora de correos</h3>
+    <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:6px">${
+      Object.keys(correosPorTipoEstado).length
+        ? Object.entries(correosPorTipoEstado).map(([tipo, e]) => `<li style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid var(--v-line)"><span>${escape(tipo === 'cliente' ? 'Cliente' : tipo === 'propietario' ? 'Propietario' : tipo)}</span><span>✅ ${e.enviado || 0} · ❌ ${e.fallido || 0} · ⏭️ ${e.omitido || 0}</span></li>`).join('')
+        : '<li class="v-muted">Todavía no se ha registrado ningún correo.</li>'
+    }</ul>
+
+    <h3 style="margin-top:28px">Equipo y propietarios</h3>
+    <div class="v-statbar"><div class="v-stat"><strong>${asesoresActivos}</strong><span>Asesores activos (${asesoresPlanta} planta, ${asesoresFreelance} freelance)</span></div><div class="v-stat"><strong>${totalPropietarios}</strong><span>Propietarios registrados</span></div></div>
+    `;
+}
+
 function adjuntarEventos(rootEl) {
   rootEl.addEventListener('input', (e) => {
     if (e.target.id === 'v-search') {
@@ -866,7 +1166,7 @@ function adjuntarEventos(rootEl) {
   });
 
   rootEl.addEventListener('click', async (e) => {
-    if (state.view !== 'agenda' && state.view !== 'interna' && state.view !== 'properties' && state.view !== 'team' && state.view !== 'reserva' && state.view !== 'exito') return;
+    if (state.view !== 'agenda' && state.view !== 'interna' && state.view !== 'properties' && state.view !== 'team' && state.view !== 'informes' && state.view !== 'reserva' && state.view !== 'exito') return;
     const b = e.target.closest('button');
     if (!b || b.disabled || !rootEl.contains(b)) return;
 
@@ -1000,6 +1300,18 @@ function adjuntarEventos(rootEl) {
         toast('Inmueble reactivado. Vuelve a aparecer en el inventario disponible.');
         renderInmuebles();
       })();
+      return;
+    }
+    if (b.hasAttribute('data-editar-alertas')) {
+      state.informesEditandoAlertas = true;
+      state.informesErrorAlertas = '';
+      renderInformes();
+      return;
+    }
+    if (b.hasAttribute('data-cerrar-alertas')) {
+      state.informesEditandoAlertas = false;
+      state.informesErrorAlertas = '';
+      renderInformes();
       return;
     }
     if (b.dataset.restriccion) {
@@ -1180,6 +1492,36 @@ function adjuntarEventos(rootEl) {
       state.fecha = it.fecha;
       toast('Actividad guardada en la agenda.');
       setView('agenda');
+      return;
+    }
+    if (e.target.id === 'v-alertas-form') {
+      e.preventDefault();
+      const arriendoInput = e.target.querySelector('#v-alerta-arriendo');
+      const ventaInput = e.target.querySelector('#v-alerta-venta');
+      const diasArriendo = Number(arriendoInput.value);
+      const diasVenta = Number(ventaInput.value);
+      if (!Number.isInteger(diasArriendo) || diasArriendo < 1 || !Number.isInteger(diasVenta) || diasVenta < 1) {
+        state.informesErrorAlertas = 'Escribe números enteros mayores a 0 en ambos campos.';
+        renderInformes();
+        return;
+      }
+      state.informesGuardandoAlertas = true;
+      state.informesErrorAlertas = '';
+      renderInformes();
+      const { error } = await supabase
+        .from('agenda_configuracion')
+        .update({ dias_alerta_sin_citas_arriendo: diasArriendo, dias_alerta_sin_citas_venta: diasVenta })
+        .eq('empresa_id', contexto.empresaId);
+      state.informesGuardandoAlertas = false;
+      if (error) {
+        state.informesErrorAlertas = mensajeAmigable(error, 'No se pudo guardar la configuración de alertas.');
+        renderInformes();
+        return;
+      }
+      invalidarDominioPublico();
+      state.informesEditandoAlertas = false;
+      toast('Umbrales de alerta actualizados.');
+      renderInformes();
       return;
     }
     if (e.target.id === 'v-nodisponible-form') {
