@@ -169,6 +169,8 @@ const state = {
   errorInterna: '',
   restriccionId: null,
   errorRestriccion: '',
+  ciencuadrasId: null,
+  errorCiencuadras: '',
   noDisponibleId: null,
   noDisponibleEnviando: false,
   errorNoDisponible: '',
@@ -525,6 +527,16 @@ function restriccionEditor(inm) {
   </form>`;
 }
 
+function ciencuadrasEditor(inm) {
+  return `<form id="v-ciencuadras-form" data-inmueble="${inm.id}" style="margin:10px 0 16px;padding:14px;border:1px solid var(--v-line);border-radius:12px;background:var(--v-tint)">
+    <div class="v-sectiontitle" style="margin-bottom:8px">${icon('external-link')}Enlace de Ciencuadras para #${inm.numero_inmueble}</div>
+    <p class="v-muted" style="font-size:14px;margin-bottom:10px">Ciencuadras no se puede enlazar automáticamente, así que pega aquí la URL completa del anuncio en ese portal. Déjalo vacío para quitar el enlace.</p>
+    <label class="v-field">URL en Ciencuadras<input type="url" class="v-input" name="enlace" placeholder="https://www.ciencuadras.com/inmueble/..." value="${escape(inm.enlace_ciencuadras || '')}"></label>
+    <div id="v-ciencuadras-error" class="v-error" role="alert">${escape(state.errorCiencuadras)}</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="v-btn v-primary" type="submit">${icon('check')}Guardar</button><button class="v-btn v-quiet" type="button" data-cerrar-ciencuadras>Cancelar</button></div>
+  </form>`;
+}
+
 const MOTIVOS_NO_DISPONIBLE = {
   arrendado: 'Se arrendó',
   vendido: 'Se vendió',
@@ -547,7 +559,9 @@ function inmuebleCard(inm) {
   return `<article class="v-property"><div class="v-propertyhead"><div class="v-building">${icon(inm.tipo_inmueble === 'Casa' ? 'house' : inm.tipo_inmueble === 'Local' ? 'store' : 'building-2')}</div><div style="min-width:0"><div class="v-muted" style="font-size:13px;margin-bottom:3px">#${inm.numero_inmueble} · ${escape(inm.tipo_oferta)}</div><h3>${escape(inm.direccion)}</h3><div class="v-details">${escape(inm.ciudad)}${inm.barrio ? ' · ' + escape(inm.barrio) : ''}${inm.habitaciones ? ' · ' + inm.habitaciones + ' hab.' : ''}</div></div></div>
     <div class="v-between" style="margin-bottom:12px"><div class="v-price">${inm.tipo_oferta === 'Arriendo' ? (inm.valor_canon ? money.format(inm.valor_canon) + '<small> / mes</small>' : 'Sin valor de canon') : inm.valor_venta ? money.format(inm.valor_venta) : 'Sin valor de venta'}</div></div>
     <div class="v-muted" style="font-size:14px;margin-bottom:10px">${icon('clock-3')} ${escape(restriccionResumen(inm))} <button type="button" class="v-link" data-restriccion="${inm.id}" style="margin-left:4px">Editar</button></div>
+    ${contexto.rol === 'administrador' || contexto.rol === 'coordinador' ? `<div class="v-muted" style="font-size:14px;margin-bottom:10px">${icon('external-link')} Ciencuadras: ${inm.enlace_ciencuadras ? 'enlazado' : 'sin enlace'} <button type="button" class="v-link" data-ciencuadras="${inm.id}" style="margin-left:4px">Editar</button></div>` : ''}
     ${state.restriccionId === inm.id ? restriccionEditor(inm) : ''}
+    ${state.ciencuadrasId === inm.id ? ciencuadrasEditor(inm) : ''}
     ${state.noDisponibleId === inm.id ? noDisponibleEditor(inm) : ''}
     <div class="v-cardfoot"><a class="v-btn v-quiet" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha completa</a><span class="v-muted" style="font-size:14px">${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor asignado en Sedi'}</span>${contexto.rol === 'administrador' || contexto.rol === 'coordinador' ? `<button type="button" class="v-btn v-quiet" data-nodisponible="${inm.id}" style="color:#B3261E">${icon('ban')}No disponible</button>` : ''}<button class="v-btn v-primary" data-reservar="${inm.id}">Ver horarios ${icon('arrow-up-right')}</button></div></article>`;
 }
@@ -1352,6 +1366,18 @@ function adjuntarEventos(rootEl) {
       renderInmuebles();
       return;
     }
+    if (b.dataset.ciencuadras) {
+      state.ciencuadrasId = state.ciencuadrasId === b.dataset.ciencuadras ? null : b.dataset.ciencuadras;
+      state.errorCiencuadras = '';
+      renderInmuebles();
+      return;
+    }
+    if (b.hasAttribute('data-cerrar-ciencuadras')) {
+      state.ciencuadrasId = null;
+      state.errorCiencuadras = '';
+      renderInmuebles();
+      return;
+    }
     if (b.dataset.nodisponible) {
       state.noDisponibleId = state.noDisponibleId === b.dataset.nodisponible ? null : b.dataset.nodisponible;
       state.errorNoDisponible = '';
@@ -1640,6 +1666,37 @@ function adjuntarEventos(rootEl) {
       state.restriccionId = null;
       state.errorRestriccion = '';
       toast('Restricción de horario guardada.');
+      renderInmuebles();
+      return;
+    }
+    if (e.target.id === 'v-ciencuadras-form') {
+      e.preventDefault();
+      const inmuebleId = e.target.dataset.inmueble;
+      const enlace = e.target.querySelector('[name=enlace]').value.trim();
+      if (enlace && !/^https?:\/\//i.test(enlace)) {
+        state.errorCiencuadras = 'La URL debe empezar con http:// o https://';
+        renderInmuebles();
+        return;
+      }
+      const boton = e.target.querySelector('button[type=submit]');
+      boton.disabled = true;
+      const { error } = await supabase.rpc('agenda_actualizar_enlace_ciencuadras', {
+        p_inmueble_id: inmuebleId,
+        p_enlace: enlace || null,
+      });
+      boton.disabled = false;
+      if (error) {
+        state.errorCiencuadras = 'No se pudo guardar: ' + error.message;
+        renderInmuebles();
+        return;
+      }
+      [inmueblesCache, todosInmueblesCache].forEach((cache) => {
+        const fila = cache?.find((i) => i.id === inmuebleId);
+        if (fila) fila.enlace_ciencuadras = enlace || null;
+      });
+      state.ciencuadrasId = null;
+      state.errorCiencuadras = '';
+      toast('Enlace de Ciencuadras guardado.');
       renderInmuebles();
       return;
     }

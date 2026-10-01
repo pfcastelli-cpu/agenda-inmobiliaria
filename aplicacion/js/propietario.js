@@ -92,6 +92,7 @@ function tarjetaInmueble() {
   const d = state.datos;
   const ubicacion = [d.barrio, d.ciudad].filter(Boolean).join(', ');
   const valor = d.tipo_oferta === 'Venta' ? formatoMoneda(d.valor_venta) : formatoMoneda(d.valor_canon);
+  const admon = d.tiene_administracion ? formatoMoneda(d.valor_administracion) : null;
   return `
     <div class="pu-card">
       <div style="font-size:13px;color:var(--pu-muted)">Inmueble ${d.numero_inmueble}</div>
@@ -102,6 +103,29 @@ function tarjetaInmueble() {
         ${d.asesor_comercializacion ? `<span class="pu-badge">Asesor: ${escapeHtml(d.asesor_comercializacion)}</span>` : ''}
       </div>
       ${valor ? `<div class="pu-precio">${valor}</div>` : ''}
+      ${admon ? `<div style="font-size:13.5px;color:var(--pu-muted);margin:2px 0 4px">Administración: ${admon}${d.administracion_incluida ? ' (incluida en el canon)' : ''}</div>` : ''}
+    </div>
+  `;
+}
+
+function tarjetaPublicacion() {
+  const d = state.datos;
+  const enlaces = [];
+  if (d.codigo_metrocuadrado) {
+    enlaces.push({ nombre: 'Metrocuadrado', url: `https://www.metrocuadrado.com/inmueble/i/${encodeURIComponent(d.codigo_metrocuadrado)}` });
+  }
+  if (d.codigo_fincaraiz) {
+    enlaces.push({ nombre: 'Finca Raíz', url: `https://www.fincaraiz.com.co/i/${encodeURIComponent(d.codigo_fincaraiz)}` });
+  }
+  if (d.enlace_ciencuadras) {
+    enlaces.push({ nombre: 'Ciencuadras', url: d.enlace_ciencuadras });
+  }
+  if (!d.enlace_propio && !enlaces.length) return '';
+  return `
+    <h3>Cómo está publicado</h3>
+    <div class="pu-card">
+      ${d.enlace_propio ? `<a class="pu-main" style="display:block;text-align:center;text-decoration:none;line-height:48px;margin-top:0" href="${escapeHtml(d.enlace_propio)}" target="_blank" rel="noopener">Ver en patrimonios.co</a>` : ''}
+      ${enlaces.map((e) => `<a class="pu-ver-inmueble" href="${escapeHtml(e.url)}" target="_blank" rel="noopener">Ver en ${escapeHtml(e.nombre)}</a>`).join('')}
     </div>
   `;
 }
@@ -189,6 +213,7 @@ function accionesSolicitud() {
 function vistaListo() {
   return `
     ${tarjetaInmueble()}
+    ${tarjetaPublicacion()}
     ${tarjetaActividad()}
     ${tarjetaOpiniones()}
     <div style="margin-top:28px">${accionesSolicitud()}</div>

@@ -82,6 +82,11 @@ function sincronizarInmuebles() {
     fincaRaiz: columna('Finca Raíz'),
     mercadoLibre: columna('Mercado Libre'),
     cienCuadras: columna('Cien Cuadras'),
+    tieneAdministracion: columna('Tiene Administración'),
+    admonIncluida: columna('Admon Incluida'),
+    valorAdmin1: columna('Valor Administración Fecha 1'),
+    valorAdmin2: columna('Valor Administración Fecha 2'),
+    valorAdmin3: columna('Valor Administración Fecha 3'),
   };
   Object.keys(idx).forEach(function (clave) {
     if (idx[clave] === -1) {
@@ -91,6 +96,7 @@ function sincronizarInmuebles() {
 
   const numeroOrNull = function (v) { return (v === '' || v === null || v === undefined) ? null : Number(v); };
   const textoSeguro = function (v) { return (v === null || v === undefined) ? '' : String(v).trim(); };
+  const esSi = function (v) { return /^s[ií]$/i.test(textoSeguro(v)); };
 
   // Algunas tarifas de comisión vienen como una etiqueta de Sedi, ej.
   // "COMISIÓN ESTANDAR (8%)" o "COMISIÓN PLATINUM (10,9%)" (con coma
@@ -154,6 +160,17 @@ function sincronizarInmuebles() {
       disponible: (
         /^(disponible|rentando)$/i.test(textoSeguro(fila[idx.estadoCrm])) && tienePortalActivo(fila)
       ),
+      codigo_metrocuadrado: textoSeguro(fila[idx.metroCuadrado]) || null,
+      codigo_fincaraiz: textoSeguro(fila[idx.fincaRaiz]) || null,
+      tiene_administracion: esSi(fila[idx.tieneAdministracion]),
+      administracion_incluida: esSi(fila[idx.admonIncluida]),
+      valor_administracion: (function () {
+        const v1 = numeroOrNull(fila[idx.valorAdmin1]);
+        const v2 = numeroOrNull(fila[idx.valorAdmin2]);
+        const v3 = numeroOrNull(fila[idx.valorAdmin3]);
+        if (v1 === null && v2 === null && v3 === null) { return null; }
+        return (v1 || 0) + (v2 || 0) + (v3 || 0);
+      })(),
       visto_en_ultima_sincronizacion: true,
       veces_no_visto: 0,
       sincronizado_en: new Date().toISOString(),
