@@ -878,7 +878,7 @@ function filaAtencion(x) {
     <td style="padding:9px 10px;font-size:14px;white-space:nowrap">${escape(inm.tipo_oferta)}</td>
     <td style="padding:9px 10px;font-size:14px;white-space:nowrap">${x.citas}</td>
     <td style="padding:9px 10px;font-size:13.5px;color:#B3261E">${ultima}</td>
-    <td style="padding:9px 10px"><a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver</a></td>
+    <td style="padding:9px 10px;white-space:nowrap"><a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver</a> <button type="button" class="v-link" data-enviar-informe="${inm.id}" style="display:inline">${icon('send')}Enviar informe</button></td>
   </tr>`;
 }
 
@@ -891,6 +891,7 @@ function filaTablaInmueble(x) {
     <td style="padding:8px 10px;font-size:13.5px;text-align:center">${x.citas}</td>
     <td style="padding:8px 10px;font-size:13.5px;text-align:center">${x.citas}</td>
     <td style="padding:8px 10px;font-size:13px;white-space:nowrap">${x.ultimaFecha ? dateLabel(x.ultimaFecha) : '—'}</td>
+    <td style="padding:8px 10px;white-space:nowrap"><button type="button" class="v-link" data-enviar-informe="${inm.id}" style="display:inline">${icon('send')}Enviar informe</button></td>
   </tr>`;
 }
 
@@ -1066,7 +1067,7 @@ async function renderInformes() {
       tablaInmuebles.length === 0
         ? `<p class="v-muted">Todavía no hay citas de cliente registradas.</p>`
         : `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:560px">
-            <thead><tr style="text-align:left;border-bottom:1px solid var(--v-line)"><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">#</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Inmueble</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Oferta</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted);text-align:center">Citas</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted);text-align:center">Interesados (aprox.)</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Última cita</th></tr></thead>
+            <thead><tr style="text-align:left;border-bottom:1px solid var(--v-line)"><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">#</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Inmueble</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Oferta</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted);text-align:center">Citas</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted);text-align:center">Interesados (aprox.)</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Última cita</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)"></th></tr></thead>
             <tbody>${tablaInmuebles.slice(0, LIMITE_TABLA).map(filaTablaInmueble).join('')}</tbody>
           </table></div>
           ${tablaInmuebles.length > LIMITE_TABLA ? `<p class="v-muted" style="font-size:13px;margin-top:6px">Mostrando los ${LIMITE_TABLA} con más citas, de ${tablaInmuebles.length} inmuebles con al menos una.</p>` : ''}`
@@ -1317,6 +1318,28 @@ function adjuntarEventos(rootEl) {
       renderInformes();
       return;
     }
+    if (b.dataset.enviarInforme) {
+      const inmuebleId = b.dataset.enviarInforme;
+      b.disabled = true;
+      const textoOriginal = b.innerHTML;
+      b.innerHTML = 'Enviando…';
+      try {
+        const { data, error } = await supabase.functions.invoke('enviar-informe-propietario', { body: { inmueble_id: inmuebleId } });
+        if (error) throw error;
+        if (data?.total_propietarios === 0) {
+          toast('Este inmueble no tiene propietarios con correo registrado.');
+        } else if (data?.enviados > 0) {
+          toast(`Informe enviado a ${data.enviados} de ${data.total_propietarios} propietario${data.total_propietarios === 1 ? '' : 's'}.`);
+        } else {
+          toast('No se pudo enviar el informe a ningún propietario. Revisa la bitácora de correos.');
+        }
+      } catch (err) {
+        toast('No se pudo enviar el informe: ' + (err?.message || 'error desconocido'));
+      }
+      b.disabled = false;
+      b.innerHTML = textoOriginal;
+      return;
+    }
     if (b.dataset.restriccion) {
       state.restriccionId = state.restriccionId === b.dataset.restriccion ? null : b.dataset.restriccion;
       state.errorRestriccion = '';
@@ -1364,11 +1387,16 @@ function adjuntarEventos(rootEl) {
     if (b.dataset.guardarrealizada) {
       const textarea = rootEl.querySelector('#v-feedback-texto');
       const comentario = textarea ? textarea.value.trim() : '';
+      const citaIdRealizada = b.dataset.guardarrealizada;
       b.disabled = true;
-      const { error } = await supabase.from('agenda_citas').update({ estado: 'completada', feedback_cliente: comentario || null }).eq('id', b.dataset.guardarrealizada);
+      const { error } = await supabase.from('agenda_citas').update({ estado: 'completada', feedback_cliente: comentario || null }).eq('id', citaIdRealizada);
       b.disabled = false;
       state.completarId = null;
       toast(error ? 'No se pudo guardar: ' + error.message : 'Marcada como realizada. El comentario queda guardado para el informe al propietario.');
+      if (!error) {
+        // Encuesta al cliente (no bloquea la confirmación visual, igual que enviar-correo-cita/enviar-correo-propietario).
+        supabase.functions.invoke('enviar-encuesta-cliente', { body: { cita_id: citaIdRealizada } }).catch(() => {});
+      }
       render();
       return;
     }

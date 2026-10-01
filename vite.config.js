@@ -12,6 +12,10 @@ function reescrituraInmuebles() {
       server.middlewares.use((req, res, next) => {
         if (req.url && /^\/inmuebles\/\d+/.test(req.url)) {
           req.url = '/reservar.html';
+        } else if (req.url && /^\/propietario\/[0-9a-f-]+/i.test(req.url)) {
+          req.url = '/propietario.html';
+        } else if (req.url && /^\/opinion\/[0-9a-f-]+/i.test(req.url)) {
+          req.url = '/opinion.html';
         }
         next();
       });
@@ -34,6 +38,8 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'aplicacion/index.html'),
         reservar: resolve(__dirname, 'aplicacion/reservar.html'),
+        propietario: resolve(__dirname, 'aplicacion/propietario.html'),
+        opinion: resolve(__dirname, 'aplicacion/opinion.html'),
       },
     },
   },

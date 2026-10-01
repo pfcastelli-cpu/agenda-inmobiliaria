@@ -168,3 +168,32 @@
   font-size: 12.5px;
   padding: 18px;
 }
+
+/* --- Informe de propietario / encuesta de opinión --- */
+#pub-app .pu-stars {
+  display: flex;
+  gap: 6px;
+  margin-top: 14px;
+}
+#pub-app .pu-star {
+  background: none;
+  border: none;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--pu-border);
+  cursor: pointer;
+  padding: 0;
+}
+#pub-app .pu-star.activa { color: #E6A817; }
+#pub-app textarea {
+  width: 100%;
+  min-height: 90px;
+  border: 1px solid var(--pu-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14.5px;
+  font-family: inherit;
+  background: var(--pu-card);
+  color: var(--pu-text);
+  resize: vertical;
+}

@@ -6,3 +6,13 @@
   from = "/inmuebles/*"
   to = "/reservar.html"
   status = 200
+
+[[redirects]]
+  from = "/propietario/*"
+  to = "/propietario.html"
+  status = 200
+
+[[redirects]]
+  from = "/opinion/*"
+  to = "/opinion.html"
+  status = 200
