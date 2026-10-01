@@ -970,9 +970,12 @@ async function renderInformes() {
   const diasAlertaVenta = configPublicaCache?.diasAlertaVenta ?? 45;
 
   // Solo entran en "requiere atención" los inmuebles que hoy siguen en
-  // inventario activo — uno que ya se arrendó/vendió (no_disponible_manual)
-  // no necesita más citas.
-  const inmueblesActivos = inmuebles.filter((i) => !i.no_disponible_manual);
+  // inventario activo y reservable — ni marcados manualmente no disponibles
+  // ni ya no disponibles según la sincronización con Sedi (arrendado/vendido
+  // por fuera de este sistema). Antes solo se excluía no_disponible_manual,
+  // así que un inmueble ya no disponible por sincronización seguía apareciendo
+  // como si necesitara atención.
+  const inmueblesActivos = inmuebles.filter((i) => i.disponible && !i.no_disponible_manual);
   const conAtencion = inmueblesActivos
     .map((i) => {
       const info = porInmueble.get(i.id);
@@ -987,7 +990,7 @@ async function renderInformes() {
   const sinCitasNunca = conAtencion.filter((x) => x.citas === 0);
   const LIMITE_ATENCION = 40;
 
-  const tablaInmuebles = inmuebles
+  const tablaInmuebles = inmueblesActivos
     .map((i) => ({ inmueble: i, citas: porInmueble.get(i.id)?.total || 0, ultimaFecha: porInmueble.get(i.id)?.ultimaFecha || null }))
     .filter((x) => x.citas > 0)
     .sort((a, b) => b.citas - a.citas);

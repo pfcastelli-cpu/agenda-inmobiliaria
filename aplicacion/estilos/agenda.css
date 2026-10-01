@@ -25,7 +25,7 @@
 #visita-app h2, #visita-app h3, #visita-app p { margin: 0; }
 #visita-app h2 { font-size: 28px; line-height: 1.2; font-weight: 650; letter-spacing: -.8px; }
 #visita-app h3 { font-size: 17px; font-weight: 600; line-height: 1.35; }
-#visita-app svg { width: 20px; height: 20px; flex-shrink: 0; }
+#visita-app svg[data-lucide] { width: 20px; height: 20px; flex-shrink: 0; }
 #visita-app .v-header {
   display: flex;
   align-items: center;
