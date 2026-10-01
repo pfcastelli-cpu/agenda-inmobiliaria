@@ -29,6 +29,50 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const TOLERANCIA_PRECIO = 0.2;
 const MAX_SIMILARES = 3;
 
+// Distancia aproximada en kilómetros entre dos coordenadas (fórmula de
+// Haversine), usada para ordenar los inmuebles similares por cercanía real en
+// vez de solo por "misma ciudad" (una ciudad como Bogotá es demasiado grande
+// para que eso sea suficiente).
+function distanciaKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Ordena los candidatos a "inmueble similar" priorizando, en orden: (1) los
+// que tienen coordenadas y están más cerca del inmueble original, (2) los
+// que están en el mismo barrio (cuando falta georreferenciación), y deja el
+// resto en el orden que ya traían (por precio, de la consulta SQL).
+function ordenarPorCercania(
+  candidatos: Array<Record<string, unknown>>,
+  original: Record<string, unknown>,
+): Array<Record<string, unknown>> {
+  const latO = original.latitud !== null && original.latitud !== undefined ? Number(original.latitud) : null;
+  const lonO = original.longitud !== null && original.longitud !== undefined ? Number(original.longitud) : null;
+  const conDistancia = candidatos.map((c, idx) => {
+    const lat = c.latitud !== null && c.latitud !== undefined ? Number(c.latitud) : null;
+    const lon = c.longitud !== null && c.longitud !== undefined ? Number(c.longitud) : null;
+    let distancia: number | null = null;
+    if (latO !== null && lonO !== null && lat !== null && lon !== null && !Number.isNaN(lat) && !Number.isNaN(lon)) {
+      distancia = distanciaKm(latO, lonO, lat, lon);
+    }
+    const mismoBarrio = !!(original.barrio && c.barrio && original.barrio === c.barrio);
+    return { c, idx, distancia, mismoBarrio };
+  });
+  conDistancia.sort((a, b) => {
+    if (a.distancia !== null && b.distancia !== null) return a.distancia - b.distancia;
+    if (a.distancia !== null) return -1;
+    if (b.distancia !== null) return 1;
+    if (a.mismoBarrio !== b.mismoBarrio) return a.mismoBarrio ? -1 : 1;
+    return a.idx - b.idx;
+  });
+  return conDistancia.map((x) => x.c);
+}
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -70,7 +114,7 @@ function formatearHora(hora: string) {
 }
 
 const REGEX_UNIDAD_INTERNA =
-  /\b(AP|APTO|APT|APARTAMENTO|CS|CASA|IN|INTERIOR|PISO|T|TORRE|TO|BLOQUE|BQ|BL|OF|OFC|OFICINA|MZ|MANZANA|CONJ|CON|DP|CONS|CONSULTORIO|LC|LOCAL(ES)?|L)\s*\d+\b/gi;
+  /\b(AP|APTO|APT|APARTAMENTO|CS|CASA|IN|INT|INTERIOR|PISO|T|TORRE|TO|BLOQUE|BQ|BL|OF|OFC|OFICINA|MZ|MANZANA|CONJ|CON|DP|CONS|CONSULTORIO|LC|LOCAL(ES)?|L)\s*\d+\b/gi;
 
 function limpiarDireccion(direccion: string | null | undefined): string {
   if (!direccion) return '';
@@ -279,7 +323,7 @@ Deno.serve(async (req) => {
 
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('empresa_id, numero_inmueble, direccion, ciudad, barrio, tipo_oferta, valor_canon, valor_venta')
+    .select('empresa_id, numero_inmueble, direccion, ciudad, barrio, tipo_oferta, tipo_inmueble, valor_canon, valor_venta, latitud, longitud')
     .eq('id', inmuebleId)
     .maybeSingle();
 
@@ -299,8 +343,13 @@ Deno.serve(async (req) => {
   const modoPruebas = config?.correo_modo_pruebas !== false;
   const puedeEnviar = !!(config?.correo_smtp_host && config?.correo_smtp_password_secret_id);
 
-  // Inmuebles similares: mismo tipo de oferta + misma ciudad + precio dentro
-  // de un ±20% (ver TOLERANCIA_PRECIO), todavía disponibles de verdad.
+  // Inmuebles similares: mismo tipo de oferta + mismo tipo de inmueble (antes
+  // faltaba este filtro, por lo que se llegó a sugerir una oficina para un
+  // apartamento) + misma ciudad + precio dentro de un ±20% (ver
+  // TOLERANCIA_PRECIO), todavía disponibles de verdad. Entre los que cumplen
+  // eso, se prefieren los geográficamente más cercanos (ver ordenarPorCercania)
+  // en vez de solo "misma ciudad", que en Bogotá puede significar zonas muy
+  // distintas entre sí.
   let similares: Array<Record<string, unknown>> = [];
   const valorReferencia = inmueble.tipo_oferta === 'Arriendo' ? inmueble.valor_canon : inmueble.valor_venta;
   if (valorReferencia) {
@@ -309,9 +358,10 @@ Deno.serve(async (req) => {
     const max = Number(valorReferencia) * (1 + TOLERANCIA_PRECIO);
     const { data: candidatos } = await admin
       .from('agenda_inmuebles')
-      .select('numero_inmueble, direccion, ciudad, barrio, tipo_oferta, valor_canon, valor_venta, habitaciones')
+      .select('numero_inmueble, direccion, ciudad, barrio, tipo_oferta, tipo_inmueble, valor_canon, valor_venta, habitaciones, latitud, longitud')
       .eq('empresa_id', inmueble.empresa_id)
       .eq('tipo_oferta', inmueble.tipo_oferta)
+      .eq('tipo_inmueble', inmueble.tipo_inmueble)
       .eq('ciudad', inmueble.ciudad)
       .eq('disponible', true)
       .eq('no_disponible_manual', false)
@@ -319,8 +369,8 @@ Deno.serve(async (req) => {
       .gte(campoValor, min)
       .lte(campoValor, max)
       .order(campoValor)
-      .limit(MAX_SIMILARES);
-    similares = candidatos || [];
+      .limit(MAX_SIMILARES * 5);
+    similares = ordenarPorCercania(candidatos || [], inmueble).slice(0, MAX_SIMILARES);
   }
 
   function linkPublico(numeroInmueble: number): string {

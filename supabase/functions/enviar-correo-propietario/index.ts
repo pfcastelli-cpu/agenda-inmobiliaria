@@ -55,7 +55,7 @@ function formatearHora(hora: string) {
 
 // Misma limpieza de dirección que enviar-correo-cita: quita torre/apto/oficina/etc.
 const REGEX_UNIDAD_INTERNA =
-  /\b(AP|APTO|APT|APARTAMENTO|CS|CASA|IN|INTERIOR|PISO|T|TORRE|TO|BLOQUE|BQ|BL|OF|OFC|OFICINA|MZ|MANZANA|CONJ|CON|DP|CONS|CONSULTORIO|LC|LOCAL(ES)?|L)\s*\d+\b/gi;
+  /\b(AP|APTO|APT|APARTAMENTO|CS|CASA|IN|INT|INTERIOR|PISO|T|TORRE|TO|BLOQUE|BQ|BL|OF|OFC|OFICINA|MZ|MANZANA|CONJ|CON|DP|CONS|CONSULTORIO|LC|LOCAL(ES)?|L)\s*\d+\b/gi;
 
 function limpiarDireccion(direccion: string | null | undefined): string {
   if (!direccion) return '';
@@ -65,6 +65,114 @@ function limpiarDireccion(direccion: string | null | undefined): string {
     .replace(/\s{2,}/g, ' ')
     .replace(/^[\s,-]+|[\s,-]+$/g, '')
     .trim();
+}
+
+// ---------------------------------------------------------------------------
+// Invitación de calendario (.ics) para el propietario — mismo mecanismo que
+// enviar-correo-cita (Colombia no tiene horario de verano, así que convertir
+// a UTC es simplemente sumar 5 horas). Se usa el MISMO UID que la invitación
+// del cliente (uidCalendarioCita) porque es el mismo evento, solo que con un
+// ATTENDEE distinto: así, si en el futuro se cancela, basta reenviar un
+// METHOD:CANCEL con ese UID a cada destinatario para que lo quite de su
+// calendario. Por ahora, marcar-inmueble-no-disponible solo le avisa al
+// cliente de la cancelación; el calendario del propietario queda pendiente
+// como mejora aparte.
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function aFechaICSUTC(fecha: string, hora: string): string {
+  const [anio, mes, dia] = fecha.split('-').map(Number);
+  const [hh, mm, ss] = hora.split(':').map(Number);
+  const dt = new Date(Date.UTC(anio, mes - 1, dia, (hh || 0) + 5, mm || 0, ss || 0));
+  return `${dt.getUTCFullYear()}${pad2(dt.getUTCMonth() + 1)}${pad2(dt.getUTCDate())}T${pad2(dt.getUTCHours())}${pad2(dt.getUTCMinutes())}${pad2(dt.getUTCSeconds())}Z`;
+}
+
+function marcaDeTiempoICSAhora(): string {
+  const ahora = new Date();
+  return `${ahora.getUTCFullYear()}${pad2(ahora.getUTCMonth() + 1)}${pad2(ahora.getUTCDate())}T${pad2(ahora.getUTCHours())}${pad2(ahora.getUTCMinutes())}${pad2(ahora.getUTCSeconds())}Z`;
+}
+
+function escaparICS(texto: string | null | undefined): string {
+  return String(texto || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n');
+}
+
+// RFC 5545: una línea de contenido no debe superar 75 octetos; se "pliega"
+// con un salto de línea seguido de un espacio.
+function plegarLineaICS(linea: string): string {
+  const partes: string[] = [];
+  let resto = linea;
+  while (resto.length > 74) {
+    partes.push(resto.slice(0, 74));
+    resto = ' ' + resto.slice(74);
+  }
+  partes.push(resto);
+  return partes.join('\r\n');
+}
+
+function uidCalendarioCita(citaId: string): string {
+  return `cita-${citaId}@patrimonios.co`;
+}
+
+function construirICS(opts: {
+  metodo: 'REQUEST' | 'CANCEL';
+  uid: string;
+  secuencia: number;
+  dtStart: string;
+  dtEnd: string;
+  resumen: string;
+  descripcion: string;
+  ubicacion?: string;
+  organizadorNombre: string;
+  organizadorEmail: string;
+  asistenteNombre: string;
+  asistenteEmail: string;
+  conAlarmas: boolean;
+}): string {
+  const lineas: (string | null)[] = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Patrimonios Inmobiliarios//Agenda de Citas//ES',
+    `METHOD:${opts.metodo}`,
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:${opts.uid}`,
+    `DTSTAMP:${marcaDeTiempoICSAhora()}`,
+    `SEQUENCE:${opts.secuencia}`,
+    `DTSTART:${opts.dtStart}`,
+    `DTEND:${opts.dtEnd}`,
+    plegarLineaICS(`SUMMARY:${escaparICS(opts.resumen)}`),
+    plegarLineaICS(`DESCRIPTION:${escaparICS(opts.descripcion)}`),
+    opts.ubicacion ? plegarLineaICS(`LOCATION:${escaparICS(opts.ubicacion)}`) : null,
+    plegarLineaICS(`ORGANIZER;CN=${escaparICS(opts.organizadorNombre)}:mailto:${opts.organizadorEmail}`),
+    plegarLineaICS(
+      `ATTENDEE;CN=${escaparICS(opts.asistenteNombre)};ROLE=REQ-PARTICIPANT;RSVP=${opts.metodo === 'REQUEST' ? 'TRUE' : 'FALSE'}:mailto:${opts.asistenteEmail}`,
+    ),
+    `STATUS:${opts.metodo === 'CANCEL' ? 'CANCELLED' : 'CONFIRMED'}`,
+    'TRANSP:OPAQUE',
+  ];
+  if (opts.conAlarmas) {
+    const recordatorios: [string, string][] = [
+      ['-P1D', '24 horas'],
+      ['-PT2H', '2 horas'],
+      ['-PT1H', '1 hora'],
+    ];
+    for (const [trigger, etiqueta] of recordatorios) {
+      lineas.push(
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        plegarLineaICS(`DESCRIPTION:Recordatorio: visita agendada en tu inmueble en ${etiqueta}`),
+        `TRIGGER:${trigger}`,
+        'END:VALARM',
+      );
+    }
+  }
+  lineas.push('END:VEVENT', 'END:VCALENDAR');
+  return lineas.filter((l): l is string => l !== null).join('\r\n');
 }
 
 function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: string, texto: string): string {
@@ -291,6 +399,35 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Invitación de calendario para el propietario — mismo evento (mismo UID)
+  // que recibe el cliente, pero con un ATTENDEE distinto por cada correo de
+  // propietario al que se le envía.
+  const descripcionICS = [
+    `Inmueble Nº ${inmueble.numero_inmueble}`,
+    direccionCompleta || null,
+    asesorNombre ? `Asesor: ${asesorNombre}${asesorCelular ? ' · ' + asesorCelular : ''}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  function construirIcs(nombrePropietario: string, destinatarioEnvio: string): string {
+    return construirICS({
+      metodo: 'REQUEST',
+      uid: uidCalendarioCita(cita.id),
+      secuencia: 0,
+      dtStart: aFechaICSUTC(cita.fecha, cita.hora_inicio),
+      dtEnd: aFechaICSUTC(cita.fecha, cita.hora_fin || cita.hora_inicio),
+      resumen: `Visita de cliente en tu inmueble Nº ${inmueble.numero_inmueble}`,
+      descripcion: descripcionICS,
+      ubicacion: direccionCompleta || undefined,
+      organizadorNombre: config!.correo_remitente_nombre || 'Patrimonios Inmobiliarios',
+      organizadorEmail: config!.correo_remitente_email!,
+      asistenteNombre: nombrePropietario || destinatarioEnvio,
+      asistenteEmail: destinatarioEnvio,
+      conAlarmas: false,
+    });
+  }
+
   function construirHtml(nombrePropietario: string, destinatarioRealCorreo: string) {
     const bannerPruebas = modoPruebas
       ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
@@ -386,6 +523,11 @@ Deno.serve(async (req) => {
         to: destinatarioEnvio,
         subject: asunto,
         html: construirHtml(nombrePropietario, correoPropietario),
+        icalEvent: {
+          method: 'REQUEST',
+          filename: 'visita.ics',
+          content: construirIcs(nombrePropietario, destinatarioEnvio),
+        },
       });
 
       await registrarLog(admin, {

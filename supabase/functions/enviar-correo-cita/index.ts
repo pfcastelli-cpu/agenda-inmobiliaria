@@ -63,7 +63,7 @@ function formatearHora(hora: string) {
 // Quita torre/apto/oficina/etc. de la dirección antes de mostrarla al cliente
 // — solo debe ver la dirección "de calle", nunca el detalle interno de la unidad.
 const REGEX_UNIDAD_INTERNA =
-  /\b(AP|APTO|APT|APARTAMENTO|CS|CASA|IN|INTERIOR|PISO|T|TORRE|TO|BLOQUE|BQ|BL|OF|OFC|OFICINA|MZ|MANZANA|CONJ|CON|DP|CONS|CONSULTORIO|LC|LOCAL(ES)?|L)\s*\d+\b/gi;
+  /\b(AP|APTO|APT|APARTAMENTO|CS|CASA|IN|INT|INTERIOR|PISO|T|TORRE|TO|BLOQUE|BQ|BL|OF|OFC|OFICINA|MZ|MANZANA|CONJ|CON|DP|CONS|CONSULTORIO|LC|LOCAL(ES)?|L)\s*\d+\b/gi;
 
 function limpiarDireccion(direccion: string | null | undefined): string {
   if (!direccion) return '';
