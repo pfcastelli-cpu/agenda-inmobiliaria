@@ -139,6 +139,7 @@ const state = {
   query: '',
   ciudadFiltro: 'all',
   modoFiltro: 'all',
+  mostrarNoDisponibles: false,
   pagina: 0,
   limite: 6,
   inmueble: null,
@@ -166,6 +167,8 @@ const state = {
   noDisponibleId: null,
   noDisponibleEnviando: false,
   errorNoDisponible: '',
+  reactivarId: null,
+  errorReactivar: '',
 };
 
 const TIPOS_CITA = {
@@ -531,13 +534,40 @@ function inmuebleCard(inm) {
     <div class="v-cardfoot"><a class="v-btn v-quiet" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha completa</a><span class="v-muted" style="font-size:14px">${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor asignado en Sedi'}</span>${contexto.rol === 'administrador' || contexto.rol === 'coordinador' ? `<button type="button" class="v-btn v-quiet" data-nodisponible="${inm.id}" style="color:#B3261E">${icon('ban')}No disponible</button>` : ''}<button class="v-btn v-primary" data-reservar="${inm.id}">Ver horarios ${icon('arrow-up-right')}</button></div></article>`;
 }
 
+function fechaHoraCorta(iso) {
+  if (!iso) return '';
+  try {
+    return new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'America/Bogota' }).format(new Date(iso));
+  } catch {
+    return '';
+  }
+}
+
+// Tarjeta para un inmueble que alguien marcó manualmente como no disponible
+// (arrendado, vendido, etc.) — pensada para que un administrador/coordinador
+// pueda revisar el motivo y, si fue una prueba o un error, reactivarlo.
+function inmuebleCardNoDisponible(inm) {
+  const etiquetaMotivo = MOTIVOS_NO_DISPONIBLE[inm.no_disponible_motivo] || 'Motivo no especificado';
+  return `<article class="v-property" style="opacity:.9">
+    <div class="v-propertyhead"><div class="v-building">${icon(inm.tipo_inmueble === 'Casa' ? 'house' : inm.tipo_inmueble === 'Local' ? 'store' : 'building-2')}</div><div style="min-width:0"><div class="v-muted" style="font-size:13px;margin-bottom:3px">#${inm.numero_inmueble} · ${escape(inm.tipo_oferta)}</div><h3>${escape(inm.direccion)}</h3><div class="v-details">${escape(inm.ciudad)}${inm.barrio ? ' · ' + escape(inm.barrio) : ''}</div></div></div>
+    <div class="v-cancelbox" style="margin:10px 0"><strong style="color:#B3261E">${icon('ban')} ${escape(etiquetaMotivo)}</strong>${inm.no_disponible_detalle ? `<p class="v-muted" style="margin-top:6px;font-size:14px">${escape(inm.no_disponible_detalle)}</p>` : ''}<p class="v-muted" style="margin-top:6px;font-size:13px">Marcado el ${fechaHoraCorta(inm.no_disponible_en)}</p></div>
+    ${state.errorReactivar && state.reactivarId === inm.id ? `<p class="v-error">${escape(state.errorReactivar)}</p>` : ''}
+    <div class="v-cardfoot"><a class="v-btn v-quiet" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha completa</a><button type="button" class="v-btn v-primary" data-reactivar="${inm.id}" ${state.reactivarId === inm.id ? 'disabled' : ''}>${icon('check')}${state.reactivarId === inm.id ? 'Reactivando…' : 'Reactivar'}</button></div></article>`;
+}
+
 async function renderInmuebles() {
   main().innerHTML = '<p class="v-muted">Cargando inventario…</p>';
-  const todos = await cargarInmuebles();
+  const puedeVerNoDisponibles = contexto.rol === 'administrador' || contexto.rol === 'coordinador';
+  if (state.mostrarNoDisponibles && !puedeVerNoDisponibles) state.mostrarNoDisponibles = false;
+
+  const todosParaFiltros = await cargarTodosInmuebles();
+  const ciudades = [...new Set(todosParaFiltros.map((inm) => inm.ciudad).filter(Boolean))].sort();
   const q = state.query
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase();
+
+  const todos = state.mostrarNoDisponibles ? todosParaFiltros.filter((inm) => inm.no_disponible_manual) : await cargarInmuebles();
   const lista = todos.filter(
     (inm) =>
       (state.ciudadFiltro === 'all' || inm.ciudad === state.ciudadFiltro) &&
@@ -548,15 +578,28 @@ async function renderInmuebles() {
         .toLowerCase()
         .includes(q),
   );
-  const ciudades = [...new Set(todos.map((inm) => inm.ciudad).filter(Boolean))].sort();
   const total = Math.max(1, Math.ceil(lista.length / 6));
   state.pagina = Math.min(state.pagina, total - 1);
   const pagina = lista.slice(state.pagina * 6, state.pagina * 6 + 6);
 
-  main().innerHTML = `<div class="v-top"><div><div class="v-eyebrow">Inventario real (Sedi)</div><h2>${todos.length} inmuebles disponibles</h2></div></div>
+  const toggleNoDisponibles = puedeVerNoDisponibles
+    ? `<button type="button" class="v-btn v-quiet" data-toggle-no-disponibles aria-pressed="${state.mostrarNoDisponibles}">${icon('ban')}${state.mostrarNoDisponibles ? 'Ver inventario disponible' : 'Ver marcados no disponibles'}</button>`
+    : '';
+
+  const encabezado = state.mostrarNoDisponibles
+    ? `<div class="v-top"><div><div class="v-eyebrow">Marcados manualmente</div><h2>${todos.length} inmuebles no disponibles</h2></div>${toggleNoDisponibles}</div>`
+    : `<div class="v-top"><div><div class="v-eyebrow">Inventario real (Sedi)</div><h2>${todos.length} inmuebles disponibles</h2></div>${toggleNoDisponibles}</div>`;
+
+  const vacio = state.mostrarNoDisponibles
+    ? `<div class="v-empty">${icon('check')}<h3>No hay inmuebles marcados como no disponibles</h3><p style="margin-top:8px">Cuando alguien marque uno (arrendado, vendido, etc.) aparecerá aquí para poder revisarlo o reactivarlo.</p></div>`
+    : `<div class="v-empty">${icon('building-2')}<h3>Todavía no hay inventario</h3><p style="margin-top:8px">Falta ejecutar la sincronización diaria desde la hoja de Sedi hacia Supabase (sincronizacion/sincronizar-inmuebles.gs).</p></div>`;
+
+  const tarjeta = state.mostrarNoDisponibles ? inmuebleCardNoDisponible : inmuebleCard;
+
+  main().innerHTML = `${encabezado}
     <label class="v-field" for="v-search"><div class="v-search"><input id="v-search" class="v-input" value="${escape(state.query)}" placeholder="Número, dirección o barrio…" type="search">${icon('search')}</div></label>
     <div class="v-filters"><select class="v-input" id="v-ciudad" aria-label="Filtrar por ciudad"><option value="all">Todas las ciudades</option>${ciudades.map((c) => `<option ${c === state.ciudadFiltro ? 'selected' : ''}>${escape(c)}</option>`).join('')}</select><select class="v-input" id="v-modo" aria-label="Filtrar por operación"><option value="all">Venta y arriendo</option><option ${state.modoFiltro === 'Arriendo' ? 'selected' : ''}>Arriendo</option><option ${state.modoFiltro === 'Venta' ? 'selected' : ''}>Venta</option></select></div>
-    ${todos.length === 0 ? `<div class="v-empty">${icon('building-2')}<h3>Todavía no hay inventario</h3><p style="margin-top:8px">Falta ejecutar la sincronización diaria desde la hoja de Sedi hacia Supabase (sincronizacion/sincronizar-inmuebles.gs).</p></div>` : `<div class="v-between" style="margin:12px 0"><span class="v-muted">${lista.length} resultados</span></div><div class="v-grid">${pagina.map(inmuebleCard).join('')}</div><div class="v-pagination"><button class="v-btn" data-pagina="-1" ${state.pagina === 0 ? 'disabled' : ''}>${icon('chevron-left')}Anterior</button><span>${state.pagina + 1} / ${total}</span><button class="v-btn" data-pagina="1" ${state.pagina >= total - 1 ? 'disabled' : ''}>Siguiente${icon('chevron-right')}</button></div>`}`;
+    ${todos.length === 0 ? vacio : `<div class="v-between" style="margin:12px 0"><span class="v-muted">${lista.length} resultados</span></div><div class="v-grid">${pagina.map(tarjeta).join('')}</div><div class="v-pagination"><button class="v-btn" data-pagina="-1" ${state.pagina === 0 ? 'disabled' : ''}>${icon('chevron-left')}Anterior</button><span>${state.pagina + 1} / ${total}</span><button class="v-btn" data-pagina="1" ${state.pagina >= total - 1 ? 'disabled' : ''}>Siguiente${icon('chevron-right')}</button></div>`}`;
 }
 
 async function renderEquipo() {
@@ -835,6 +878,7 @@ function adjuntarEventos(rootEl) {
       state.query = '';
       state.ciudadFiltro = 'all';
       state.modoFiltro = 'all';
+      state.mostrarNoDisponibles = false;
       state.pagina = 0;
       setView('properties');
       return;
@@ -921,6 +965,41 @@ function adjuntarEventos(rootEl) {
     if (b.dataset.pagina) {
       state.pagina += Number(b.dataset.pagina);
       renderInmuebles();
+      return;
+    }
+    if (b.hasAttribute('data-toggle-no-disponibles')) {
+      state.mostrarNoDisponibles = !state.mostrarNoDisponibles;
+      state.pagina = 0;
+      state.errorReactivar = '';
+      renderInmuebles();
+      return;
+    }
+    if (b.dataset.reactivar) {
+      const id = b.dataset.reactivar;
+      state.reactivarId = id;
+      state.errorReactivar = '';
+      renderInmuebles();
+      (async () => {
+        const { error } = await supabase.rpc('agenda_reactivar_inmueble', { p_inmueble_id: id });
+        state.reactivarId = null;
+        if (error) {
+          state.errorReactivar = 'No se pudo reactivar: ' + error.message;
+          renderInmuebles();
+          return;
+        }
+        [inmueblesCache, todosInmueblesCache].forEach((cache) => {
+          const fila = cache?.find((i) => i.id === id);
+          if (fila) {
+            fila.no_disponible_manual = false;
+            fila.no_disponible_motivo = null;
+            fila.no_disponible_detalle = '';
+            fila.no_disponible_en = null;
+          }
+        });
+        inmueblesCache = null;
+        toast('Inmueble reactivado. Vuelve a aparecer en el inventario disponible.');
+        renderInmuebles();
+      })();
       return;
     }
     if (b.dataset.restriccion) {
