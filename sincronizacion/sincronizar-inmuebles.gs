@@ -162,6 +162,7 @@ function sincronizarInmuebles() {
       ),
       codigo_metrocuadrado: textoSeguro(fila[idx.metroCuadrado]) || null,
       codigo_fincaraiz: textoSeguro(fila[idx.fincaRaiz]) || null,
+      codigo_ciencuadras: textoSeguro(fila[idx.cienCuadras]) || null,
       tiene_administracion: esSi(fila[idx.tieneAdministracion]),
       administracion_incluida: esSi(fila[idx.admonIncluida]),
       valor_administracion: (function () {

@@ -117,8 +117,8 @@ function tarjetaPublicacion() {
   if (d.codigo_fincaraiz) {
     enlaces.push({ nombre: 'Finca Raíz', url: `https://www.fincaraiz.com.co/i/${encodeURIComponent(d.codigo_fincaraiz)}` });
   }
-  if (d.enlace_ciencuadras) {
-    enlaces.push({ nombre: 'Ciencuadras', url: d.enlace_ciencuadras });
+  if (d.codigo_ciencuadras) {
+    enlaces.push({ nombre: `Ciencuadras (código ${d.codigo_ciencuadras})`, url: 'https://www.ciencuadras.com' });
   }
   if (!d.enlace_propio && !enlaces.length) return '';
   return `
