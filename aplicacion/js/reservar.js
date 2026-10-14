@@ -23,6 +23,7 @@ const state = {
   confirmacion: null,
   duplicados: [],
   duplicadosRevisados: false,
+  duplicadoMismoInmueble: null,
 };
 
 function hostActual() {
@@ -194,11 +195,17 @@ async function revisarDuplicados() {
   });
   state.duplicados = data || [];
   state.duplicadosRevisados = true;
+  state.duplicadoMismoInmueble = state.duplicados.find((d) => d.numero_inmueble === state.numero) || null;
 }
 
 async function confirmarCita() {
   if (!state.cliente.nombre || state.cliente.nombre.trim().length < 2) {
     state.errorMsg = 'Escribe tu nombre completo.';
+    render();
+    return;
+  }
+  if (!state.cliente.telefono || state.cliente.telefono.replace(/\D/g, '').length < 7) {
+    state.errorMsg = 'Escribe tu número de celular. Por ahí te contactará tu asesor.';
     render();
     return;
   }
@@ -246,6 +253,61 @@ async function confirmarCita() {
   // registrado en agenda_correos_log para revisión en el panel de administración.
   supabase.functions.invoke('enviar-correo-cita', { body: { cita_id: data } }).catch(() => {});
     supabase.functions.invoke('enviar-correo-propietario', { body: { cita_id: data } }).catch(() => {});
+  state.confirmacion = {
+    id: data,
+    fecha: state.fechaSel,
+    hora: state.slotSel,
+  };
+  state.paso = 'confirmado';
+  render();
+}
+
+// Cuando el cliente ya tiene una cita activa para este mismo inmueble y elige
+// "cambiar" en vez de agendar una adicional: ubicamos el id de esa cita vieja
+// y la movemos al nuevo horario elegido (la función en la base de datos
+// verifica que el celular/correo coincidan antes de tocar nada).
+async function cambiarCita() {
+  if (!state.duplicadoMismoInmueble || !state.slotSel) return;
+  state.enviando = true;
+  state.errorMsg = '';
+  render();
+
+  const dup = state.duplicadoMismoInmueble;
+  const { data: citaId } = await supabase.rpc('agenda_cita_id_publica', {
+    p_telefono: state.cliente.telefono.trim(),
+    p_email: state.cliente.email.trim(),
+    p_fecha: dup.fecha,
+    p_hora_inicio: dup.hora_inicio,
+    p_numero_inmueble: dup.numero_inmueble,
+    p_host: hostActual(),
+  });
+  if (!citaId) {
+    state.enviando = false;
+    state.errorMsg = 'No pudimos ubicar tu cita anterior. Escríbele directamente a tu asesor para cambiarla.';
+    render();
+    return;
+  }
+
+  const { data, error } = await supabase.rpc('agenda_reagendar_cita_publica', {
+    p_cita_id: citaId,
+    p_numero_inmueble: state.numero,
+    p_fecha: fechaISO(state.fechaSel),
+    p_hora_inicio: state.slotSel.hora_inicio,
+    p_cliente_nombre: state.cliente.nombre.trim(),
+    p_cliente_telefono: state.cliente.telefono.trim(),
+    p_cliente_email: state.cliente.email.trim(),
+    p_host: hostActual(),
+  });
+  state.enviando = false;
+  if (error) {
+    state.errorMsg = mensajeAmigable(error, 'No se pudo cambiar la cita. Elige otro horario e inténtalo de nuevo.');
+    state.duplicadosRevisados = false;
+    cargarHorarios();
+    render();
+    return;
+  }
+  supabase.functions.invoke('enviar-correo-cita', { body: { cita_id: data } }).catch(() => {});
+  supabase.functions.invoke('enviar-correo-propietario', { body: { cita_id: data } }).catch(() => {});
   state.confirmacion = {
     id: data,
     fecha: state.fechaSel,
@@ -336,21 +398,38 @@ function selectorHorarios() {
 
 function formularioCliente() {
   const hayDuplicados = state.duplicadosRevisados && state.duplicados.length > 0;
+  const dupMismoInmueble = hayDuplicados ? state.duplicadoMismoInmueble : null;
+  const otrosDuplicados = state.duplicados.filter((d) => d !== dupMismoInmueble);
+
+  let avisoDuplicados = '';
+  if (dupMismoInmueble) {
+    avisoDuplicados = `<div class="pu-error">Ya tienes una visita agendada para este mismo inmueble el ${dupMismoInmueble.fecha} a las ${formatoHora(dupMismoInmueble.hora_inicio)}. ¿Quieres cambiarla a este nuevo horario o agendar una visita adicional?</div>`;
+  } else if (hayDuplicados) {
+    avisoDuplicados = `<div class="pu-error">Ya tienes ${otrosDuplicados.length > 1 ? 'varias visitas' : 'una visita'} agendada${otrosDuplicados.length > 1 ? 's' : ''}: ${otrosDuplicados.map((d) => `inmueble ${d.numero_inmueble} el ${d.fecha} a las ${formatoHora(d.hora_inicio)}`).join('; ')}. ¿Deseas agendar esta también?</div>`;
+  }
+
   return `
     <h3>Tus datos</h3>
     <div class="pu-card">
       <label for="pu-nombre">Nombre completo</label>
       <input id="pu-nombre" type="text" value="${state.cliente.nombre}" placeholder="Nombre y apellido" required>
       <label for="pu-telefono">Celular</label>
-      <input id="pu-telefono" type="tel" value="${state.cliente.telefono}" placeholder="Ej: 3001234567">
+      <input id="pu-telefono" type="tel" value="${state.cliente.telefono}" placeholder="Ej: 3001234567" required>
       <label for="pu-email">Correo electrónico</label>
       <input id="pu-email" type="email" value="${state.cliente.email}" placeholder="nombre@correo.com" required>
       <p style="margin:6px 0 0;font-size:12.5px">Allí te llegarán los datos de tu asesor, la dirección exacta y cómo llegar.</p>
-      ${hayDuplicados ? `<div class="pu-error">Ya tienes ${state.duplicados.length > 1 ? 'varias visitas' : 'una visita'} agendada${state.duplicados.length > 1 ? 's' : ''}: ${state.duplicados.map((d) => `inmueble ${d.numero_inmueble} el ${d.fecha} a las ${formatoHora(d.hora_inicio)}`).join('; ')}. ¿Deseas agendar esta también?</div>` : ''}
+      ${avisoDuplicados}
       ${state.errorMsg ? `<div class="pu-error">${state.errorMsg}</div>` : ''}
-      <button class="pu-main" id="pu-confirmar" ${state.enviando ? 'disabled' : ''}>
-        ${state.enviando ? 'Agendando…' : hayDuplicados ? 'Sí, agendar esta visita también' : 'Confirmar visita'}
-      </button>
+      ${
+        dupMismoInmueble
+          ? `<button class="pu-main" id="pu-cambiar-cita" ${state.enviando ? 'disabled' : ''} style="margin-bottom:8px">
+               ${state.enviando ? 'Cambiando…' : 'Cambiar mi cita a este nuevo horario'}
+             </button>
+             <button class="pu-link" id="pu-confirmar" ${state.enviando ? 'disabled' : ''}>Agendar una visita adicional</button>`
+          : `<button class="pu-main" id="pu-confirmar" ${state.enviando ? 'disabled' : ''}>
+               ${state.enviando ? 'Agendando…' : hayDuplicados ? 'Sí, agendar esta visita también' : 'Confirmar visita'}
+             </button>`
+      }
     </div>
   `;
 }
@@ -425,6 +504,9 @@ function cablear() {
       state.slotSel = null;
       state.confirmacion = null;
       state.cliente = { nombre: '', telefono: '', email: '' };
+      state.duplicados = [];
+      state.duplicadosRevisados = false;
+      state.duplicadoMismoInmueble = null;
       render();
     });
   }
@@ -449,11 +531,13 @@ function cablear() {
   const nombre = document.getElementById('pu-nombre');
   if (nombre) nombre.addEventListener('input', (e) => { state.cliente.nombre = e.target.value; });
   const telefono = document.getElementById('pu-telefono');
-  if (telefono) telefono.addEventListener('input', (e) => { state.cliente.telefono = e.target.value; state.duplicadosRevisados = false; });
+  if (telefono) telefono.addEventListener('input', (e) => { state.cliente.telefono = e.target.value; state.duplicadosRevisados = false; state.duplicadoMismoInmueble = null; });
   const email = document.getElementById('pu-email');
-  if (email) email.addEventListener('input', (e) => { state.cliente.email = e.target.value; state.duplicadosRevisados = false; });
+  if (email) email.addEventListener('input', (e) => { state.cliente.email = e.target.value; state.duplicadosRevisados = false; state.duplicadoMismoInmueble = null; });
   const confirmar = document.getElementById('pu-confirmar');
   if (confirmar) confirmar.addEventListener('click', confirmarCita);
+  const cambiarCitaBtn = document.getElementById('pu-cambiar-cita');
+  if (cambiarCitaBtn) cambiarCitaBtn.addEventListener('click', cambiarCita);
 }
 
 const codigoInicial = numeroDesdeUrl();
