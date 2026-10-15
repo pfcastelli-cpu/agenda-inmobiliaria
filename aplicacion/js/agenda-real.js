@@ -949,6 +949,21 @@ async function renderInformes() {
     }
   }
 
+  // Inconsistencias con Sedi: inmuebles que alguien marcó manualmente como no
+  // disponibles mientras la sincronización con Sedi los sigue mostrando
+  // disponibles (Estado Inmueble/Estado CRM sin cambiar todavía). Esto es lo
+  // que hay que revisar: o fue una prueba/error que quedó activa, o Sedi
+  // todavía no se actualizó con la novedad real. Se muestra desde el primer
+  // momento, sin esperar ningún número de días.
+  const inconsistentesManual = inmuebles
+    .filter((i) => i.no_disponible_manual && i.disponible)
+    .slice()
+    .sort((a, b) => a.numero_inmueble - b.numero_inmueble);
+
+  const bloqueInconsistencias = inconsistentesManual.length
+    ? `<div class="v-proplist" style="margin-top:12px">${inconsistentesManual.map(inmuebleCardNoDisponible).join('')}</div>`
+    : `<div class="v-empty" style="margin-top:12px">${icon('check')}<h3>Todo coincide con Sedi</h3><p style="margin-top:8px">Ningún inmueble marcado manualmente como no disponible contradice lo que Sedi sigue mostrando.</p></div>`;
+
   const conHabitaciones = inmuebles.filter((i) => i.habitaciones != null).length;
   const conCoordenadas = inmuebles.filter((i) => i.latitud != null && i.longitud != null).length;
   const conPrecio = inmuebles.filter((i) => (i.valor_canon != null && i.valor_canon > 0) || (i.valor_venta != null && i.valor_venta > 0)).length;
@@ -1057,7 +1072,11 @@ async function renderInformes() {
   main().innerHTML = `<div class="v-top"><div><div class="v-eyebrow">Monitoreo operativo</div><h2>Informes</h2></div></div>
     <p class="v-note">Estado actual de los datos capturados por Agenda de citas. Con el volumen de hoy esto es monitoreo operativo — todavía no hay suficiente historia para tendencias o comparativos sólidos por asesor o por zona.</p>
 
-    <h3 style="margin-top:8px">Inmuebles que requieren atención</h3>
+    <h3 style="margin-top:8px">Inconsistencias con Sedi</h3>
+    <p class="v-muted" style="font-size:13.5px">Inmuebles marcados manualmente como no disponibles mientras Sedi los sigue mostrando disponibles. Pasa si alguien los marcó por error o de prueba, o si la novedad real (arrendado, vendido, papeles en trámite) todavía no se actualiza en Sedi.</p>
+    ${bloqueInconsistencias}
+
+    <h3 style="margin-top:28px">Inmuebles que requieren atención</h3>
     ${formAlertas}
     ${
       conAtencion.length === 0
@@ -1295,13 +1314,13 @@ function adjuntarEventos(rootEl) {
       const id = b.dataset.reactivar;
       state.reactivarId = id;
       state.errorReactivar = '';
-      renderInmuebles();
+      render();
       (async () => {
         const { error } = await supabase.rpc('agenda_reactivar_inmueble', { p_inmueble_id: id });
         state.reactivarId = null;
         if (error) {
           state.errorReactivar = 'No se pudo reactivar: ' + error.message;
-          renderInmuebles();
+          render();
           return;
         }
         [inmueblesCache, todosInmueblesCache].forEach((cache) => {
@@ -1315,7 +1334,7 @@ function adjuntarEventos(rootEl) {
         });
         inmueblesCache = null;
         toast('Inmueble reactivado. Vuelve a aparecer en el inventario disponible.');
-        renderInmuebles();
+        render();
       })();
       return;
     }
