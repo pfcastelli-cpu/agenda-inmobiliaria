@@ -240,6 +240,9 @@
 #visita-app .v-cardfoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; border-top: 1px solid var(--v-line); }
 #visita-app .v-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 #visita-app .v-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 18px; color: var(--v-muted); font-size: 13px; }
+#visita-app .v-proplist { display: flex; flex-direction: column; gap: 8px; }
+#visita-app .v-proplist .v-property { padding: 12px 15px; }
+#visita-app .v-proplist .v-propertyhead { margin-bottom: 6px; }
 #visita-app .v-teamcard { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 17px; padding: 17px; }
 #visita-app .v-teamcard .v-avatar { width: 45px; height: 45px; font-size: 14px; }
 #visita-app .v-teammeta { display: flex; gap: 16px; margin: 15px 0; color: var(--v-muted); font-size: 13px; }

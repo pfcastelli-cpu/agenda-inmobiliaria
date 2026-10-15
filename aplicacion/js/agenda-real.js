@@ -601,19 +601,19 @@ async function renderInmuebles() {
     .toLowerCase();
 
   const todos = state.mostrarNoDisponibles ? todosParaFiltros.filter((inm) => inm.no_disponible_manual) : await cargarInmuebles();
-  const lista = todos.filter(
-    (inm) =>
-      (state.ciudadFiltro === 'all' || inm.ciudad === state.ciudadFiltro) &&
-      (state.modoFiltro === 'all' || inm.tipo_oferta === state.modoFiltro) &&
-      `${inm.numero_inmueble} ${inm.direccion} ${inm.ciudad} ${inm.barrio}`
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .toLowerCase()
-        .includes(q),
-  );
-  const total = Math.max(1, Math.ceil(lista.length / 6));
-  state.pagina = Math.min(state.pagina, total - 1);
-  const pagina = lista.slice(state.pagina * 6, state.pagina * 6 + 6);
+  const lista = todos
+    .filter(
+      (inm) =>
+        (state.ciudadFiltro === 'all' || inm.ciudad === state.ciudadFiltro) &&
+        (state.modoFiltro === 'all' || inm.tipo_oferta === state.modoFiltro) &&
+        `${inm.numero_inmueble} ${inm.direccion} ${inm.ciudad} ${inm.barrio}`
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .toLowerCase()
+          .includes(q),
+    )
+    .slice()
+    .sort((a, b) => a.numero_inmueble - b.numero_inmueble);
 
   const toggleNoDisponibles = puedeVerNoDisponibles
     ? `<button type="button" class="v-btn v-quiet" data-toggle-no-disponibles aria-pressed="${state.mostrarNoDisponibles}">${icon('ban')}${state.mostrarNoDisponibles ? 'Ver inventario disponible' : 'Ver marcados no disponibles'}</button>`
@@ -629,10 +629,13 @@ async function renderInmuebles() {
 
   const tarjeta = state.mostrarNoDisponibles ? inmuebleCardNoDisponible : inmuebleCard;
 
+  // Lista completa ordenada por número de inmueble, sin paginación: con ~300+
+  // inmuebles no tiene sentido obligar a dar clic en "Siguiente" una y otra vez;
+  // la búsqueda y los filtros de ciudad/operación ya acotan el resultado.
   main().innerHTML = `${encabezado}
     <label class="v-field" for="v-search"><div class="v-search"><input id="v-search" class="v-input" value="${escape(state.query)}" placeholder="Número, dirección o barrio…" type="search">${icon('search')}</div></label>
     <div class="v-filters"><select class="v-input" id="v-ciudad" aria-label="Filtrar por ciudad"><option value="all">Todas las ciudades</option>${ciudades.map((c) => `<option ${c === state.ciudadFiltro ? 'selected' : ''}>${escape(c)}</option>`).join('')}</select><select class="v-input" id="v-modo" aria-label="Filtrar por operación"><option value="all">Venta y arriendo</option><option ${state.modoFiltro === 'Arriendo' ? 'selected' : ''}>Arriendo</option><option ${state.modoFiltro === 'Venta' ? 'selected' : ''}>Venta</option></select></div>
-    ${todos.length === 0 ? vacio : `<div class="v-between" style="margin:12px 0"><span class="v-muted">${lista.length} resultados</span></div><div class="v-grid">${pagina.map(tarjeta).join('')}</div><div class="v-pagination"><button class="v-btn" data-pagina="-1" ${state.pagina === 0 ? 'disabled' : ''}>${icon('chevron-left')}Anterior</button><span>${state.pagina + 1} / ${total}</span><button class="v-btn" data-pagina="1" ${state.pagina >= total - 1 ? 'disabled' : ''}>Siguiente${icon('chevron-right')}</button></div>`}`;
+    ${todos.length === 0 ? vacio : `<div class="v-between" style="margin:12px 0"><span class="v-muted">${lista.length} resultados · ordenados por número</span></div><div class="v-proplist">${lista.map(tarjeta).join('')}</div>`}`;
 }
 
 async function renderEquipo() {
@@ -1279,11 +1282,6 @@ function adjuntarEventos(rootEl) {
       else if (state.vistaAgenda === 'mes') state.fecha = addMesesISO(state.fecha, n);
       else state.fecha = addDiasISO(state.fecha, n);
       render();
-      return;
-    }
-    if (b.dataset.pagina) {
-      state.pagina += Number(b.dataset.pagina);
-      renderInmuebles();
       return;
     }
     if (b.hasAttribute('data-toggle-no-disponibles')) {

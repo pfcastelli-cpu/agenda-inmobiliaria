@@ -24,6 +24,15 @@ const state = {
   duplicados: [],
   duplicadosRevisados: false,
   duplicadoMismoInmueble: null,
+  correoVerificado: false,
+  correoVerificadoValor: null,
+  verificacionNecesaria: null,
+  codigoEnviado: false,
+  codigoInput: '',
+  enviandoCodigo: false,
+  verificandoCodigo: false,
+  errorCodigo: '',
+  accionPendiente: null,
 };
 
 function hostActual() {
@@ -67,6 +76,16 @@ function mensajeAmigable(error, generico) {
   const msg = error?.message || '';
   if (!msg || esMensajeTecnico(msg)) return generico;
   return msg;
+}
+
+function escaparHtml(valor) {
+  if (!valor) return '';
+  return String(valor)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function formatoMoneda(valor) {
@@ -198,6 +217,90 @@ async function revisarDuplicados() {
   state.duplicadoMismoInmueble = state.duplicados.find((d) => d.numero_inmueble === state.numero) || null;
 }
 
+async function necesitaVerificarCorreo(email) {
+  const { data, error } = await supabase.rpc('agenda_correo_requiere_verificacion', {
+    p_correo: email,
+    p_host: hostActual(),
+  });
+  if (error) return false; // si falla la consulta, no bloqueamos la reserva por esto
+  return !!data;
+}
+
+async function enviarCodigoVerificacion() {
+  state.enviandoCodigo = true;
+  state.errorCodigo = '';
+  render();
+  const { error } = await supabase.functions.invoke('enviar-codigo-verificacion', {
+    body: { email: state.cliente.email.trim(), host: hostActual() },
+  });
+  state.enviandoCodigo = false;
+  if (error) {
+    state.errorCodigo = 'No pudimos enviar el código. Intenta de nuevo en un momento.';
+    render();
+    return false;
+  }
+  state.codigoEnviado = true;
+  render();
+  return true;
+}
+
+async function verificarCodigo() {
+  if (!state.codigoInput || state.codigoInput.trim().length < 4) {
+    state.errorCodigo = 'Escribe el código que te llegó por correo.';
+    render();
+    return;
+  }
+  state.verificandoCodigo = true;
+  state.errorCodigo = '';
+  render();
+  const { data, error } = await supabase.rpc('agenda_verificar_codigo_contacto', {
+    p_correo: state.cliente.email.trim(),
+    p_codigo: state.codigoInput.trim(),
+    p_host: hostActual(),
+  });
+  state.verificandoCodigo = false;
+  if (error || !data) {
+    state.errorCodigo = mensajeAmigable(error, 'Código incorrecto. Revisa e intenta de nuevo.');
+    render();
+    return;
+  }
+  state.correoVerificado = true;
+  state.correoVerificadoValor = state.cliente.email.trim().toLowerCase();
+  state.codigoEnviado = false;
+  state.codigoInput = '';
+  const accion = state.accionPendiente;
+  state.accionPendiente = null;
+  if (accion === 'cambiar') await cambiarCita();
+  else await confirmarCita();
+}
+
+// Antes de agendar o cambiar una cita verificamos que el correo escrito sea
+// real: si ya tiene una cita registrada con esta empresa (o ya se verificó
+// antes), lo damos por confiable y seguimos de una. Si no, le enviamos un
+// código de 6 dígitos y detenemos el flujo hasta que lo confirme; cuando lo
+// confirma, retomamos automáticamente la acción que estaba pendiente.
+async function asegurarCorreoVerificado(accion) {
+  const correoActual = state.cliente.email.trim().toLowerCase();
+  if (state.correoVerificado && state.correoVerificadoValor === correoActual) {
+    return true;
+  }
+  state.accionPendiente = accion;
+  if (state.verificacionNecesaria === null) {
+    state.verificacionNecesaria = await necesitaVerificarCorreo(state.cliente.email.trim());
+  }
+  if (!state.verificacionNecesaria) {
+    state.correoVerificado = true;
+    state.correoVerificadoValor = correoActual;
+    return true;
+  }
+  if (!state.codigoEnviado) {
+    await enviarCodigoVerificacion();
+  } else {
+    render();
+  }
+  return false;
+}
+
 async function confirmarCita() {
   if (!state.cliente.nombre || state.cliente.nombre.trim().length < 2) {
     state.errorMsg = 'Escribe tu nombre completo.';
@@ -227,6 +330,9 @@ async function confirmarCita() {
       return;
     }
   }
+
+  const correoListo = await asegurarCorreoVerificado('confirmar');
+  if (!correoListo) return;
 
   state.enviando = true;
   state.errorMsg = '';
@@ -268,6 +374,10 @@ async function confirmarCita() {
 // verifica que el celular/correo coincidan antes de tocar nada).
 async function cambiarCita() {
   if (!state.duplicadoMismoInmueble || !state.slotSel) return;
+
+  const correoListo = await asegurarCorreoVerificado('cambiar');
+  if (!correoListo) return;
+
   state.enviando = true;
   state.errorMsg = '';
   render();
@@ -400,6 +510,7 @@ function formularioCliente() {
   const hayDuplicados = state.duplicadosRevisados && state.duplicados.length > 0;
   const dupMismoInmueble = hayDuplicados ? state.duplicadoMismoInmueble : null;
   const otrosDuplicados = state.duplicados.filter((d) => d !== dupMismoInmueble);
+  const mostrarVerificacion = state.codigoEnviado && !state.correoVerificado;
 
   let avisoDuplicados = '';
   if (dupMismoInmueble) {
@@ -408,20 +519,36 @@ function formularioCliente() {
     avisoDuplicados = `<div class="pu-error">Ya tienes ${otrosDuplicados.length > 1 ? 'varias visitas' : 'una visita'} agendada${otrosDuplicados.length > 1 ? 's' : ''}: ${otrosDuplicados.map((d) => `inmueble ${d.numero_inmueble} el ${d.fecha} a las ${formatoHora(d.hora_inicio)}`).join('; ')}. ¿Deseas agendar esta también?</div>`;
   }
 
+  const bloqueVerificacion = mostrarVerificacion
+    ? `<div class="pu-verificacion">
+         <p>Te enviamos un código a <strong>${escaparHtml(state.cliente.email.trim())}</strong>. Escríbelo aquí para confirmar tu visita (vence en 10 minutos).</p>
+         <input id="pu-codigo-verificacion" class="pu-codigo-input" type="text" inputmode="numeric" maxlength="6" value="${escaparHtml(state.codigoInput)}" placeholder="000000" ${state.verificandoCodigo ? 'disabled' : ''}>
+         ${state.errorCodigo ? `<div class="pu-error">${escaparHtml(state.errorCodigo)}</div>` : ''}
+         <button class="pu-main" id="pu-verificar-codigo" ${state.verificandoCodigo ? 'disabled' : ''} style="margin-top:8px">
+           ${state.verificandoCodigo ? 'Verificando…' : 'Verificar código'}
+         </button>
+         <button class="pu-link" id="pu-reenviar-codigo" ${state.enviandoCodigo ? 'disabled' : ''}>
+           ${state.enviandoCodigo ? 'Enviando…' : '¿No te llegó? Enviar otro código'}
+         </button>
+       </div>`
+    : '';
+
   return `
     <h3>Tus datos</h3>
     <div class="pu-card">
       <label for="pu-nombre">Nombre completo</label>
-      <input id="pu-nombre" type="text" value="${state.cliente.nombre}" placeholder="Nombre y apellido" required>
+      <input id="pu-nombre" type="text" value="${state.cliente.nombre}" placeholder="Nombre y apellido" required ${mostrarVerificacion ? 'disabled' : ''}>
       <label for="pu-telefono">Celular</label>
-      <input id="pu-telefono" type="tel" value="${state.cliente.telefono}" placeholder="Ej: 3001234567" required>
+      <input id="pu-telefono" type="tel" value="${state.cliente.telefono}" placeholder="Ej: 3001234567" required ${mostrarVerificacion ? 'disabled' : ''}>
       <label for="pu-email">Correo electrónico</label>
-      <input id="pu-email" type="email" value="${state.cliente.email}" placeholder="nombre@correo.com" required>
+      <input id="pu-email" type="email" value="${state.cliente.email}" placeholder="nombre@correo.com" required ${mostrarVerificacion ? 'disabled' : ''}>
       <p style="margin:6px 0 0;font-size:12.5px">Allí te llegarán los datos de tu asesor, la dirección exacta y cómo llegar.</p>
       ${avisoDuplicados}
-      ${state.errorMsg ? `<div class="pu-error">${state.errorMsg}</div>` : ''}
+      ${!mostrarVerificacion && state.errorMsg ? `<div class="pu-error">${state.errorMsg}</div>` : ''}
       ${
-        dupMismoInmueble
+        mostrarVerificacion
+          ? bloqueVerificacion
+          : dupMismoInmueble
           ? `<button class="pu-main" id="pu-cambiar-cita" ${state.enviando ? 'disabled' : ''} style="margin-bottom:8px">
                ${state.enviando ? 'Cambiando…' : 'Cambiar mi cita a este nuevo horario'}
              </button>
@@ -507,6 +634,13 @@ function cablear() {
       state.duplicados = [];
       state.duplicadosRevisados = false;
       state.duplicadoMismoInmueble = null;
+      state.correoVerificado = false;
+      state.correoVerificadoValor = null;
+      state.verificacionNecesaria = null;
+      state.codigoEnviado = false;
+      state.codigoInput = '';
+      state.errorCodigo = '';
+      state.accionPendiente = null;
       render();
     });
   }
@@ -533,11 +667,27 @@ function cablear() {
   const telefono = document.getElementById('pu-telefono');
   if (telefono) telefono.addEventListener('input', (e) => { state.cliente.telefono = e.target.value; state.duplicadosRevisados = false; state.duplicadoMismoInmueble = null; });
   const email = document.getElementById('pu-email');
-  if (email) email.addEventListener('input', (e) => { state.cliente.email = e.target.value; state.duplicadosRevisados = false; state.duplicadoMismoInmueble = null; });
+  if (email) email.addEventListener('input', (e) => {
+    state.cliente.email = e.target.value;
+    state.duplicadosRevisados = false;
+    state.duplicadoMismoInmueble = null;
+    state.correoVerificado = false;
+    state.correoVerificadoValor = null;
+    state.verificacionNecesaria = null;
+    state.codigoEnviado = false;
+    state.codigoInput = '';
+    state.errorCodigo = '';
+  });
   const confirmar = document.getElementById('pu-confirmar');
   if (confirmar) confirmar.addEventListener('click', confirmarCita);
   const cambiarCitaBtn = document.getElementById('pu-cambiar-cita');
   if (cambiarCitaBtn) cambiarCitaBtn.addEventListener('click', cambiarCita);
+  const codigoInput = document.getElementById('pu-codigo-verificacion');
+  if (codigoInput) codigoInput.addEventListener('input', (e) => { state.codigoInput = e.target.value.replace(/\D/g, '').slice(0, 6); });
+  const verificarBtn = document.getElementById('pu-verificar-codigo');
+  if (verificarBtn) verificarBtn.addEventListener('click', verificarCodigo);
+  const reenviarBtn = document.getElementById('pu-reenviar-codigo');
+  if (reenviarBtn) reenviarBtn.addEventListener('click', enviarCodigoVerificacion);
 }
 
 const codigoInicial = numeroDesdeUrl();
