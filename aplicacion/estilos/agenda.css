@@ -243,6 +243,18 @@
 #visita-app .v-proplist { display: flex; flex-direction: column; gap: 8px; }
 #visita-app .v-proplist .v-property { padding: 12px 15px; }
 #visita-app .v-proplist .v-propertyhead { margin-bottom: 6px; }
+#visita-app .v-proplist .v-prow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 8px 14px; }
+#visita-app .v-prow-icon { width: 30px; height: 30px; background: var(--v-tint); color: var(--v-blue); border-radius: 9px; display: grid; place-items: center; flex-shrink: 0; }
+#visita-app .v-prow-icon svg { width: 16px; height: 16px; }
+#visita-app .v-prow-info { flex: 1 1 280px; min-width: 0; }
+#visita-app .v-prow-top { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#visita-app .v-prow-sub { font-size: 12px; color: var(--v-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+#visita-app .v-prow-horario { flex: 0 0 auto; font-size: 12.5px; color: var(--v-muted); display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+#visita-app .v-prow-horario svg { width: 14px; height: 14px; }
+#visita-app .v-prow-horario .v-link { margin-top: 0; font-size: 12.5px; }
+#visita-app .v-prow-asesor { flex: 0 1 150px; font-size: 12.5px; color: var(--v-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#visita-app .v-prow-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; margin-left: auto; }
+#visita-app .v-prow-actions .v-link { margin-top: 0; font-size: 13px; }
 #visita-app .v-teamcard { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 17px; padding: 17px; }
 #visita-app .v-teamcard .v-avatar { width: 45px; height: 45px; font-size: 14px; }
 #visita-app .v-teammeta { display: flex; gap: 16px; margin: 15px 0; color: var(--v-muted); font-size: 13px; }

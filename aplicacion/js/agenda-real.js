@@ -559,12 +559,25 @@ function noDisponibleEditor(inm) {
 }
 
 function inmuebleCard(inm) {
-  return `<article class="v-property"><div class="v-propertyhead"><div class="v-building">${icon(inm.tipo_inmueble === 'Casa' ? 'house' : inm.tipo_inmueble === 'Local' ? 'store' : 'building-2')}</div><div style="min-width:0"><div class="v-muted" style="font-size:13px;margin-bottom:3px">#${inm.numero_inmueble} · ${escape(inm.tipo_oferta)}</div><h3>${escape(inm.direccion)}</h3><div class="v-details">${escape(inm.ciudad)}${inm.barrio ? ' · ' + escape(inm.barrio) : ''}${inm.habitaciones ? ' · ' + inm.habitaciones + ' hab.' : ''}</div></div></div>
-    <div class="v-between" style="margin-bottom:12px"><div class="v-price">${inm.tipo_oferta === 'Arriendo' ? (inm.valor_canon ? money.format(inm.valor_canon) + '<small> / mes</small>' : 'Sin valor de canon') : inm.valor_venta ? money.format(inm.valor_venta) : 'Sin valor de venta'}</div></div>
-    <div class="v-muted" style="font-size:14px;margin-bottom:10px">${icon('clock-3')} ${escape(restriccionResumen(inm))} <button type="button" class="v-link" data-restriccion="${inm.id}" style="margin-left:4px">Editar</button></div>
+  const precio = inm.tipo_oferta === 'Arriendo'
+    ? (inm.valor_canon ? money.format(inm.valor_canon) + ' / mes' : 'Sin valor de canon')
+    : (inm.valor_venta ? money.format(inm.valor_venta) : 'Sin valor de venta');
+  return `<article class="v-property v-prow">
+    <div class="v-prow-icon">${icon(inm.tipo_inmueble === 'Casa' ? 'house' : inm.tipo_inmueble === 'Local' ? 'store' : 'building-2')}</div>
+    <div class="v-prow-info">
+      <div class="v-prow-top">#${inm.numero_inmueble} · ${escape(inm.tipo_oferta)} · <strong>${escape(inm.direccion)}</strong></div>
+      <div class="v-prow-sub">${escape(inm.ciudad)}${inm.barrio ? ' · ' + escape(inm.barrio) : ''}${inm.habitaciones ? ' · ' + inm.habitaciones + ' hab.' : ''} · ${precio}</div>
+    </div>
+    <div class="v-prow-horario">${icon('clock-3')} ${escape(restriccionResumen(inm))} <button type="button" class="v-link" data-restriccion="${inm.id}">Editar</button></div>
+    <div class="v-prow-asesor" title="${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor asignado en Sedi'}">${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor en Sedi'}</div>
+    <div class="v-prow-actions">
+      <a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha</a>
+      ${contexto.rol === 'administrador' || contexto.rol === 'coordinador' ? `<button type="button" class="v-link" data-nodisponible="${inm.id}" style="color:#B3261E">${icon('ban')}No disponible</button>` : ''}
+      <button class="v-btn v-primary" data-reservar="${inm.id}">Ver horarios ${icon('arrow-up-right')}</button>
+    </div>
     ${state.restriccionId === inm.id ? restriccionEditor(inm) : ''}
     ${state.noDisponibleId === inm.id ? noDisponibleEditor(inm) : ''}
-    <div class="v-cardfoot"><a class="v-btn v-quiet" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha completa</a><span class="v-muted" style="font-size:14px">${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor asignado en Sedi'}</span>${contexto.rol === 'administrador' || contexto.rol === 'coordinador' ? `<button type="button" class="v-btn v-quiet" data-nodisponible="${inm.id}" style="color:#B3261E">${icon('ban')}No disponible</button>` : ''}<button class="v-btn v-primary" data-reservar="${inm.id}">Ver horarios ${icon('arrow-up-right')}</button></div></article>`;
+  </article>`;
 }
 
 function fechaHoraCorta(iso) {
