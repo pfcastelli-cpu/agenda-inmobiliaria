@@ -143,12 +143,14 @@ export function listarAccesos(empresaId) {
   return llamarGestionAccesos('listar', { empresa_id: empresaId });
 }
 
-export function crearAcceso(empresaId, { nombre, correo, rol }) {
+export function crearAcceso(empresaId, { nombre, correo, rol, password, asesorId }) {
   return llamarGestionAccesos('crear', {
     empresa_id: empresaId,
     nombre,
     correo,
     rol,
+    password: password || undefined,
+    asesor_id: asesorId || undefined,
     redirect_to: window.location.origin + '/',
   });
 }

@@ -8,7 +8,7 @@ import {
  alternarActivoAcceso,
 } from './sesion.js';
 import '../estilos/administracion.css';
-let root, acceso, config, asesores = [], ciudades = [], asesorCiudades = {}, coberturas = [], asesorCoberturas = {}, revision = 0;
+let root, acceso, config, asesores = [], ciudades = [], asesorCiudades = {}, coberturas = [], asesorCoberturas = {}, accesosPorUsuario = {}, revision = 0;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const PALETA_ASESORES=['#2563EB','#DB2777','#059669','#D97706','#7C3AED','#DC2626','#0891B2','#65A30D'];
 const defaults = e => ({empresa_id:e.id,nombre_comercial:e.nombre,logo_url:'',color_principal:e.color_principal || '#1A2C45',color_accion:e.color_accion || '#00A9A5',correo_contacto:'',telefono:'',ciudades:'Bogotá, Barranquilla, Medellín',enlace_documentos:'',dominio_publico:'',plantilla_enlace_inmueble:'',formato_hora:'12h',horas_minimas_anticipacion:2,horas_minimas_anticipacion_mismo_inmueble:1,duracion_visita_minutos:60,modo_mismo_inmueble:'separado',separacion_mismo_inmueble_minutos:15,minutos_traslado_entre_inmuebles:30,radio_zona_km:7,valor_minimo_canon_seguimiento:0,valor_minimo_venta_seguimiento:0,valor_alto_canon_zona:0,valor_alto_venta_zona:0,almuerzo_activo:true,almuerzo_inicio:'12:00',almuerzo_fin:'13:00',pais:'CO',equipo_visible_roles:['administrador']});
@@ -79,15 +79,58 @@ async function equipo(){
  const container=root.querySelector('.ad-subbody');container.innerHTML='<p>Cargando equipo…</p>';const turno=revision;
  const {data,error}=await supabase.from('agenda_asesores').select('*').eq('empresa_id',config.empresa_id).order('nombre');
  await cargarCiudades();await cargarAsesorCiudades();await cargarCoberturas();await cargarAsesorCoberturas();
+ try{const r=await listarAccesos(config.empresa_id);accesosPorUsuario={};for(const m of (r.miembros||[]))accesosPorUsuario[m.usuario_id]=m;}catch{accesosPorUsuario={};}
  if(turno!==revision || root.querySelector('[data-subtab=equipo]').getAttribute('aria-pressed')!=='true')return;
  if(error){container.textContent='No se pudo cargar el equipo. Comprueba que la migración 002 esté aplicada y tu usuario sea administrador.';return;}
- asesores=data;container.innerHTML=`<header><div><h2>Tu equipo</h2><p>${asesores.filter(a=>a.activo).length} activos · ${asesores.length} registrados</p></div><button class="ad-primary" id="ad-nuevo">＋ Nuevo asesor</button></header><p class="ad-note">Estas fichas organizan tu equipo. Las invitaciones, contraseñas y permisos de acceso aún no están habilitados; registrar una ficha no crea una cuenta.</p><label>Buscar asesor<input id="ad-buscar" type="search" placeholder="Nombre, correo o ciudad"></label><div class="ad-cards"></div><div id="ad-editor"></div>`;
+ asesores=data;container.innerHTML=`<header><div><h2>Tu equipo</h2><p>${asesores.filter(a=>a.activo).length} activos · ${asesores.length} registrados</p></div><button class="ad-primary" id="ad-nuevo">＋ Nuevo asesor</button></header><p class="ad-note">Estas fichas organizan tu equipo (horarios, ciudades, permisos de citas). Registrar una ficha no crea una cuenta de acceso por sí sola — usa el botón "Dar acceso" en la ficha del asesor cuando quieras que pueda iniciar sesión.</p><label>Buscar asesor<input id="ad-buscar" type="search" placeholder="Nombre, correo o ciudad"></label><div class="ad-cards"></div><div id="ad-editor"></div>`;
  container.querySelector('#ad-nuevo').onclick=()=>editor();container.querySelector('#ad-buscar').oninput=e=>cards(e.target.value);cards();
+}
+function estadoAccesoHtml(a){
+ const m=a.usuario_id?accesosPorUsuario[a.usuario_id]:null;
+ if(m)return `<p class="ad-muted">Acceso: ${esc(m.rol)} · ${m.activo?'Activo':'Inactivo'}${!m.ultimo_acceso?' · nunca ha iniciado sesión':''}</p><button type="button" data-gestionar-acceso="${a.id}">Gestionar acceso</button>`;
+ return `<p class="ad-muted">Sin acceso al sistema todavía</p><button type="button" data-dar-acceso="${a.id}">＋ Dar acceso</button>`;
 }
 function cards(busqueda=''){
  const rows=asesores.filter(a=>[a.nombre,a.correo,nombresCiudades(a.id)].join(' ').toLocaleLowerCase().includes(busqueda.toLocaleLowerCase()));
- const c=root.querySelector('.ad-cards');c.innerHTML=rows.length?rows.map(a=>`<article><div class="ad-avatar" style="background:${a.color||'#e3f8f7'}">${esc(a.nombre.slice(0,1).toUpperCase())}</div><div><h3>${esc(a.nombre)}</h3><p>${esc(a.correo)}<br>${esc(a.celular)}<br>${esc(nombresCiudades(a.id))}</p><span class="ad-pill">${a.activo?'Activo':'Inactivo'}</span> <span class="ad-pill">${esc(a.rol)} · Prioridad ${a.prioridad}</span><span class="ad-pill">${a.tipo_vinculacion==='freelance'?'Freelance':'De planta'}</span><span class="ad-pill">${a.rol==='asesor'?(a.permiso_mover_citas&&a.permiso_eliminar_citas?'Mover y cancelar':a.permiso_mover_citas?'Solo mover':a.permiso_eliminar_citas?'Solo cancelar':'Sin permiso de mover/cancelar'):'Mover y cancelar (por rol)'}</span><span class="ad-pill">${a.atiende_domingo?'Atiende domingos':'No atiende domingos'}</span><span class="ad-pill">${a.atiende_festivos?'Atiende festivos':'No atiende festivos'}</span>${a.supervisor_id?`<span class="ad-pill">Supervisor: ${esc(asesores.find(x=>x.id===a.supervisor_id)?.nombre||'—')}</span>`:''}<p class="ad-muted">Acceso pendiente</p><button data-edit="${a.id}">Editar</button> <button data-toggle="${a.id}">${a.activo?'Desactivar':'Reactivar'}</button></div></article>`).join(''):'<p>No hay asesores para mostrar. Crea el primero para comenzar.</p>';
- c.onclick=async e=>{const id=e.target.dataset.edit || e.target.dataset.toggle;if(!id)return;const a=asesores.find(x=>x.id===id);if(e.target.dataset.edit){editor(a);return;}if(!confirm(`${a.activo?'Desactivar':'Reactivar'} a ${a.nombre}? Se conservará su ficha. Esto todavía no modifica cuentas de acceso ni citas.`))return;e.target.disabled=true;const {error}=await supabase.from('agenda_asesores').update({activo:!a.activo}).eq('id',id).eq('empresa_id',config.empresa_id).select('id').single();if(error){aviso('No se pudo cambiar el estado.',true);e.target.disabled=false;}else{await equipo();aviso('Estado actualizado.');}};
+ const c=root.querySelector('.ad-cards');c.innerHTML=rows.length?rows.map(a=>`<article><div class="ad-avatar" style="background:${a.color||'#e3f8f7'}">${esc(a.nombre.slice(0,1).toUpperCase())}</div><div><h3>${esc(a.nombre)}</h3><p>${esc(a.correo)}<br>${esc(a.celular)}<br>${esc(nombresCiudades(a.id))}</p><span class="ad-pill">${a.activo?'Activo':'Inactivo'}</span> <span class="ad-pill">${esc(a.rol)} · Prioridad ${a.prioridad}</span><span class="ad-pill">${a.tipo_vinculacion==='freelance'?'Freelance':'De planta'}</span><span class="ad-pill">${a.rol==='asesor'?(a.permiso_mover_citas&&a.permiso_eliminar_citas?'Mover y cancelar':a.permiso_mover_citas?'Solo mover':a.permiso_eliminar_citas?'Solo cancelar':'Sin permiso de mover/cancelar'):'Mover y cancelar (por rol)'}</span><span class="ad-pill">${a.atiende_domingo?'Atiende domingos':'No atiende domingos'}</span><span class="ad-pill">${a.atiende_festivos?'Atiende festivos':'No atiende festivos'}</span>${a.supervisor_id?`<span class="ad-pill">Supervisor: ${esc(asesores.find(x=>x.id===a.supervisor_id)?.nombre||'—')}</span>`:''}${estadoAccesoHtml(a)}<button data-edit="${a.id}">Editar</button> <button data-toggle="${a.id}">${a.activo?'Desactivar':'Reactivar'}</button></div></article>`).join(''):'<p>No hay asesores para mostrar. Crea el primero para comenzar.</p>';
+ c.onclick=async e=>{
+  const darAccesoId=e.target.dataset.darAcceso;
+  const gestionarId=e.target.dataset.gestionarAcceso;
+  if(darAccesoId){const a=asesores.find(x=>x.id===darAccesoId);if(a)formularioAcceso(a);return;}
+  if(gestionarId){root.querySelector('[data-subtab=accesos]')?.click();return;}
+  const id=e.target.dataset.edit || e.target.dataset.toggle;if(!id)return;const a=asesores.find(x=>x.id===id);if(e.target.dataset.edit){editor(a);return;}if(!confirm(`${a.activo?'Desactivar':'Reactivar'} a ${a.nombre}? Se conservará su ficha. Esto todavía no modifica cuentas de acceso ni citas.`))return;e.target.disabled=true;const {error}=await supabase.from('agenda_asesores').update({activo:!a.activo}).eq('id',id).eq('empresa_id',config.empresa_id).select('id').single();if(error){aviso('No se pudo cambiar el estado.',true);e.target.disabled=false;}else{await equipo();aviso('Estado actualizado.');}};
+}
+function formularioAcceso(a){
+ const el=root.querySelector('#ad-editor');
+ el.innerHTML=`<form class="ad-form" id="ad-dar-acceso-form"><h3>Dar acceso a ${esc(a.nombre)}</h3>
+ <div class="ad-grid">${campo('da_nombre','Nombre',a.nombre,'text','required maxlength="120"')}${campo('da_correo','Correo',a.correo,'email','required')}<label>Rol<select name="da_rol"><option value="asesor" selected>Asesor</option><option value="coordinador">Coordinador</option><option value="administrador">Administrador</option></select></label></div>
+ <fieldset><legend>¿Cómo le das acceso?</legend>
+  <label class="ad-check"><input type="radio" name="da_modo" value="invitar" checked> Enviarle un correo para que cree su propia contraseña</label>
+  <label class="ad-check"><input type="radio" name="da_modo" value="directa"> Ponerle la contraseña yo mismo ahora</label>
+ </fieldset>
+ <div id="da-clave-directa" hidden><label>Contraseña (mínimo 8 caracteres)<input name="da_password" type="text" minlength="8" autocomplete="off"></label> <button type="button" id="da-generar">Generar una</button><p class="ad-note">Esta contraseña no se envía por correo: cópiala y pásasela tú mismo al asesor.</p></div>
+ <div class="ad-actions"><button class="ad-primary" type="submit">Dar acceso</button><button type="button" id="da-cancelar">Cancelar</button></div>
+ </form>`;
+ const bloqueClave=el.querySelector('#da-clave-directa');
+ el.querySelectorAll('[name=da_modo]').forEach(r=>r.addEventListener('change',()=>{bloqueClave.hidden=el.querySelector('[name=da_modo]:checked').value!=='directa';}));
+ el.querySelector('#da-generar').onclick=()=>{el.querySelector('[name=da_password]').value=generarPasswordAleatoria();};
+ el.querySelector('#da-cancelar').onclick=()=>el.replaceChildren();
+ el.querySelector('form').onsubmit=async e=>{
+  e.preventDefault();const f=e.target;const b=f.querySelector('[type=submit]');b.disabled=true;
+  const modo=f.da_modo.value;const password=modo==='directa'?f.da_password.value:undefined;
+  if(modo==='directa' && (!password || password.length<8)){aviso('La contraseña debe tener al menos 8 caracteres.',true);b.disabled=false;return;}
+  try{
+   const r=await crearAcceso(config.empresa_id,{nombre:f.da_nombre.value.trim(),correo:f.da_correo.value.trim(),rol:f.da_rol.value,password,asesorId:a.id});
+   a.usuario_id=r.usuario_id;
+   el.replaceChildren();
+   aviso(modo==='directa'?'Acceso creado con la contraseña que pusiste.':'Acceso creado. Le llegará un correo de invitación.');
+   await equipo();
+  }catch(err){aviso(err.message,true);b.disabled=false;}
+ };
+}
+function generarPasswordAleatoria(){
+ const bytes=crypto.getRandomValues(new Uint8Array(9));
+ return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g,'').slice(0,12);
 }
 async function cargarAusencias(asesorId){
  const {data}=await supabase.from('agenda_asesores_ausencias').select('*').eq('asesor_id',asesorId).order('fecha_inicio',{ascending:false});
@@ -436,13 +479,20 @@ async function accesosTab() {
  <p>Aquí administras quién puede iniciar sesión en la agenda. Es independiente de la ficha de cada asesor en Equipo: crear a alguien en Equipo no le da acceso por sí solo, hay que crearle también su acceso aquí. Al crear un acceso nuevo, le llega un correo para que defina su propia contraseña.</p>
  <ul class="ad-accesos">${miembros.length ? miembros.map(fila).join('') : '<p class="ad-muted">Todavía no hay accesos creados.</p>'}</ul>
  <h3 style="margin-top:26px">Crear acceso nuevo</h3>
- <form id="ad-acceso-form" class="ad-grid" style="margin-top:10px">
-  <label>Nombre<input name="nombre" required maxlength="120" placeholder="Nombre completo"></label>
-  <label>Correo<input name="correo" type="email" required placeholder="nombre@empresa.com"></label>
-  <label>Rol<select name="rol"><option value="asesor">Asesor</option><option value="coordinador">Coordinador</option><option value="administrador">Administrador</option></select></label>
-  <button type="submit" class="ad-primary" style="align-self:end">Crear e invitar por correo</button>
+ <form id="ad-acceso-form" class="ad-form" style="margin-top:10px">
+  <div class="ad-grid">
+   <label>Nombre<input name="nombre" required maxlength="120" placeholder="Nombre completo"></label>
+   <label>Correo<input name="correo" type="email" required placeholder="nombre@empresa.com"></label>
+   <label>Rol<select name="rol"><option value="asesor">Asesor</option><option value="coordinador">Coordinador</option><option value="administrador">Administrador</option></select></label>
+  </div>
+  <fieldset><legend>¿Cómo le das acceso?</legend>
+   <label class="ad-check"><input type="radio" name="modo" value="invitar" checked> Enviarle un correo para que cree su propia contraseña</label>
+   <label class="ad-check"><input type="radio" name="modo" value="directa"> Ponerle la contraseña yo mismo ahora</label>
+  </fieldset>
+  <div id="ad-acceso-clave-directa" hidden><label>Contraseña (mínimo 8 caracteres)<input name="password" type="text" minlength="8" autocomplete="off"></label> <button type="button" id="ad-acceso-generar">Generar una</button><p class="ad-note">Esta contraseña no se envía por correo: cópiala y pásasela tú mismo a la persona.</p></div>
+  <button type="submit" class="ad-primary" style="align-self:end">Crear acceso</button>
  </form>
- <p class="ad-note">La persona recibe un correo con un enlace de un solo uso para elegir su propia contraseña. Si no le llega o el enlace expira, usa "Reenviar invitación". Tú también puedes ponerle una contraseña directamente con "Cambiar contraseña", sin esperar a que ella la defina.</p>`;
+ <p class="ad-note">Si eliges invitar por correo, la persona recibe un enlace de un solo uso para elegir su propia contraseña. Si no le llega o el enlace expira, usa "Reenviar invitación". También puedes cambiarle la contraseña después con "Cambiar contraseña".</p>`;
 
  el.querySelectorAll('[data-cambiar-pass]').forEach(b => b.addEventListener('click', () => {
   accesoClaveAbiertaId = b.dataset.cambiarPass;
@@ -490,14 +540,26 @@ async function accesosTab() {
    b.disabled = false;
   }
  }));
+ el.querySelectorAll('[name=modo]').forEach(r => r.addEventListener('change', () => {
+  el.querySelector('#ad-acceso-clave-directa').hidden = el.querySelector('[name=modo]:checked').value !== 'directa';
+ }));
+ el.querySelector('#ad-acceso-generar')?.addEventListener('click', () => {
+  el.querySelector('#ad-acceso-form [name=password]').value = generarPasswordAleatoria();
+ });
  el.querySelector('#ad-acceso-form').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
   const boton = f.querySelector('button[type=submit]');
+  const modo = f.modo.value;
+  const password = modo === 'directa' ? f.password.value : undefined;
+  if (modo === 'directa' && (!password || password.length < 8)) {
+   aviso('La contraseña debe tener al menos 8 caracteres.', true);
+   return;
+  }
   boton.disabled = true;
   try {
-   await crearAcceso(config.empresa_id, { nombre: f.nombre.value.trim(), correo: f.correo.value.trim(), rol: f.rol.value });
-   aviso('Acceso creado. Le llegará un correo de invitación.');
+   await crearAcceso(config.empresa_id, { nombre: f.nombre.value.trim(), correo: f.correo.value.trim(), rol: f.rol.value, password });
+   aviso(modo === 'directa' ? 'Acceso creado con la contraseña que pusiste.' : 'Acceso creado. Le llegará un correo de invitación.');
    f.reset();
    await accesosTab();
   } catch (err) {
