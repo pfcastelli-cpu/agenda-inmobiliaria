@@ -14,9 +14,11 @@ import {
   Clock3,
   createIcons,
   ExternalLink,
+  History,
   House,
   Plus,
   Search,
+  Star,
   Store,
   UserRound,
   Users,
@@ -36,9 +38,11 @@ const icons = {
   ClipboardList,
   Clock3,
   ExternalLink,
+  History,
   House,
   Plus,
   Search,
+  Star,
   Store,
   UserRound,
   Users,
@@ -51,6 +55,7 @@ let asesoresCache = null;
 let coberturasCache = null;
 let configPublicaCache = null;
 let buscarInmueblesDebounce = null;
+let buscarBitacoraDebounce = null;
 
 const escape = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
@@ -104,7 +109,7 @@ export function iniciarAgendaReal(acceso) {
   if (insignia) insignia.textContent = 'Datos reales';
   const pie = root.querySelector('.v-footnote');
   if (pie) pie.textContent = 'Datos reales · las citas y cancelaciones se guardan en Supabase';
-  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes' };
+  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes', bitacora: 'Bitácora' };
   root.querySelectorAll('[data-view]').forEach((b) => {
     const textoIcono = b.querySelector('i');
     const etiqueta = ETIQUETAS_NAV[b.dataset.view] || '';
@@ -117,6 +122,7 @@ export function iniciarAgendaReal(acceso) {
     // "No disponible" de la ficha del inmueble (administrador/coordinador).
     if (b.dataset.view === 'team') b.hidden = contexto.rol !== 'administrador';
     if (b.dataset.view === 'informes') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
+    if (b.dataset.view === 'bitacora') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
   });
 
   state.view = 'agenda';
@@ -179,6 +185,19 @@ const state = {
   informesVentaInput: '',
   informesGuardandoAlertas: false,
   informesErrorAlertas: '',
+  bitacoraSub: 'citas',
+  bitacoraDesde: null,
+  bitacoraHasta: null,
+  bitacoraAsesorFiltro: 'all',
+  bitacoraAccionFiltro: 'all',
+  bitacoraCalifMin: 'all',
+  bitacoraTexto: '',
+  bitacoraPagina: 0,
+  bitacoraLimite: 20,
+  bitacoraFilas: [],
+  bitacoraTotal: 0,
+  bitacoraCargando: false,
+  bitacoraError: '',
 };
 
 const TIPOS_CITA = {
@@ -403,6 +422,7 @@ async function render() {
     else if (state.view === 'properties') await renderInmuebles();
     else if (state.view === 'team') await renderEquipo();
     else if (state.view === 'informes') await renderInformes();
+    else if (state.view === 'bitacora') await renderBitacora();
     else if (state.view === 'reserva') await renderReserva();
     else if (state.view === 'exito') renderExito();
   } catch (error) {
@@ -1145,6 +1165,204 @@ async function renderInformes() {
     `;
 }
 
+const ETIQUETAS_ACCION_BITACORA = {
+  creada: 'Creada',
+  cancelada: 'Cancelada',
+  movida: 'Movida',
+  cambio_estado: 'Cambio de estado',
+  editada: 'Editada',
+};
+const ICONOS_ACCION_BITACORA = {
+  creada: 'calendar-check',
+  cancelada: 'ban',
+  movida: 'arrow-up-right',
+  cambio_estado: 'check',
+  editada: 'clipboard-list',
+};
+const COLORES_ACCION_BITACORA = {
+  creada: 'var(--v-green)',
+  cancelada: 'var(--v-red)',
+  movida: 'var(--v-blue)',
+  cambio_estado: 'var(--v-blue)',
+  editada: 'var(--v-muted)',
+};
+const ETIQUETAS_IMPRESION_BITACORA = {
+  me_gusto_mucho: '😍 Le gustó mucho',
+  me_gusto: '🙂 Le gustó',
+  no_seguro: '😐 No estaba seguro',
+  no_me_gusto: '🙁 No le gustó',
+};
+const ETIQUETAS_INTENCION_BITACORA = {
+  avanzar: '✅ Quiere avanzar',
+  segunda_visita: '🏡 Segunda visita',
+  resolver_dudas: '📲 Resolver dudas',
+  ver_otras: '🔎 Ver otras opciones',
+  no_interesa: '❌ No le interesa',
+};
+const ETIQUETAS_MOTIVO_BITACORA = {
+  precio: '💰 Precio alto',
+  ubicacion: '📍 Ubicación',
+  estado: '🛠️ Estado del inmueble',
+  tamano: '📐 Tamaño o distribución',
+  ruido: '🔊 Ruido o sector',
+};
+
+function fechaHoraBitacora(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function fechaCortaBitacora(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function detalleAccionBitacora(f) {
+  if (f.accion === 'cancelada') {
+    return f.motivo ? `Motivo: ${escape(f.motivo)}` : 'Sin motivo registrado';
+  }
+  if (f.accion === 'movida') {
+    const antes = `${f.fecha_anterior || ''} ${hora(f.hora_inicio_anterior || '')}`.trim();
+    const despues = `${f.fecha_nueva || ''} ${hora(f.hora_inicio_nueva || '')}`.trim();
+    return `De ${escape(antes)} a ${escape(despues)}`;
+  }
+  if (f.accion === 'cambio_estado') {
+    return `${escape(f.estado_anterior || '—')} → ${escape(f.estado_nuevo || '—')}`;
+  }
+  if (f.accion === 'creada') {
+    return f.cliente_nombre ? `Cliente: ${escape(f.cliente_nombre)}` : '';
+  }
+  return '';
+}
+
+function filaCitaBitacora(f) {
+  const icono = ICONOS_ACCION_BITACORA[f.accion] || 'clipboard-list';
+  const color = COLORES_ACCION_BITACORA[f.accion] || 'var(--v-muted)';
+  const direccion = f.numero_inmueble ? `#${f.numero_inmueble} · ${f.direccion || ''}` : (f.direccion || 'Sin inmueble');
+  return `<tr style="border-bottom:1px solid var(--v-line)">
+    <td style="padding:8px 10px;font-size:13px;white-space:nowrap">${fechaHoraBitacora(f.creado_en)}</td>
+    <td style="padding:8px 10px;font-size:13px"><span style="display:inline-flex;align-items:center;gap:6px;color:${color}">${icon(icono)}${ETIQUETAS_ACCION_BITACORA[f.accion] || escape(f.accion)}</span></td>
+    <td style="padding:8px 10px;font-size:13px">${escape(direccion)}${f.cita_fecha ? `<div class="v-muted" style="font-size:12px">${fechaCortaBitacora(f.cita_fecha)} ${hora(f.cita_hora || '')}</div>` : ''}</td>
+    <td style="padding:8px 10px;font-size:13px">${escape(f.asesor_nombre || '—')}</td>
+    <td style="padding:8px 10px;font-size:13px">${escape(f.realizado_por_nombre || '—')}</td>
+    <td style="padding:8px 10px;font-size:13px">${detalleAccionBitacora(f)}</td>
+  </tr>`;
+}
+
+function filaEncuestaBitacora(f) {
+  const estrellasHtml = f.calificacion
+    ? `<span style="color:#E6A817;letter-spacing:1px">${'★'.repeat(f.calificacion)}${'☆'.repeat(5 - f.calificacion)}</span>`
+    : '<span class="v-muted">—</span>';
+  const badges = [];
+  if (f.impresion) badges.push(ETIQUETAS_IMPRESION_BITACORA[f.impresion] || f.impresion);
+  if (f.intencion) badges.push(ETIQUETAS_INTENCION_BITACORA[f.intencion] || f.intencion);
+  if (f.motivo && f.motivo !== 'no_aplica') badges.push(ETIQUETAS_MOTIVO_BITACORA[f.motivo] || f.motivo);
+  const direccion = f.numero_inmueble ? `#${f.numero_inmueble} · ${f.direccion || ''}` : (f.direccion || 'Sin inmueble');
+  const chip = (t) => `<span style="display:inline-block;margin:0 4px 4px 0;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--v-tint);border:1px solid var(--v-line)">${escape(t)}</span>`;
+  return `<tr style="border-bottom:1px solid var(--v-line)">
+    <td style="padding:8px 10px;font-size:13px;white-space:nowrap">${fechaHoraBitacora(f.respondido_en || f.creado_en)}</td>
+    <td style="padding:8px 10px;font-size:13px">${escape(direccion)}</td>
+    <td style="padding:8px 10px;font-size:13px">${escape(f.asesor_nombre || '—')}</td>
+    <td style="padding:8px 10px;font-size:13px">${escape(f.cliente_nombre || '—')}</td>
+    <td style="padding:8px 10px;font-size:13px;text-align:center">${estrellasHtml}</td>
+    <td style="padding:8px 10px;font-size:13px">${badges.length ? badges.map(chip).join('') : '<span class="v-muted">—</span>'}</td>
+    <td style="padding:8px 10px;font-size:13px;max-width:240px">${escape(f.comentario || '')}</td>
+    <td style="padding:8px 10px;font-size:13px">${f.respondido ? '<span style="color:var(--v-green)">✓ Respondida</span>' : '<span class="v-muted">Pendiente</span>'}</td>
+  </tr>`;
+}
+
+async function cargarBitacora() {
+  state.bitacoraCargando = true;
+  state.bitacoraError = '';
+  try {
+    const params = {
+      p_empresa_id: contexto.empresaId,
+      p_desde: state.bitacoraDesde || null,
+      p_hasta: state.bitacoraHasta || null,
+      p_asesor_id: state.bitacoraAsesorFiltro === 'all' ? null : state.bitacoraAsesorFiltro,
+      p_texto: state.bitacoraTexto.trim() || null,
+      p_limite: state.bitacoraLimite,
+      p_offset: state.bitacoraPagina * state.bitacoraLimite,
+    };
+    if (state.bitacoraSub === 'citas') {
+      params.p_accion = state.bitacoraAccionFiltro === 'all' ? null : state.bitacoraAccionFiltro;
+      const { data, error } = await supabase.rpc('agenda_bitacora_citas', params);
+      if (error) throw new Error(error.message);
+      state.bitacoraFilas = data?.filas || [];
+      state.bitacoraTotal = data?.total || 0;
+    } else {
+      params.p_calificacion_min = state.bitacoraCalifMin === 'all' ? null : Number(state.bitacoraCalifMin);
+      const { data, error } = await supabase.rpc('agenda_bitacora_encuestas', params);
+      if (error) throw new Error(error.message);
+      state.bitacoraFilas = data?.filas || [];
+      state.bitacoraTotal = data?.total || 0;
+    }
+  } catch (error) {
+    state.bitacoraError = error.message || 'No se pudo cargar la bitácora.';
+    state.bitacoraFilas = [];
+    state.bitacoraTotal = 0;
+  }
+  state.bitacoraCargando = false;
+}
+
+async function renderBitacora() {
+  if (!state.bitacoraDesde) state.bitacoraDesde = addDiasISO(hoyISO(), -30);
+  if (!state.bitacoraHasta) state.bitacoraHasta = hoyISO();
+  main().innerHTML = '<p class="v-muted">Cargando bitácora…</p>';
+  const asesores = await cargarAsesores();
+  await cargarBitacora();
+
+  const desdeN = state.bitacoraPagina * state.bitacoraLimite + 1;
+  const hastaN = Math.min(state.bitacoraTotal, desdeN + state.bitacoraLimite - 1);
+
+  const filtroAccion = state.bitacoraSub === 'citas'
+    ? `<label class="v-field" for="v-bitacora-accion">Acción<select id="v-bitacora-accion" class="v-input"><option value="all">Todas</option>${Object.entries(ETIQUETAS_ACCION_BITACORA).map(([v, t]) => `<option value="${v}" ${state.bitacoraAccionFiltro === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`
+    : `<label class="v-field" for="v-bitacora-calif">Calificación mínima<select id="v-bitacora-calif" class="v-input"><option value="all">Todas</option>${[5, 4, 3, 2, 1].map((n) => `<option value="${n}" ${state.bitacoraCalifMin === String(n) ? 'selected' : ''}>${n}+ estrellas</option>`).join('')}</select></label>`;
+
+  main().innerHTML = `<div class="v-top"><div><div class="v-eyebrow">Monitoreo operativo</div><h2>Bitácora</h2></div></div>
+    <p class="v-note">Historial de lo que pasa con las citas (quién creó, canceló, movió o cambió cada una) y las encuestas de satisfacción que responden los clientes después de cada visita.</p>
+
+    <div style="margin-top:14px;display:inline-flex;border:1px solid var(--v-line);border-radius:10px;overflow:hidden">
+      <button type="button" class="v-btn ${state.bitacoraSub === 'citas' ? 'v-primary' : 'v-quiet'}" style="border-radius:0" data-bitacora-sub="citas">${icon('clipboard-list')}Actividad de citas</button>
+      <button type="button" class="v-btn ${state.bitacoraSub === 'encuestas' ? 'v-primary' : 'v-quiet'}" style="border-radius:0" data-bitacora-sub="encuestas">${icon('star')}Encuestas de clientes</button>
+    </div>
+
+    <div class="v-filters" style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <label class="v-field">Desde<input type="date" class="v-input" id="v-bitacora-desde" value="${state.bitacoraDesde}"></label>
+      <label class="v-field">Hasta<input type="date" class="v-input" id="v-bitacora-hasta" value="${state.bitacoraHasta}"></label>
+      <label class="v-field" for="v-bitacora-asesor">Asesor<select id="v-bitacora-asesor" class="v-input"><option value="all">Todo el equipo</option>${asesores.map((a) => `<option value="${a.id}" ${state.bitacoraAsesorFiltro === a.id ? 'selected' : ''}>${escape(a.nombre)}</option>`).join('')}</select></label>
+      ${filtroAccion}
+      <label class="v-field">Buscar<input type="text" class="v-input" id="v-bitacora-texto" placeholder="Cliente, dirección, # inmueble…" value="${escape(state.bitacoraTexto)}"></label>
+    </div>
+
+    ${state.bitacoraError ? `<div class="v-error" role="alert" style="margin-top:12px">${escape(state.bitacoraError)}</div>` : ''}
+
+    ${state.bitacoraFilas.length === 0
+      ? `<div class="v-empty" style="margin-top:16px">${icon('clipboard-list')}<h3>Sin resultados</h3><p style="margin-top:8px">No hay registros para estos filtros.</p></div>`
+      : state.bitacoraSub === 'citas'
+        ? `<div style="overflow-x:auto;margin-top:16px"><table style="width:100%;border-collapse:collapse;min-width:720px">
+            <thead><tr style="text-align:left;border-bottom:1px solid var(--v-line)"><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Cuándo</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Acción</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Inmueble / cita</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Asesor</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Quién lo hizo</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Detalle</th></tr></thead>
+            <tbody>${state.bitacoraFilas.map(filaCitaBitacora).join('')}</tbody>
+          </table></div>`
+        : `<div style="overflow-x:auto;margin-top:16px"><table style="width:100%;border-collapse:collapse;min-width:820px">
+            <thead><tr style="text-align:left;border-bottom:1px solid var(--v-line)"><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Cuándo</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Inmueble</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Asesor</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Cliente</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted);text-align:center">Calificación</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Impresión / intención / motivo</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Comentario</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Estado</th></tr></thead>
+            <tbody>${state.bitacoraFilas.map(filaEncuestaBitacora).join('')}</tbody>
+          </table></div>`
+    }
+
+    ${state.bitacoraTotal > 0 ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:8px">
+      <p class="v-muted" style="font-size:13px">Mostrando ${desdeN}–${hastaN} de ${state.bitacoraTotal}</p>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="v-btn v-quiet" data-bitacora-anterior ${state.bitacoraPagina === 0 ? 'disabled' : ''}>${icon('chevron-left')}Anterior</button>
+        <button type="button" class="v-btn v-quiet" data-bitacora-siguiente ${hastaN >= state.bitacoraTotal ? 'disabled' : ''}>Siguiente${icon('chevron-right')}</button>
+      </div>
+    </div>` : ''}
+  `;
+}
+
 function adjuntarEventos(rootEl) {
   rootEl.addEventListener('input', (e) => {
     if (e.target.id === 'v-search') {
@@ -1155,6 +1373,15 @@ function adjuntarEventos(rootEl) {
         state.pagina = 0;
         renderInmuebles();
       }, 2500);
+    }
+    if (e.target.id === 'v-bitacora-texto') {
+      const valor = e.target.value;
+      clearTimeout(buscarBitacoraDebounce);
+      buscarBitacoraDebounce = setTimeout(() => {
+        state.bitacoraTexto = valor;
+        state.bitacoraPagina = 0;
+        render();
+      }, 900);
     }
     if (e.target.id === 'v-cliente') state.cliente = e.target.value;
     if (e.target.id === 'v-telefono') state.telefono = e.target.value;
@@ -1172,6 +1399,31 @@ function adjuntarEventos(rootEl) {
   rootEl.addEventListener('change', async (e) => {
     if (e.target.id === 'v-asesor') {
       state.asesorFiltro = e.target.value;
+      render();
+    }
+    if (e.target.id === 'v-bitacora-asesor') {
+      state.bitacoraAsesorFiltro = e.target.value;
+      state.bitacoraPagina = 0;
+      render();
+    }
+    if (e.target.id === 'v-bitacora-accion') {
+      state.bitacoraAccionFiltro = e.target.value;
+      state.bitacoraPagina = 0;
+      render();
+    }
+    if (e.target.id === 'v-bitacora-calif') {
+      state.bitacoraCalifMin = e.target.value;
+      state.bitacoraPagina = 0;
+      render();
+    }
+    if (e.target.id === 'v-bitacora-desde') {
+      state.bitacoraDesde = e.target.value;
+      state.bitacoraPagina = 0;
+      render();
+    }
+    if (e.target.id === 'v-bitacora-hasta') {
+      state.bitacoraHasta = e.target.value;
+      state.bitacoraPagina = 0;
       render();
     }
     if (e.target.id === 'v-ciudad') {
@@ -1220,12 +1472,28 @@ function adjuntarEventos(rootEl) {
   });
 
   rootEl.addEventListener('click', async (e) => {
-    if (state.view !== 'agenda' && state.view !== 'interna' && state.view !== 'properties' && state.view !== 'team' && state.view !== 'informes' && state.view !== 'reserva' && state.view !== 'exito') return;
+    if (state.view !== 'agenda' && state.view !== 'interna' && state.view !== 'properties' && state.view !== 'team' && state.view !== 'informes' && state.view !== 'bitacora' && state.view !== 'reserva' && state.view !== 'exito') return;
     const b = e.target.closest('button');
     if (!b || b.disabled || !rootEl.contains(b)) return;
 
     if (b.dataset.view) {
       setView(b.dataset.view);
+      return;
+    }
+    if (b.dataset.bitacoraSub) {
+      state.bitacoraSub = b.dataset.bitacoraSub;
+      state.bitacoraPagina = 0;
+      render();
+      return;
+    }
+    if (b.hasAttribute('data-bitacora-anterior')) {
+      state.bitacoraPagina = Math.max(0, state.bitacoraPagina - 1);
+      render();
+      return;
+    }
+    if (b.hasAttribute('data-bitacora-siguiente')) {
+      state.bitacoraPagina += 1;
+      render();
       return;
     }
     if (b.hasAttribute('data-new')) {

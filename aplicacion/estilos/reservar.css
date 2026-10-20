@@ -215,3 +215,19 @@
   color: var(--pu-text);
   resize: vertical;
 }
+
+#pub-app .pu-question { font-size: 14.5px; font-weight: 700; color: var(--pu-text); margin: 20px 0 8px; }
+#pub-app .pu-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+#pub-app .pu-option {
+  text-align: left;
+  border: 1px solid var(--pu-border);
+  border-radius: 12px;
+  padding: 11px 14px;
+  cursor: pointer;
+  background: var(--pu-card);
+  color: var(--pu-text);
+  font-size: 14px;
+  font-family: inherit;
+}
+#pub-app .pu-option:hover { border-color: var(--pu-teal); }
+#pub-app .pu-option.activa { background: var(--pu-teal); color: #06231f; border-color: var(--pu-teal); font-weight: 600; }

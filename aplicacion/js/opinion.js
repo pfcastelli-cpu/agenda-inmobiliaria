@@ -2,12 +2,37 @@ import { supabase, hayConfiguracionSupabase } from './cliente-supabase.js';
 
 const raiz = document.getElementById('pu-main');
 
+const IMPRESION_OPCIONES = [
+  { valor: 'me_gusto_mucho', emoji: '😍', texto: 'Me gustó mucho' },
+  { valor: 'me_gusto', emoji: '🙂', texto: 'Me gustó' },
+  { valor: 'no_seguro', emoji: '😐', texto: 'No estoy seguro' },
+  { valor: 'no_me_gusto', emoji: '🙁', texto: 'No me gustó' },
+];
+const INTENCION_OPCIONES = [
+  { valor: 'avanzar', emoji: '✅', texto: 'Quiero avanzar con este inmueble' },
+  { valor: 'segunda_visita', emoji: '🏡', texto: 'Quiero una segunda visita' },
+  { valor: 'resolver_dudas', emoji: '📲', texto: 'Quiero que me contacten para resolver dudas' },
+  { valor: 'ver_otras', emoji: '🔎', texto: 'Quiero ver otras opciones similares' },
+  { valor: 'no_interesa', emoji: '❌', texto: 'No me interesa este inmueble' },
+];
+const MOTIVO_OPCIONES = [
+  { valor: 'precio', emoji: '💰', texto: 'Precio alto' },
+  { valor: 'ubicacion', emoji: '📍', texto: 'Ubicación' },
+  { valor: 'estado', emoji: '🛠️', texto: 'Estado del inmueble' },
+  { valor: 'tamano', emoji: '📐', texto: 'Tamaño o distribución' },
+  { valor: 'ruido', emoji: '🔊', texto: 'Ruido o sector' },
+  { valor: 'no_aplica', emoji: '✅', texto: 'No aplica' },
+];
+
 const state = {
   paso: 'cargando', // cargando | formulario | ya_respondida | enviado | error
   token: null,
   datos: null,
   errorMsg: '',
-  calificacionSel: 0,
+  impresionSel: null,
+  intencionSel: null,
+  motivoSel: null,
+  calificacionAsesorSel: 0,
   comentario: '',
   enviando: false,
   errorForm: '',
@@ -18,6 +43,12 @@ function tokenDesdeUrl() {
   if (ruta) return ruta[1];
   const params = new URLSearchParams(window.location.search);
   return params.get('token');
+}
+
+function impresionPreseleccionadaDesdeUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const valor = params.get('impresion');
+  return IMPRESION_OPCIONES.some((o) => o.valor === valor) ? valor : null;
 }
 
 function escapeHtml(valor) {
@@ -38,6 +69,11 @@ function mensajeAmigable(error, generico) {
   const msg = error?.message || '';
   if (!msg || esMensajeTecnico(msg)) return generico;
   return msg;
+}
+
+function etiquetaOpcion(opciones, valor) {
+  const op = opciones.find((o) => o.valor === valor);
+  return op ? `${op.emoji} ${op.texto}` : '';
 }
 
 async function cargarEncuesta() {
@@ -61,6 +97,7 @@ async function cargarEncuesta() {
   if (data.ya_respondida) {
     state.paso = 'ya_respondida';
   } else {
+    state.impresionSel = impresionPreseleccionadaDesdeUrl();
     state.paso = 'formulario';
   }
   render();
@@ -80,10 +117,19 @@ function encabezadoInmueble() {
   return `<p style="font-size:13px;color:var(--pu-muted)">Inmueble ${d.numero_inmueble || ''} · ${escapeHtml(d.direccion)}</p>`;
 }
 
+function selectorOpciones(campo, opciones, seleccionado) {
+  return `<div class="pu-options" data-campo="${campo}">${opciones
+    .map(
+      (o) =>
+        `<button type="button" class="pu-option ${o.valor === seleccionado ? 'activa' : ''}" data-campo="${campo}" data-valor="${o.valor}">${o.emoji} ${escapeHtml(o.texto)}</button>`,
+    )
+    .join('')}</div>`;
+}
+
 function selectorEstrellas() {
   let out = '<div class="pu-stars" id="pu-stars">';
   for (let i = 1; i <= 5; i++) {
-    out += `<button type="button" class="pu-star ${i <= state.calificacionSel ? 'activa' : ''}" data-estrella="${i}" aria-label="${i} estrella${i === 1 ? '' : 's'}">★</button>`;
+    out += `<button type="button" class="pu-star ${i <= state.calificacionAsesorSel ? 'activa' : ''}" data-estrella="${i}" aria-label="${i} estrella${i === 1 ? '' : 's'}">★</button>`;
   }
   out += '</div>';
   return out;
@@ -95,7 +141,19 @@ function vistaFormulario() {
       <h2>¿Qué te pareció la visita?</h2>
       ${encabezadoInmueble()}
       <p>Tu opinión le llega directo al propietario de este inmueble.</p>
+
+      <h3 class="pu-question">1. ¿Qué impresión te dejó el inmueble?</h3>
+      ${selectorOpciones('impresion', IMPRESION_OPCIONES, state.impresionSel)}
+
+      <h3 class="pu-question">2. ¿Cuál sería tu siguiente paso?</h3>
+      ${selectorOpciones('intencion', INTENCION_OPCIONES, state.intencionSel)}
+
+      <h3 class="pu-question">3. Si no te convenció del todo, ¿cuál fue el motivo principal? <span style="font-weight:400">(opcional)</span></h3>
+      ${selectorOpciones('motivo', MOTIVO_OPCIONES, state.motivoSel)}
+
+      <h3 class="pu-question">4. ¿Cómo calificas la atención del asesor?</h3>
       ${selectorEstrellas()}
+
       <label for="pu-comentario" style="margin-top:18px">Cuéntanos más (opcional)</label>
       <textarea id="pu-comentario" rows="4" placeholder="¿Qué te gustó? ¿Qué mejorarías?">${escapeHtml(state.comentario)}</textarea>
       <div class="pu-error" role="alert" style="${state.errorForm ? '' : 'display:none'}">${escapeHtml(state.errorForm)}</div>
@@ -111,6 +169,9 @@ function vistaYaRespondida() {
       <div class="pu-icono">✓</div>
       <h2>Ya registramos tu opinión</h2>
       ${encabezadoInmueble()}
+      ${d.impresion ? `<p class="pu-badge" style="display:inline-block;margin-top:8px">${etiquetaOpcion(IMPRESION_OPCIONES, d.impresion)}</p>` : ''}
+      ${d.intencion ? `<p class="pu-badge" style="display:inline-block;margin:0 0 0 6px">${etiquetaOpcion(INTENCION_OPCIONES, d.intencion)}</p>` : ''}
+      ${d.motivo && d.motivo !== 'no_aplica' ? `<p class="pu-badge" style="display:inline-block;margin:8px 0 0">${etiquetaOpcion(MOTIVO_OPCIONES, d.motivo)}</p>` : ''}
       ${d.calificacion ? `<div style="color:#E6A817;font-size:22px;letter-spacing:2px;margin:10px 0">${'★'.repeat(d.calificacion)}${'☆'.repeat(5 - d.calificacion)}</div>` : ''}
       ${d.comentario ? `<p style="margin-top:10px">${escapeHtml(d.comentario)}</p>` : ''}
       <p style="margin-top:16px">Gracias por ayudarnos a mejorar.</p>
@@ -144,8 +205,18 @@ function render() {
 }
 
 async function enviarOpinion() {
-  if (!state.calificacionSel) {
-    state.errorForm = 'Elige entre 1 y 5 estrellas antes de enviar.';
+  if (!state.impresionSel) {
+    state.errorForm = 'Elige qué impresión te dejó el inmueble.';
+    render();
+    return;
+  }
+  if (!state.intencionSel) {
+    state.errorForm = 'Elige cuál sería tu siguiente paso.';
+    render();
+    return;
+  }
+  if (!state.calificacionAsesorSel) {
+    state.errorForm = 'Elige entre 1 y 5 estrellas para la atención del asesor.';
     render();
     return;
   }
@@ -154,8 +225,11 @@ async function enviarOpinion() {
   render();
   const { error } = await supabase.rpc('agenda_responder_encuesta', {
     p_token: state.token,
-    p_calificacion: state.calificacionSel,
+    p_calificacion: state.calificacionAsesorSel,
     p_comentario: state.comentario.trim() || null,
+    p_impresion: state.impresionSel,
+    p_intencion: state.intencionSel,
+    p_motivo: state.motivoSel,
   });
   state.enviando = false;
   if (error) {
@@ -168,11 +242,24 @@ async function enviarOpinion() {
 }
 
 function cablear() {
+  raiz.querySelectorAll('.pu-options').forEach((grupo) => {
+    grupo.querySelectorAll('.pu-option').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        const campo = boton.dataset.campo;
+        const valor = boton.dataset.valor;
+        if (campo === 'impresion') state.impresionSel = valor;
+        else if (campo === 'intencion') state.intencionSel = valor;
+        else if (campo === 'motivo') state.motivoSel = valor;
+        state.errorForm = '';
+        render();
+      });
+    });
+  });
   const stars = document.getElementById('pu-stars');
   if (stars) {
     stars.querySelectorAll('.pu-star').forEach((el) => {
       el.addEventListener('click', () => {
-        state.calificacionSel = Number(el.dataset.estrella);
+        state.calificacionAsesorSel = Number(el.dataset.estrella);
         state.errorForm = '';
         render();
       });

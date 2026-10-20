@@ -141,11 +141,43 @@ function tarjetaActividad() {
   `;
 }
 
+const ETIQUETAS_IMPRESION = {
+  me_gusto_mucho: '😍 Le gustó mucho',
+  me_gusto: '🙂 Le gustó',
+  no_seguro: '😐 No estaba seguro',
+  no_me_gusto: '🙁 No le gustó',
+};
+const ETIQUETAS_INTENCION = {
+  avanzar: '✅ Quiere avanzar con este inmueble',
+  segunda_visita: '🏡 Quiere una segunda visita',
+  resolver_dudas: '📲 Quiere que lo contacten para resolver dudas',
+  ver_otras: '🔎 Quiere ver otras opciones similares',
+  no_interesa: '❌ No le interesa este inmueble',
+};
+const ETIQUETAS_MOTIVO = {
+  precio: '💰 Precio alto',
+  ubicacion: '📍 Ubicación',
+  estado: '🛠️ Estado del inmueble',
+  tamano: '📐 Tamaño o distribución',
+  ruido: '🔊 Ruido o sector',
+};
+
 function estrellas(calificacion) {
   if (!calificacion) return '';
   let out = '';
   for (let i = 1; i <= 5; i++) out += i <= calificacion ? '★' : '☆';
   return `<div style="color:#E6A817;font-size:15px;letter-spacing:1px">${out}</div>`;
+}
+
+function badgesOpinion(o) {
+  const badges = [];
+  if (o.impresion && ETIQUETAS_IMPRESION[o.impresion]) badges.push(ETIQUETAS_IMPRESION[o.impresion]);
+  if (o.intencion && ETIQUETAS_INTENCION[o.intencion]) badges.push(ETIQUETAS_INTENCION[o.intencion]);
+  if (o.motivo && ETIQUETAS_MOTIVO[o.motivo]) badges.push(ETIQUETAS_MOTIVO[o.motivo]);
+  if (!badges.length) return '';
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${badges
+    .map((b) => `<span class="pu-badge" style="margin:0;font-size:12.5px">${b}</span>`)
+    .join('')}</div>`;
 }
 
 function tarjetaOpiniones() {
@@ -161,10 +193,12 @@ function tarjetaOpiniones() {
           (o) => `
         <div style="border-bottom:1px solid var(--pu-border);padding-bottom:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-            <strong style="font-size:13px">${o.fuente === 'encuesta_cliente' ? 'Opinión de un cliente' : 'Nota del asesor'}</strong>
+            <strong style="font-size:13px">${o.fuente === 'encuesta_cliente' ? 'Opinión de un cliente (encuesta)' : 'Nota del asesor'}</strong>
             <span style="font-size:12px;color:var(--pu-muted)">${o.fecha ? formatoFecha(o.fecha) : ''}</span>
           </div>
+          ${o.fuente === 'encuesta_cliente' ? '<p style="margin:4px 0 0;font-size:12px;color:var(--pu-muted)">Calificación de la atención del asesor</p>' : ''}
           ${estrellas(o.calificacion)}
+          ${badgesOpinion(o)}
           ${o.comentario ? `<p style="margin:6px 0 0;font-size:14px">${escapeHtml(o.comentario)}</p>` : ''}
         </div>`,
         )
