@@ -196,9 +196,12 @@ async function cargarReporteGeolocalizacion(el){
  el.innerHTML='<p class="ad-muted">Revisando coordenadas…</p>';
  const {data,error}=await supabase.rpc('agenda_reporte_geolocalizacion',{p_empresa_id:config.empresa_id});
  if(error){el.innerHTML='<p class="ad-muted">No se pudo cargar el reporte.</p>';return;}
- if(!data||!data.length){el.innerHTML='<p class="ad-muted">Sin problemas detectados: todos los inmuebles tienen coordenadas dentro de lo esperado.</p>';return;}
+ const {data:disp}=await supabase.from('agenda_inmuebles').select('id').eq('empresa_id',config.empresa_id).eq('disponible',true).range(0,4999);
+ const idsDisponibles=new Set((disp||[]).map(i=>i.id));
+ const filtrados=(data||[]).filter(f=>idsDisponibles.has(f.inmueble_id));
+ if(!filtrados.length){el.innerHTML='<p class="ad-muted">Sin problemas detectados: todos los inmuebles disponibles tienen coordenadas dentro de lo esperado.</p>';return;}
  const grupos={};
- for(const fila of data){(grupos[fila.problema]=grupos[fila.problema]||[]).push(fila);}
+ for(const fila of filtrados){(grupos[fila.problema]=grupos[fila.problema]||[]).push(fila);}
  el.innerHTML=Object.entries(grupos).map(([problema,filas])=>`<details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600">${esc(ETIQUETAS_GEO_PROBLEMA[problema]||problema)} · ${filas.length}</summary>
   <ul class="ad-ciudades">${filas.map(f=>`<li>#${f.numero_inmueble} · ${esc(f.direccion||'')} · ${esc(f.ciudad||'')}${f.distancia_km_a_ciudad?` · ${Math.round(f.distancia_km_a_ciudad)} km del centro configurado`:''}</li>`).join('')}</ul>
  </details>`).join('');
@@ -217,7 +220,7 @@ async function ciudadesTab(){
  <h2 style="margin-top:28px">Festivos</h2><p>Colombia ya viene con el calendario de festivos 2026-2027 cargado automáticamente (Ley Emiliani incluida). Puedes agregar fechas adicionales que quieras bloquear en la agenda. Los asesores de planta no atienden festivos por defecto; los freelance pueden activarlo por asesor en su ficha.</p>
  <ul class="ad-ciudades">${(festivos||[]).slice(0,15).map(f=>`<li>${f.fecha} · ${esc(f.nombre)} <button data-del-festivo="${f.id}">Eliminar</button></li>`).join('')||'<li class="ad-muted">Sin festivos próximos.</li>'}</ul>
  <form class="ad-form" id="ad-festivo-form"><div class="ad-grid">${campo('fecha','Fecha','','date','required')}${campo('nombre_festivo','Nombre','','text','required placeholder="Ej: Cierre anual"')}</div><button class="ad-primary" type="submit">Agregar fecha</button></form>
- <h2 style="margin-top:28px">Calidad de geolocalización</h2><p>Inmuebles con coordenadas ausentes, fuera de Colombia, o lejos del centro de la ciudad que tienen asignada. Repórtalos a Sedi para que corrijan la ubicación en el origen — esta pantalla solo detecta el problema, no lo corrige.</p>
+ <h2 style="margin-top:28px">Calidad de geolocalización</h2><p>Inmuebles disponibles con coordenadas ausentes, fuera de Colombia, o lejos del centro de la ciudad que tienen asignada. Repórtalos a Sedi para que corrijan la ubicación en el origen — esta pantalla solo detecta el problema, no lo corrige.</p>
  <div id="ad-geo-report"></div>`;
  cargarReporteGeolocalizacion(el.querySelector('#ad-geo-report'));
  el.onclick=async e=>{
