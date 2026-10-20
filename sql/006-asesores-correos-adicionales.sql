@@ -1,5 +1,5 @@
 -- 006 · Correos adicionales por asesor + enlaces de calendario (suscripción ICS)
--- NO ejecutado todavía en producción. Todo es aditivo: no cambia ni borra nada existente.
+-- Ya aplicado en producción (20-oct-2026). Todo es aditivo: no cambia ni borra nada existente.
 
 -- Correos adicionales (texto separado por "; "). No afecta el correo de login.
 alter table public.agenda_asesores add column if not exists correos_adicionales text;

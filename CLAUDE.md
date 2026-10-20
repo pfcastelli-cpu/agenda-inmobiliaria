@@ -75,6 +75,13 @@ cambios reales de funcionalidad, datos o convenciones.
 - Contraseñas SMTP y similares: se guardan en Supabase Vault vía una función
   `SECURITY DEFINER` que solo puede ejecutar `service_role` (`agenda_obtener_password_correo`).
   Nunca se devuelven al navegador, ni siquiera a un administrador.
+- **Tablas nuevas en `public` necesitan GRANT explícito** (aviso de Supabase, vigente desde
+  el 30-oct-2026 para proyectos existentes; las tablas actuales no cambian). Toda migración
+  que cree una tabla debe incluir en el mismo archivo: `grant select on public.<tabla> to
+  anon;` (solo si la página pública la necesita), `grant select, insert, update, delete on
+  public.<tabla> to authenticated;` y lo mismo `to service_role;`, además de su RLS. Sin
+  eso, supabase-js falla con "permission denied". Agregar columnas a tablas existentes no
+  requiere nada.
 - `agenda_asesores` (ficha del asesor) y `agenda_miembros` (quién puede iniciar sesión) eran
   tablas separadas sin relación entre sí a propósito — desde la entrega de vínculo
   asesor-usuario (ver abajo) `agenda_asesores.usuario_id` puede vincular una ficha a una
@@ -113,7 +120,26 @@ bitácora completa sesión por sesión):
   (`opinion.js`) muestran estos campos nuevos; `sql/005-bitacora-encuestas.sql` documenta la
   migración completa (ya aplicada).
 
+- Correos adicionales por asesor (`agenda_asesores.correos_adicionales`, texto separado por
+  `;`, no afecta el login) y calendario compartido por enlace de suscripción `.ics`
+  (Edge Function `calendario-ics`, `verify_jwt` apagado; el token secreto de la URL es la
+  credencial, `calendario_token` por asesor y por empresa, regenerable). Pestaña
+  Administración → Calendario. Funciona con Google, Outlook y Apple sin APIs ni costo
+  (`sql/006-asesores-correos-adicionales.sql`, ya aplicado).
+- Administración → Importar citas: sube un `.ics` de Google/Outlook, vista previa, detecta
+  inmueble por `#NN`/`Inmueble NN`, inserta directo en `agenda_citas` (evita duplicados con
+  `evento_calendar_id = 'ics:<uid>'`, no envía correos). Sin inmueble solo entra como
+  Captación (restricción de la tabla).
+- Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
+  por inmueble: botón "Borrar restricciones".
+
 ## Pendiente / próximos pasos conocidos
+0. Probar con red real: suscribir un enlace de Administración → Calendario en Google/Outlook,
+   hacer una importación `.ics` pequeña, y el código de verificación de correo (Resend,
+   `enviar-codigo-verificacion`, ninguna verificación completada aún; `correo_modo_pruebas`
+   sigue en true, apagarlo antes de salir a producción). Los correos adicionales del asesor
+   todavía solo se guardan: falta usarlos en los avisos. La función
+   `enviar-codigo-verificacion` solo existe en Supabase, no en el repo.
 1. **Revisar el estado de git antes de nada.** Verificar con `git log --oneline -5` y
    `git status` que `origin/main` tenga el último commit — puede que falte un `git push`
    después de un commit hecho en una sesión anterior.
