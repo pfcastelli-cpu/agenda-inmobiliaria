@@ -556,7 +556,7 @@ function restriccionEditor(inm) {
     <label class="v-field" style="margin-top:10px;max-width:220px">Duración de la visita (min)<input type="number" min="1" step="1" class="v-input" name="duracion_minutos" placeholder="Por defecto de la empresa" value="${inm.duracion_visita_minutos || ''}"></label>
     <p class="v-muted" style="font-size:14px;margin:6px 0 0">Úsalo para inmuebles de visita rápida (p. ej. oficinas). Si es menor a la duración por defecto, al cliente se le muestra un aviso para que sea puntual, porque el asesor puede tener otra cita cerca.</p>
     <div id="v-restriccion-error" class="v-error" role="alert">${escape(state.errorRestriccion)}</div>
-    <div style="display:flex;gap:8px;margin-top:10px"><button class="v-btn v-primary" type="submit">${icon('check')}Guardar</button><button class="v-btn v-quiet" type="button" data-cerrar-restriccion>Cancelar</button></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="v-btn v-primary" type="submit">${icon('check')}Guardar</button><button class="v-btn v-quiet" type="button" data-cerrar-restriccion>Cancelar</button>${inm.dias_visita_permitidos?.length || inm.hora_visita_desde || inm.hora_visita_hasta || inm.duracion_visita_minutos ? `<button class="v-btn v-quiet" type="button" data-borrar-restriccion="${inm.id}" style="margin-left:auto;color:#B3261E">${icon('trash-2')}Borrar restricciones</button>` : ''}</div>
   </form>`;
 }
 
@@ -1656,6 +1656,38 @@ function adjuntarEventos(rootEl) {
     if (b.dataset.restriccion) {
       state.restriccionId = state.restriccionId === b.dataset.restriccion ? null : b.dataset.restriccion;
       state.errorRestriccion = '';
+      renderInmuebles();
+      return;
+    }
+    if (b.dataset.borrarRestriccion) {
+      const inmuebleId = b.dataset.borrarRestriccion;
+      if (!window.confirm('¿Borrar todas las restricciones de horario de este inmueble?')) return;
+      b.disabled = true;
+      const { error } = await supabase.rpc('agenda_actualizar_restriccion_inmueble', {
+        p_inmueble_id: inmuebleId,
+        p_dias_permitidos: null,
+        p_hora_desde: null,
+        p_hora_hasta: null,
+        p_duracion_minutos: null,
+      });
+      if (error) {
+        b.disabled = false;
+        state.errorRestriccion = 'No se pudo borrar: ' + error.message;
+        renderInmuebles();
+        return;
+      }
+      [inmueblesCache, todosInmueblesCache].forEach((cache) => {
+        const fila = cache?.find((i) => i.id === inmuebleId);
+        if (fila) {
+          fila.dias_visita_permitidos = null;
+          fila.hora_visita_desde = null;
+          fila.hora_visita_hasta = null;
+          fila.duracion_visita_minutos = null;
+        }
+      });
+      state.restriccionId = null;
+      state.errorRestriccion = '';
+      toast('Restricciones borradas.');
       renderInmuebles();
       return;
     }
