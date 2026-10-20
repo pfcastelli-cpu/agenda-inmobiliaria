@@ -10,6 +10,31 @@ pensado para venderse como SaaS a otras inmobiliarias). Reemplaza un sistema leg
 Google Calendar + Apps Script + Sheets (ver sección 1 del doc de estado si necesitas el
 detalle del legado — está en el proyecto de Claude "Agenda de citas", no en este repo).
 
+## Regla fija: mantener este archivo al día
+Este archivo es la única fuente de verdad que CUALQUIER sesión nueva (incluida una de
+Claude Code que nunca vio conversaciones anteriores) lee automáticamente al abrir esta
+carpeta. Si no se actualiza aquí, la próxima sesión parte de información vieja. Por eso,
+cualquier sesión (Cowork o Claude Code) que haga un cambio real en este proyecto (código,
+SQL, configuración) debe, antes de darlo por terminado:
+1. Actualizar la sección "Estado real" de abajo con lo que se construyó o cambió (una o
+   dos líneas por entrega, no una bitácora exhaustiva — el detalle largo, sesión por
+   sesión, va en el documento `estado-actual-y-plan.md` del proyecto de Claude "Agenda de
+   citas", no aquí).
+2. Revisar "Pendiente / próximos pasos conocidos": quitar lo que ya se resolvió con este
+   cambio y agregar lo nuevo que haya quedado pendiente.
+3. Si el cambio introduce una convención nueva (patrón de código, regla de seguridad,
+   tipo de archivo nuevo), documentarla en la sección correspondiente arriba
+   (Arquitectura / Convenciones de seguridad establecidas).
+4. Si se aplicó SQL directamente en Supabase (vía MCP o el dashboard) sin pasar por un
+   archivo, dejar un `sql/00X-descripcion.sql` de referencia como ya se hace (ver
+   001-005), aunque sea solo documentación de algo ya ejecutado.
+5. Commitear `CLAUDE.md` junto con el cambio de código, en el mismo commit — no en uno
+aparte — para que el historial de git amarre código y documentación.
+
+Si un cambio es tan pequeño que de verdad no afecta nada de lo anterior (una corrección
+de texto, un ajuste visual menor), no hace falta tocar este archivo — la regla es sobre
+cambios reales de funcionalidad, datos o convenciones.
+
 ## Arquitectura
 - Frontend: Vite + JS vanilla, sin framework. `aplicacion/` es la app real (login, agenda
   interna, reserva pública, configuración). La raíz (`index.html`, `referencia-visual.html`)
