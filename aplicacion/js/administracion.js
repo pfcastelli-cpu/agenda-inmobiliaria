@@ -34,7 +34,7 @@ export async function iniciarAdministracion(a){
  if(turno!==revision)return;
  if(data)config=data;marca();
  if(a.membresia.rol!=='administrador')return;
- root=document.createElement('section');root.className='ad';root.innerHTML=`<nav aria-label="Administración"><button data-tab="agenda" aria-pressed="true" class="ad-volver" hidden>← Volver a la agenda</button><span class="ad-nav-sep"></span><button data-tab="config" aria-pressed="false" class="ad-gear" title="Configuración" aria-label="Configuración"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></button></nav><p role="status" aria-live="polite"></p><div class="ad-body" hidden><nav class="ad-subnav" aria-label="Configuración"><button data-subtab="equipo" aria-pressed="true">Equipo</button><button data-subtab="ciudades" aria-pressed="false">Ciudades y festivos</button><button data-subtab="marca" aria-pressed="false">Empresa</button><button data-subtab="correo" aria-pressed="false">Correo</button><button data-subtab="calendario" aria-pressed="false">Calendario</button><button data-subtab="accesos" aria-pressed="false">Accesos</button></nav><div class="ad-subbody"></div></div>`;
+ root=document.createElement('section');root.className='ad';root.innerHTML=`<nav aria-label="Administración"><button data-tab="agenda" aria-pressed="true" class="ad-volver" hidden>← Volver a la agenda</button><span class="ad-nav-sep"></span><button data-tab="config" aria-pressed="false" class="ad-gear" title="Configuración" aria-label="Configuración"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></button></nav><p role="status" aria-live="polite"></p><div class="ad-body" hidden><nav class="ad-subnav" aria-label="Configuración"><button data-subtab="equipo" aria-pressed="true">Equipo</button><button data-subtab="ciudades" aria-pressed="false">Ciudades y festivos</button><button data-subtab="marca" aria-pressed="false">Empresa</button><button data-subtab="correo" aria-pressed="false">Correo</button><button data-subtab="calendario" aria-pressed="false">Calendario</button><button data-subtab="importar" aria-pressed="false">Importar citas</button><button data-subtab="accesos" aria-pressed="false">Accesos</button></nav><div class="ad-subbody"></div></div>`;
  document.getElementById('pa-agenda-content').before(root);
  root.querySelector('nav').addEventListener('click',async e=>{const t=e.target.closest('button')?.dataset.tab;if(!t)return;root.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===t)));const body=root.querySelector('.ad-body');body.hidden=t==='agenda';document.getElementById('pa-agenda-content').hidden=t!=='agenda';root.querySelector('.ad-volver').hidden=t==='agenda';aviso('');if(t==='config')await abrirSubtab(root.querySelector('.ad-subnav [aria-pressed=true]')?.dataset.subtab||'equipo');});
  root.querySelector('.ad-subnav').addEventListener('click',async e=>{const st=e.target.closest('button')?.dataset.subtab;if(!st)return;await abrirSubtab(st);});
@@ -74,7 +74,115 @@ async function abrirSubtab(st){
  if(st==='marca')marcaForm();
  if(st==='correo')await correoForm();
  if(st==='calendario')await calendarioTab();
+ if(st==='importar')await importarTab();
  if(st==='accesos')await accesosTab();
+}
+const WIN_TZ={'SA Pacific Standard Time':'America/Bogota','Eastern Standard Time':'America/New_York','Central Standard Time':'America/Chicago','Mountain Standard Time':'America/Denver','Pacific Standard Time':'America/Los_Angeles','Central America Standard Time':'America/Guatemala','GMT Standard Time':'Europe/London','W. Europe Standard Time':'Europe/Berlin','Romance Standard Time':'Europe/Paris','UTC':'UTC'};
+function icsDesescapar(v){return v.replace(/\\n/gi,'\n').replace(/\\,/g,',').replace(/\\;/g,';').replace(/\\\\/g,'\\');}
+function icsOffsetMs(tz,ms){const p={};for(const x of new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(new Date(ms)))p[x.type]=x.value;return Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute,+p.second)-ms;}
+// Convierte un valor iCalendar (con 'Z', con TZID, o sin zona) a fecha/hora en hora de Colombia (UTC-5).
+function icsABogota(valor,tzid){
+ const m=/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z)?$/.exec(valor);if(!m)return null;
+ const base=Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+(m[6]||0));let instante;
+ if(m[7])instante=base;
+ else if(tzid){const tz=WIN_TZ[tzid]||tzid;try{instante=base-icsOffsetMs(tz,base);}catch{instante=base+5*3600000;}}
+ else instante=base+5*3600000;
+ const d=new Date(instante-5*3600000);const dos=n=>String(n).padStart(2,'0');
+ return {fecha:`${d.getUTCFullYear()}-${dos(d.getUTCMonth()+1)}-${dos(d.getUTCDate())}`,hora:`${dos(d.getUTCHours())}:${dos(d.getUTCMinutes())}`};
+}
+function icsParsear(texto){
+ const lineas=texto.replace(/\r?\n[ \t]/g,'').split(/\r?\n/);const eventos=[];let ev=null;const omitidos={recurrentes:0,cancelados:0,todoElDia:0,invalidos:0};
+ for(const l of lineas){
+  if(l==='BEGIN:VEVENT'){ev={props:{},correos:[]};continue;}
+  if(l==='END:VEVENT'){
+   if(ev){
+    const p=ev.props;
+    if(p.RRULE){omitidos.recurrentes++;}
+    else if((p.STATUS?.v||'').toUpperCase()==='CANCELLED'){omitidos.cancelados++;}
+    else if(!p.DTSTART||!/T/.test(p.DTSTART.v)){omitidos[p.DTSTART?'todoElDia':'invalidos']++;}
+    else{
+     const ini=icsABogota(p.DTSTART.v,p.DTSTART.tzid);const fin=p.DTEND?icsABogota(p.DTEND.v,p.DTEND.tzid):null;
+     if(!ini){omitidos.invalidos++;}
+     else{
+      let horaFin=fin&&fin.fecha===ini.fecha&&fin.hora>ini.hora?fin.hora:null;
+      if(!horaFin){const [h,mi]=ini.hora.split(':').map(Number);const t=Math.min(h*60+mi+60,23*60+59);horaFin=`${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;}
+      eventos.push({uid:p.UID?.v||`${ini.fecha}-${ini.hora}-${p.SUMMARY?.v||''}`,fecha:ini.fecha,horaInicio:ini.hora,horaFin,titulo:icsDesescapar(p.SUMMARY?.v||'').trim(),ubicacion:icsDesescapar(p.LOCATION?.v||'').trim(),descripcion:icsDesescapar(p.DESCRIPTION?.v||'').trim(),correos:ev.correos});
+     }
+    }
+   }
+   ev=null;continue;
+  }
+  if(!ev)continue;
+  const i=l.indexOf(':');if(i<0)continue;const cab=l.slice(0,i);const v=l.slice(i+1);const partes=cab.split(';');const nombre=partes[0].toUpperCase();
+  const tz=partes.find(x=>/^TZID=/i.test(x));const tzid=tz?tz.slice(5).replace(/^"|"$/g,''):null;
+  if(nombre==='ATTENDEE'||nombre==='ORGANIZER'){const mm=/mailto:([^\s;]+)/i.exec(v);if(mm)ev.correos.push(mm[1].toLowerCase());continue;}
+  if(!ev.props[nombre])ev.props[nombre]={v,tzid};
+ }
+ return {eventos,omitidos};
+}
+const TIPOS_IMPORTAR={visita_cliente:'Visita con cliente',inventario:'Inventario',inspeccion:'Inspección',otro:'Otro',captacion:'Captación'};
+let importar={filas:[],omitidos:null,inmuebles:[],asesores:[]};
+async function importarTab(){
+ const el=root.querySelector('.ad-subbody');el.innerHTML='<p class="ad-muted">Cargando…</p>';
+ const [{data:ases},{data:inm}]=await Promise.all([
+  supabase.from('agenda_asesores').select('id,nombre,correo,correos_adicionales,activo').eq('empresa_id',config.empresa_id).eq('activo',true).order('nombre'),
+  supabase.from('agenda_inmuebles').select('id,numero_inmueble,direccion').eq('empresa_id',config.empresa_id).range(0,4999)]);
+ importar={filas:[],omitidos:null,asesores:ases||[],inmuebles:inm||[]};
+ el.innerHTML=`<h2>Importar citas desde un calendario</h2>
+ <p>Sirve con <strong>Google Calendar</strong>, <strong>Outlook / Microsoft 365</strong> y cualquier calendario que exporte un archivo <code>.ics</code>. Primero verás una vista previa y eliges qué importar; no se envía ningún correo a los clientes.</p>
+ <p class="ad-note"><strong>Google:</strong> calendar.google.com → Configuración → Importar y exportar → Exportar (descarga un .zip: descomprímelo y usa el .ics). <strong>Outlook:</strong> Calendario → Archivo → Guardar calendario (.ics).</p>
+ <p class="ad-note">Cada cita necesita un inmueble: se detecta si el título o la descripción trae su número (por ejemplo <code>#71</code> o <code>Inmueble 71</code>). Las que no lo traen quedan desmarcadas; solo se pueden importar como Captación. Las citas repetitivas, canceladas y de todo el día se omiten. Si vuelves a importar el mismo archivo, las citas ya importadas se saltan solas.</p>
+ <div class="ad-grid"><label>Archivo .ics<input type="file" id="imp-archivo" accept=".ics,text/calendar"></label>
+ <label>Asesor por defecto<select id="imp-asesor">${importar.asesores.map(a=>`<option value="${a.id}">${esc(a.nombre)}</option>`).join('')}</select></label></div>
+ <label class="ad-check"><input type="checkbox" id="imp-pasadas"> Incluir también citas pasadas</label>
+ <label class="ad-check"><input type="checkbox" id="imp-completar"> Marcar las pasadas como realizadas (afecta los informes)</label>
+ <div id="imp-resultado"></div>`;
+ const leer=async()=>{const f=el.querySelector('#imp-archivo').files[0];if(!f)return;importarPreparar(await f.text(),el);};
+ el.querySelector('#imp-archivo').onchange=leer;el.querySelector('#imp-pasadas').onchange=leer;
+}
+function importarPreparar(texto,el){
+ const {eventos,omitidos}=icsParsear(texto);const hoy=new Date(Date.now()-5*3600000).toISOString().slice(0,10);
+ const incluirPasadas=el.querySelector('#imp-pasadas').checked;const porNumero=new Map(importar.inmuebles.map(i=>[i.numero_inmueble,i]));
+ const porCorreo=new Map();for(const a of importar.asesores)for(const c of [a.correo,...(a.correos_adicionales||'').split(';')]){const k=(c||'').trim().toLowerCase();if(k)porCorreo.set(k,a.id);}
+ const porDefecto=el.querySelector('#imp-asesor').value;
+ importar.omitidos=omitidos;
+ importar.filas=eventos.filter(e=>incluirPasadas||e.fecha>=hoy).sort((a,b)=>(a.fecha+a.horaInicio).localeCompare(b.fecha+b.horaInicio)).slice(0,500).map(e=>{
+  const texto2=e.titulo+' '+e.descripcion;const m=/#\s*(\d{1,6})\b/.exec(texto2)||/inmueble\s*(?:n[°ºo.]*)?\s*(\d{1,6})/i.exec(texto2);
+  const inm=m?porNumero.get(Number(m[1])):null;
+  const asesorId=e.correos.map(c=>porCorreo.get(c)).find(Boolean)||porDefecto;
+  return {...e,inmuebleId:inm?inm.id:null,inmuebleNumero:inm?inm.numero_inmueble:null,asesorId,tipo:inm?'visita_cliente':'captacion',marcada:!!inm};
+ });
+ importarRender(el);
+}
+function importarRender(el){
+ const box=el.querySelector('#imp-resultado');const f=importar.filas;const o=importar.omitidos||{};
+ const resumenOmitidos=[o.recurrentes?`${o.recurrentes} repetitivas`:'',o.cancelados?`${o.cancelados} canceladas`:'',o.todoElDia?`${o.todoElDia} de todo el día`:'',o.invalidos?`${o.invalidos} ilegibles`:''].filter(Boolean).join(', ');
+ if(!f.length){box.innerHTML=`<p class="ad-muted">No hay citas para importar en ese archivo${resumenOmitidos?` (omitidas: ${resumenOmitidos})`:''}.</p>`;return;}
+ box.innerHTML=`<p><strong>${f.length}</strong> citas encontradas · <strong id="imp-n">${f.filter(x=>x.marcada).length}</strong> marcadas${resumenOmitidos?` · omitidas: ${resumenOmitidos}`:''}${f.length>=500?' · (se muestran las primeras 500)':''}</p>
+ <div style="overflow-x:auto"><table class="ad-tabla" style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr><th></th><th>Fecha</th><th>Hora</th><th>Título</th><th>Inmueble</th><th>Tipo</th><th>Asesor</th></tr></thead><tbody>${f.map((x,i)=>`<tr data-i="${i}"><td><input type="checkbox" data-marca ${x.marcada?'checked':''}></td><td>${x.fecha}</td><td>${x.horaInicio}–${x.horaFin}</td><td>${esc(x.titulo||'(sin título)')}${x.ubicacion?`<br><span class="ad-muted">${esc(x.ubicacion)}</span>`:''}</td><td>${x.inmuebleNumero?'#'+x.inmuebleNumero:'<span class="ad-muted">no detectado</span>'}</td><td><select data-tipo>${Object.entries(TIPOS_IMPORTAR).filter(([k])=>x.inmuebleId?k!=='captacion':k==='captacion').map(([k,t])=>`<option value="${k}" ${x.tipo===k?'selected':''}>${t}</option>`).join('')}</select></td><td><select data-asesor>${importar.asesores.map(a=>`<option value="${a.id}" ${a.id===x.asesorId?'selected':''}>${esc(a.nombre)}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>
+ <button class="ad-primary" id="imp-confirmar" type="button" style="margin-top:12px">Importar las marcadas</button>`;
+ box.onchange=e=>{const tr=e.target.closest('tr');if(!tr)return;const x=f[Number(tr.dataset.i)];
+  if(e.target.matches('[data-marca]'))x.marcada=e.target.checked;
+  if(e.target.matches('[data-tipo]'))x.tipo=e.target.value;
+  if(e.target.matches('[data-asesor]'))x.asesorId=e.target.value;
+  box.querySelector('#imp-n').textContent=f.filter(y=>y.marcada).length;};
+ box.querySelector('#imp-confirmar').onclick=()=>importarConfirmar(el);
+}
+async function importarConfirmar(el){
+ const marcadas=importar.filas.filter(x=>x.marcada);if(!marcadas.length){aviso('No hay citas marcadas.',true);return;}
+ if(!confirm(`¿Importar ${marcadas.length} citas a la agenda?`))return;
+ const btn=el.querySelector('#imp-confirmar');btn.disabled=true;btn.textContent='Importando…';
+ const {data:{user}}=await supabase.auth.getUser();
+ const hoy=new Date(Date.now()-5*3600000).toISOString().slice(0,10);const completar=el.querySelector('#imp-completar').checked;
+ // Saltar las ya importadas antes (mismo UID del calendario).
+ const ya=new Set();const uids=marcadas.map(x=>'ics:'+x.uid);
+ for(let i=0;i<uids.length;i+=100){const {data}=await supabase.from('agenda_citas').select('evento_calendar_id').eq('empresa_id',config.empresa_id).in('evento_calendar_id',uids.slice(i,i+100));for(const r of data||[])ya.add(r.evento_calendar_id);}
+ const nuevas=marcadas.filter(x=>!ya.has('ics:'+x.uid));
+ const filas=nuevas.map(x=>({empresa_id:config.empresa_id,inmueble_id:x.tipo==='captacion'?null:x.inmuebleId,asesor_id:x.asesorId,fecha:x.fecha,hora_inicio:x.horaInicio,hora_fin:x.horaFin,cliente_nombre:x.tipo==='visita_cliente'?(x.titulo||'Cliente (importado)').slice(0,120):null,cliente_telefono:'',cliente_email:'',estado:completar&&x.fecha<hoy?'completada':'confirmada',evento_calendar_id:'ics:'+x.uid,notas:x.descripcion.slice(0,1000),creado_por:user?.id||null,tipo_cita:x.tipo,titulo:x.titulo.slice(0,200),direccion_libre:x.ubicacion.slice(0,300),ciudad_libre:''}));
+ let creadas=0,error=null;
+ for(let i=0;i<filas.length;i+=50){const {error:err}=await supabase.from('agenda_citas').insert(filas.slice(i,i+50));if(err){error=err;break;}creadas+=Math.min(50,filas.length-i);}
+ const saltadas=marcadas.length-nuevas.length;
+ el.querySelector('#imp-resultado').innerHTML=`<p><strong>${creadas}</strong> citas importadas${saltadas?` · ${saltadas} ya estaban importadas y se saltaron`:''}.</p>${error?`<p class="ad-muted" role="alert">Se detuvo por un error: ${esc(error.message)}. Lo importado hasta ahí quedó guardado; puedes volver a subir el archivo y las ya importadas se saltarán.</p>`:''}`;
 }
 function urlCalendario(token){return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calendario-ics?t=${token}`;}
 const tokenNuevo=()=>crypto.randomUUID().replace(/-/g,'');
