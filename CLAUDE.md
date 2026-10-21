@@ -157,10 +157,21 @@ bitácora completa sesión por sesión):
   menos recordado en el navegador), no solo en variables del módulo.
   La macro de Sedi desplegada en Apps Script TIENE que ser la de `sincronizacion/` (lee las columnas
   de portal y la propiedad `NOMBRE_HOJA` = Inmuebles); la versión vieja no traía los códigos.
+- Respaldo semanal de Supabase a Google Drive: `sincronizacion/respaldo-drive.gs` (mismo proyecto
+  de Apps Script que la sincronización de inmuebles; propiedades `RESPALDO_CARPETA_ID` y opcional
+  `RESPALDO_CONSERVAR`; no borra nada por defecto; no incluye las cuentas de Supabase Auth).
+- Hosting Netlify (plan gratis, créditos): cada push a `main` = 1 despliegue de producción = 15 de
+  300 créditos/mes (~20 al mes; las vistas previas de ramas no gastan). Juntar cambios en pocos
+  pushes y usar `[skip netlify]` en el mensaje del commit si solo cambian docs/.gs/.sql.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 
 ## Pendiente / próximos pasos conocidos
+0000. Correo de Supabase Auth (invitaciones y "Olvidé mi contraseña"): el servicio integrado solo
+   entrega a miembros del equipo de Supabase y con límite bajo; hay que configurar SMTP propio en
+   Authentication > Emails > SMTP (Resend o Gmail) y Site URL = https://citas.patrimonios.co, y
+   probar una invitación con un alias propio. Bot de WhatsApp (Apps Script): interruptor
+   Calendar/sistema nuevo + API para el bot, en otro proyecto. Activar el respaldo a Drive.
 000. Pendientes: probar en vivo la pestaña Pendientes → Portales con los 3 Excel; vincular las cuentas
    de los asesores (hoy todos los pendientes salen "sin asignar" porque `agenda_asesores.usuario_id`
    está vacío); siguiente fase: que el ruteador de info@ (Apps Script, Gemini) escriba pendientes de
