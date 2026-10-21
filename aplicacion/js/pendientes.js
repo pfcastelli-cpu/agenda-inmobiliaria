@@ -19,6 +19,20 @@ const diasEntre = (isoA, isoB) => Math.round((Date.parse(isoB) - Date.parse(isoA
 const dinero = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 const nombrePortal = (p) => PORTALES[p]?.nombre || p || '';
 
+/* Lo que se sube en Portales se recuerda en este navegador (por empresa): así no se pierde al cambiar de
+   pestaña, recargar la página o volver a entrar. Los pendientes en sí viven en la base de datos. */
+const llaveLocal = (ctx) => `pendientes_portales_${ctx.empresaId}`;
+function guardarLocal(ctx) {
+  try { localStorage.setItem(llaveLocal(ctx), JSON.stringify(ui.analisis)); } catch { /* sin almacenamiento: no pasa nada */ }
+}
+function leerLocal(ctx) {
+  if (Object.keys(ui.analisis).length) return;
+  try {
+    const t = localStorage.getItem(llaveLocal(ctx));
+    if (t) ui.analisis = JSON.parse(t) || {};
+  } catch { ui.analisis = {}; }
+}
+
 export function reiniciarPendientes() {
   Object.assign(ui, { sub: 'lista', estado: 'abiertos', tipo: 'all', texto: '', cargas: {}, analisis: {}, inmuebles: null, mensaje: '' });
 }
@@ -27,6 +41,7 @@ export async function renderPendientes(ctx) {
   const { el, rol } = ctx;
   const gestiona = rol === 'administrador' || rol === 'coordinador';
   if (!gestiona) ui.sub = 'lista';
+  leerLocal(ctx);
   el.innerHTML = '<p class="v-muted">Cargando pendientes…</p>';
   if (ui.sub === 'lista') await pintarLista(ctx, gestiona);
   else await pintarPortales(ctx);
@@ -262,7 +277,10 @@ function resumenCruzado(ctx) {
         return `<div style="border-left:3px solid ${color};padding:2px 10px;font-size:13.5px">${num}${g.filas.map((f) => escape(nombrePortal(f.portal))).join(', ')}${quien}${lineasGrupo(g, escape).replace('margin:6px 0 0', 'margin:2px 0 0')}</div>`;
       }).join('')}</div></section>`;
   };
-  const totalPortales = Object.keys(ui.analisis).map((k) => `${nombrePortal(k)} (${ui.analisis[k].totalActivos})`).join(' · ');
+  const totalPortales = Object.keys(ui.analisis).map((k) => {
+    const c = ui.analisis[k].cargadoEn;
+    return `${nombrePortal(k)} (${ui.analisis[k].totalActivos}${c ? `, cargado ${c.slice(0, 10)}` : ''})`;
+  }).join(' · ');
   const hay = filas.length > 0;
   return `<div style="margin-top:18px">
     <p class="v-muted" style="font-size:13px">Publicaciones activas leídas: ${escape(totalPortales)}</p>
@@ -284,7 +302,7 @@ async function procesarArchivos(ctx, archivos) {
   for (const f of archivos) {
     try {
       const { portal, registros } = await leerExcelPortal(new Uint8Array(await f.arrayBuffer()));
-      ui.analisis[portal] = { ...compararPortal(portal, registros, inmuebles), guardado: false };
+      ui.analisis[portal] = { ...compararPortal(portal, registros, inmuebles), guardado: false, cargadoEn: new Date().toISOString() };
       nuevos.push(portal);
     } catch (e) { errores.push(`${f.name}: ${e.message}`); }
   }
@@ -303,8 +321,10 @@ async function guardarPortales(ctx, portales, previos = []) {
     });
     if (error) { partes.push(`${nombrePortal(portal)}: no se pudo guardar (${error.message})`); continue; }
     a.guardado = true;
+    guardarLocal(ctx);
     partes.push(`${nombrePortal(portal)}: guardado — ${data.nuevos} pendiente(s) nuevo(s), ${data.cerrados_solos} resuelto(s) solos`);
   }
   ui.mensaje = partes.join(' · ');
+  guardarLocal(ctx);
   renderPendientes(ctx).then(refreshIcons);
 }

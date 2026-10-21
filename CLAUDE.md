@@ -150,6 +150,11 @@ bitácora completa sesión por sesión):
   cuando el siguiente Excel ya no muestra el problema; solo admin/coordinador pueden descartar (con
   motivo). Responsable = asesor de comercialización de Sedi (si está vacío, el de captación). La
   pantalla agrupa por inmueble (el mismo problema en varios portales sale en una tarjeta).
+  Convención: lo que se sube en Portales se guarda al instante (sin botón) y el resumen de la última
+  carga se recuerda en el navegador (`localStorage`, clave `pendientes_portales_<empresa>`), para que
+  no desaparezca al cambiar de pestaña, recargar o volver a entrar. Cualquier pantalla nueva donde se
+  suba o se arme algo que el usuario no quiera perder debe seguir este patrón (estado en BD, o al
+  menos recordado en el navegador), no solo en variables del módulo.
   La macro de Sedi desplegada en Apps Script TIENE que ser la de `sincronizacion/` (lee las columnas
   de portal y la propiedad `NOMBRE_HOJA` = Inmuebles); la versión vieja no traía los códigos.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
