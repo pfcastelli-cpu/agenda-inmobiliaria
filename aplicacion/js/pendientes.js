@@ -217,29 +217,23 @@ async function pintarPortales(ctx) {
   }).join('');
 
   const cargados = Object.keys(ui.analisis);
-  const sinGuardar = cargados.filter((k) => !ui.analisis[k].guardado);
   const sinCodigo = ui.inmuebles ? disponiblesSinCodigo(ui.inmuebles) : null;
 
   el.innerHTML = `${cabecera(ctx, true)}
-    <p class="v-note">Descarga el Excel de publicaciones de cada portal (Fincaraíz te lo envía por correo, Metrocuadrado y Ciencuadras se descargan directo) y súbelos aquí. Se compara con los códigos de portal que tiene Sedi. No se modifica nada en los portales.</p>
+    <p class="v-note">Descarga el Excel de publicaciones de cada portal (Fincaraíz te lo envía por correo, Metrocuadrado y Ciencuadras se descargan directo) y súbelos aquí. Se compara con los códigos de portal que tiene Sedi y, al subirlos, los pendientes se guardan solos (los que ya no aparezcan se marcan como resueltos). No se modifica nada en los portales.</p>
     <ul style="margin:12px 0;padding-left:18px;font-size:13.5px">${estadoCarga}</ul>
     <label class="v-field">Archivos de los portales (puedes elegir varios)
       <input type="file" id="por-archivos" class="v-input" accept=".xlsx,.xls" multiple></label>
     ${ui.mensaje ? `<p class="v-note" role="status" style="margin-top:12px">${escape(ui.mensaje)}</p>` : ''}
     ${cargados.length ? resumenCruzado(ctx) : ''}
-    ${sinGuardar.length ? `<button type="button" class="v-btn v-primary" style="margin-top:16px" id="por-guardar-todo">Guardar como pendientes (${sinGuardar.map(nombrePortal2).join(', ')})</button>
-      <p class="v-muted" style="font-size:12.5px;margin-top:6px">Los pendientes anteriores de estos portales que ya no aparezcan se marcan como resueltos solos.</p>` : ''}
     ${sinCodigo && sinCodigo.length ? `<details style="margin-top:20px"><summary><strong>${sinCodigo.length} inmuebles Disponibles sin código en ningún portal</strong> (informativo)</summary>
       <p class="v-muted" style="font-size:13px;margin-top:8px">Por la regla de la empresa no deberían estar publicados; si ya no se ofrecen, falta retirarlos en Sedi. No se crean pendientes con esto: hay que verificarlo primero con asesores o propietarios.</p>
       <p style="font-size:13.5px">${sinCodigo.join(', ')}</p></details>` : ''}`;
 
   enlazarSub(ctx);
   el.querySelector('#por-archivos').onchange = (e) => procesarArchivos(ctx, [...e.target.files]);
-  const guardarTodo = el.querySelector('#por-guardar-todo');
-  if (guardarTodo) guardarTodo.onclick = () => guardarPortales(ctx, sinGuardar);
   void refreshIcons;
 }
-const nombrePortal2 = (k) => PORTALES[k].nombre;
 
 /* Resumen de todo lo cargado junto, agrupado por problema (no una tabla por portal). */
 function resumenCruzado(ctx) {
@@ -284,21 +278,24 @@ async function procesarArchivos(ctx, archivos) {
   const { refreshIcons } = ctx;
   if (!archivos.length) return;
   const errores = [];
+  const nuevos = [];
   let inmuebles;
   try { inmuebles = await cargarInmuebles(ctx); } catch (e) { ui.mensaje = `No se pudo leer el inventario: ${e.message}`; renderPendientes(ctx).then(refreshIcons); return; }
   for (const f of archivos) {
     try {
       const { portal, registros } = await leerExcelPortal(new Uint8Array(await f.arrayBuffer()));
       ui.analisis[portal] = { ...compararPortal(portal, registros, inmuebles), guardado: false };
+      nuevos.push(portal);
     } catch (e) { errores.push(`${f.name}: ${e.message}`); }
   }
-  ui.mensaje = errores.join(' · ');
-  renderPendientes(ctx).then(refreshIcons);
+  // Al subir los archivos se guarda solo: crea los pendientes nuevos y marca como resueltos los que
+  // ya no aparecen. No hay botón de por medio.
+  await guardarPortales(ctx, nuevos, errores);
 }
 
-async function guardarPortales(ctx, portales) {
+async function guardarPortales(ctx, portales, previos = []) {
   const { supabase, empresaId, refreshIcons } = ctx;
-  const partes = [];
+  const partes = [...previos];
   for (const portal of portales) {
     const a = ui.analisis[portal];
     const { data, error } = await supabase.rpc('agenda_portales_guardar', {
@@ -306,7 +303,7 @@ async function guardarPortales(ctx, portales) {
     });
     if (error) { partes.push(`${nombrePortal(portal)}: no se pudo guardar (${error.message})`); continue; }
     a.guardado = true;
-    partes.push(`${nombrePortal(portal)}: ${data.nuevos} nuevo(s), ${data.cerrados_solos} resuelto(s) solos`);
+    partes.push(`${nombrePortal(portal)}: guardado — ${data.nuevos} pendiente(s) nuevo(s), ${data.cerrados_solos} resuelto(s) solos`);
   }
   ui.mensaje = partes.join(' · ');
   renderPendientes(ctx).then(refreshIcons);
