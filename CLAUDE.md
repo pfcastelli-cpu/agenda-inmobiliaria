@@ -167,11 +167,15 @@ bitácora completa sesión por sesión):
   por inmueble: botón "Borrar restricciones".
 
 ## Pendiente / próximos pasos conocidos
-0000. Correo de Supabase Auth (invitaciones y "Olvidé mi contraseña"): el servicio integrado solo
-   entrega a miembros del equipo de Supabase y con límite bajo; hay que configurar SMTP propio en
-   Authentication > Emails > SMTP (Resend o Gmail) y Site URL = https://citas.patrimonios.co, y
-   probar una invitación con un alias propio. Bot de WhatsApp (Apps Script): interruptor
-   Calendar/sistema nuevo + API para el bot, en otro proyecto. Activar el respaldo a Drive.
+0000. Correos de acceso (invitación y "Olvidé mi contraseña"): NO salen por el correo integrado de
+   Supabase (solo entrega a miembros del equipo de Supabase y ~2 por hora). Los envían las Edge
+   Functions `gestion-accesos` (invitación/reenvío) y `recuperar-contrasena` (pública, respuesta
+   siempre igual, máx. 5 por hora por persona) con `admin.auth.admin.generateLink` + el SMTP de la
+   empresa (Vault), respetando `correo_modo_pruebas` y registrando en `agenda_correos_log` (tipo
+   `interno`, `detalle_error='acceso:<usuario>'`). Probar con un alias propio. Revisar en Supabase
+   Authentication > URL Configuration que Site URL = https://citas.patrimonios.co. Bot de WhatsApp
+   (Apps Script): interruptor Calendar/sistema nuevo + API para el bot, en otro proyecto. Activar el
+   respaldo a Drive (unidad compartida privada).
 000. Pendientes: probar en vivo la pestaña Pendientes → Portales con los 3 Excel; vincular las cuentas
    de los asesores (hoy todos los pendientes salen "sin asignar" porque `agenda_asesores.usuario_id`
    está vacío); siguiente fase: que el ruteador de info@ (Apps Script, Gemini) escriba pendientes de

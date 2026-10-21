@@ -102,8 +102,10 @@ export async function solicitarRecuperacion(correo) {
   if (!supabase) {
     throw new Error(MENSAJE_CONFIG);
   }
-  const { error } = await supabase.auth.resetPasswordForEmail(correo.trim(), {
-    redirectTo: window.location.origin + '/',
+  // El enlace lo envía nuestra Edge Function por el correo de la empresa (no el integrado de
+  // Supabase). Responde igual exista o no el correo, por seguridad.
+  const { error } = await supabase.functions.invoke('recuperar-contrasena', {
+    body: { correo: correo.trim(), redirect_to: window.location.origin + '/' },
   });
   if (error) {
     throw new Error('No se pudo enviar el correo de recuperación. Verifica el correo e inténtalo de nuevo.');

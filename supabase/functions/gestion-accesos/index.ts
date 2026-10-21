@@ -2,10 +2,18 @@
 // Crea/gestiona el acceso (login) de miembros de una empresa, sin exponer
 // la service_role key al navegador. Solo administradores de la empresa
 // pueden usarla — se verifica con el JWT del que llama en cada acción.
+//
+// El correo con el enlace de un solo uso (invitación) NO lo manda el servicio de correo
+// integrado de Supabase (límite de ~2 por hora y solo a miembros del equipo de Supabase):
+// aquí se genera el enlace con admin.auth.admin.generateLink y se envía por el SMTP de la
+// empresa (el mismo del correo de citas, contraseña en Vault), con su bitácora y modo de
+// pruebas.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const IMAGEN_ENCABEZADO = 'https://adminpaxzu.patrimonios.co/uploads/images/Cita.jpg';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +29,102 @@ function json(cuerpo: unknown, status = 200) {
 }
 
 const ROLES_VALIDOS = ['administrador', 'coordinador', 'asesor'];
+
+function escaparHtml(valor: string | null | undefined): string {
+  if (!valor) return '';
+  return String(valor)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Envía el correo con el enlace de un solo uso. Respeta el modo de pruebas de la empresa
+// (va a correo_pruebas_destino con un aviso) y deja registro en agenda_correos_log
+// (tipo 'interno'; detalle_error = 'acceso:<usuario>' en los envíos buenos, que sirve de
+// marca para limitar los reintentos de "Olvidé mi contraseña").
+async function enviarCorreoAcceso(
+  admin: ReturnType<typeof createClient>,
+  empresaId: string,
+  o: { usuarioId: string; correo: string; nombre: string; asunto: string; titulo: string; texto: string; boton: string; enlace: string },
+): Promise<{ enviado: boolean; motivo?: string }> {
+  const { data: config } = await admin
+    .from('agenda_configuracion')
+    .select(
+      'nombre_comercial, correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino',
+    )
+    .eq('empresa_id', empresaId)
+    .maybeSingle();
+  if (!config?.correo_smtp_host || !config.correo_remitente_email) {
+    return { enviado: false, motivo: 'El correo de la empresa no está configurado (Administración → Correo).' };
+  }
+  const { data: password } = await admin.rpc('agenda_obtener_password_correo', { p_empresa_id: empresaId });
+  if (!password) return { enviado: false, motivo: 'Falta guardar la contraseña SMTP del correo de la empresa.' };
+
+  const modoPruebas = config.correo_modo_pruebas !== false;
+  const destino = modoPruebas ? config.correo_pruebas_destino || o.correo : o.correo;
+  const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Patrimonios Inmobiliarios';
+  const html = `<!doctype html>
+<html>
+<body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
+<div style="max-width:580px;margin:0 auto;padding:28px 16px">
+  ${
+    modoPruebas
+      ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">🧪 MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(o.correo)}</div>`
+      : ''
+  }
+  <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
+    <img src="${IMAGEN_ENCABEZADO}" alt="${escaparHtml(remitente)}" width="580" style="width:100%;max-width:580px;height:auto;display:block" />
+    <div style="padding:28px 26px 26px;text-align:center">
+      <h1 style="color:#1A2C45;font-size:21px;margin:0 0 8px">${escaparHtml(o.titulo)}</h1>
+      <p style="color:#526575;font-size:14px;margin:0 0 22px">Hola ${escaparHtml(o.nombre)}, ${escaparHtml(o.texto)}</p>
+      <a href="${escaparHtml(o.enlace)}" style="display:inline-block;background:#00A9A5;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 26px;border-radius:12px">${escaparHtml(o.boton)}</a>
+      <p style="color:#8492a6;font-size:12.5px;margin:22px 0 0">El enlace es de un solo uso. Si no lo pediste, ignora este correo.</p>
+    </div>
+  </div>
+  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(remitente)}</p>
+</div>
+</body>
+</html>`;
+
+  const registrar = (estado: 'enviado' | 'fallido', detalle: string | null) =>
+    admin.from('agenda_correos_log').insert({
+      empresa_id: empresaId,
+      cita_id: null,
+      destinatario_tipo: 'interno',
+      destinatario_email: destino,
+      asunto: o.asunto,
+      estado,
+      detalle_error: detalle,
+      modo_pruebas: modoPruebas,
+    });
+
+  try {
+    const transporte = nodemailer.createTransport({
+      host: config.correo_smtp_host,
+      port: config.correo_smtp_puerto || 587,
+      secure: config.correo_smtp_seguridad === 'ssl',
+      auth: { user: config.correo_smtp_usuario || config.correo_remitente_email, pass: password as string },
+    });
+    await transporte.sendMail({
+      from: `${remitente} <${config.correo_remitente_email}>`,
+      to: destino,
+      subject: o.asunto,
+      html,
+    });
+    await registrar('enviado', 'acceso:' + o.usuarioId);
+    return { enviado: true };
+  } catch (e) {
+    const detalle = e instanceof Error ? e.message : String(e);
+    try {
+      await registrar('fallido', detalle);
+    } catch {
+      // sin más
+    }
+    return { enviado: false, motivo: 'Falló el envío del correo: ' + detalle };
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -90,22 +194,72 @@ Deno.serve(async (req) => {
       const nombre = String(body.nombre || '').trim();
       const rol = String(body.rol || '');
       const redirectTo = body.redirect_to ? String(body.redirect_to) : undefined;
+      const password = body.password ? String(body.password) : '';
+      const asesorId = body.asesor_id ? String(body.asesor_id) : '';
       if (!correo || !nombre || !ROLES_VALIDOS.includes(rol)) {
         return json({ ok: false, error: 'Falta el nombre, el correo, o el rol no es válido.' }, 400);
       }
-      const { data: invitado, error: errorInvitar } = await admin.auth.admin.inviteUserByEmail(correo, {
-        data: { nombre },
-        redirectTo,
-      });
-      if (errorInvitar || !invitado?.user) {
-        const msg = (errorInvitar?.message || '').toLowerCase().includes('already been registered')
-          ? 'Ya existe un usuario con ese correo.'
-          : 'No se pudo enviar la invitación: ' + (errorInvitar?.message || 'error desconocido.');
-        return json({ ok: false, error: msg }, 400);
+      if (password && password.length < 8) {
+        return json({ ok: false, error: 'La contraseña debe tener al menos 8 caracteres.' }, 400);
       }
+
+      // Si se va a vincular con una ficha de Equipo, validamos antes de crear
+      // nada: que exista, que sea de esta empresa, y que no tenga ya un acceso.
+      if (asesorId) {
+        const { data: ficha, error: errorFicha } = await admin
+          .from('agenda_asesores')
+          .select('id, usuario_id')
+          .eq('id', asesorId)
+          .eq('empresa_id', empresaId)
+          .maybeSingle();
+        if (errorFicha || !ficha) {
+          return json({ ok: false, error: 'Esa ficha de asesor no existe en tu empresa.' }, 404);
+        }
+        if (ficha.usuario_id) {
+          return json({ ok: false, error: 'Esa ficha ya tiene un acceso vinculado.' }, 400);
+        }
+      }
+
+      let usuarioId: string;
+      let enlaceInvitacion = '';
+      if (password) {
+        // El administrador pone la contraseña directamente: se crea ya
+        // confirmado (nadie necesita hacer clic en ningún correo) y el
+        // administrador es quien le pasa la contraseña al asesor.
+        const { data: creado, error: errorCrear } = await admin.auth.admin.createUser({
+          email: correo,
+          password,
+          email_confirm: true,
+          user_metadata: { nombre },
+        });
+        if (errorCrear || !creado?.user) {
+          const msg = (errorCrear?.message || '').toLowerCase().includes('already been registered')
+            ? 'Ya existe un usuario con ese correo.'
+            : 'No se pudo crear el usuario: ' + (errorCrear?.message || 'error desconocido.');
+          return json({ ok: false, error: msg }, 400);
+        }
+        usuarioId = creado.user.id;
+      } else {
+        // Se genera una invitación (enlace de un solo uso para elegir su propia contraseña);
+        // el correo lo enviamos nosotros más abajo, por el SMTP de la empresa.
+        const { data: invitado, error: errorInvitar } = await admin.auth.admin.generateLink({
+          type: 'invite',
+          email: correo,
+          options: { data: { nombre }, redirectTo },
+        });
+        if (errorInvitar || !invitado?.user || !invitado.properties?.action_link) {
+          const msg = (errorInvitar?.message || '').toLowerCase().includes('already been registered')
+            ? 'Ya existe un usuario con ese correo.'
+            : 'No se pudo crear la invitación: ' + (errorInvitar?.message || 'error desconocido.');
+          return json({ ok: false, error: msg }, 400);
+        }
+        usuarioId = invitado.user.id;
+        enlaceInvitacion = invitado.properties.action_link;
+      }
+
       const { error: errorMiembro } = await admin.from('agenda_miembros').insert({
         empresa_id: empresaId,
-        usuario_id: invitado.user.id,
+        usuario_id: usuarioId,
         nombre,
         rol,
         activo: true,
@@ -116,7 +270,36 @@ Deno.serve(async (req) => {
           error: 'Se creó el usuario pero no se pudo vincular a tu empresa: ' + errorMiembro.message,
         }, 500);
       }
-      return json({ ok: true, usuario_id: invitado.user.id });
+
+      if (asesorId) {
+        // No bloqueamos la respuesta por esto: el acceso ya quedó creado y es
+        // lo importante. Si el vínculo falla, el admin puede repetir la
+        // operación o vincularlo luego manualmente en la base de datos.
+        await admin.from('agenda_asesores').update({ usuario_id: usuarioId }).eq('id', asesorId).eq('empresa_id', empresaId);
+      }
+
+      if (enlaceInvitacion) {
+        const envio = await enviarCorreoAcceso(admin, empresaId, {
+          usuarioId,
+          correo,
+          nombre,
+          asunto: 'Te dieron acceso a la agenda de citas',
+          titulo: 'Crea tu contraseña',
+          texto: 'te dieron acceso a la agenda de citas. Pulsa el botón para elegir tu contraseña y entrar.',
+          boton: 'Crear mi contraseña',
+          enlace: enlaceInvitacion,
+        });
+        if (!envio.enviado) {
+          return json({
+            ok: true,
+            usuario_id: usuarioId,
+            correo_enviado: false,
+            aviso: 'El acceso quedó creado, pero el correo de invitación no salió. ' + (envio.motivo || '') + ' Usa "Reenviar invitación" o ponle una contraseña directa.',
+          });
+        }
+      }
+
+      return json({ ok: true, usuario_id: usuarioId, correo_enviado: Boolean(enlaceInvitacion) });
     }
 
     if (accion === 'cambiar_password') {
@@ -142,15 +325,42 @@ Deno.serve(async (req) => {
       const redirectTo = body.redirect_to ? String(body.redirect_to) : undefined;
       const { data: destino } = await admin
         .from('agenda_miembros')
-        .select('usuario_id')
+        .select('usuario_id, nombre')
         .eq('empresa_id', empresaId)
         .eq('usuario_id', usuarioId)
         .maybeSingle();
       if (!destino) return json({ ok: false, error: 'Ese usuario no pertenece a tu empresa.' }, 403);
       const { data: u } = await admin.auth.admin.getUserById(usuarioId);
       if (!u?.user?.email) return json({ ok: false, error: 'No se encontró el correo de ese usuario.' }, 404);
-      const { error: errorInvitar } = await admin.auth.admin.inviteUserByEmail(u.user.email, { redirectTo });
-      if (errorInvitar) return json({ ok: false, error: 'No se pudo reenviar: ' + errorInvitar.message }, 400);
+
+      // Si todavía no aceptó la invitación se genera una invitación; si ya tiene cuenta
+      // activa, el mismo botón le permite restablecer su contraseña.
+      let enlace = '';
+      let esRecuperacion = false;
+      const invitacion = await admin.auth.admin.generateLink({ type: 'invite', email: u.user.email, options: { redirectTo } });
+      if (invitacion.data?.properties?.action_link) {
+        enlace = invitacion.data.properties.action_link;
+      } else {
+        const recuperacion = await admin.auth.admin.generateLink({ type: 'recovery', email: u.user.email, options: { redirectTo } });
+        if (!recuperacion.data?.properties?.action_link) {
+          return json({ ok: false, error: 'No se pudo generar el enlace: ' + (recuperacion.error?.message || 'error desconocido.') }, 400);
+        }
+        enlace = recuperacion.data.properties.action_link;
+        esRecuperacion = true;
+      }
+      const envio = await enviarCorreoAcceso(admin, empresaId, {
+        usuarioId,
+        correo: u.user.email,
+        nombre: destino.nombre || '',
+        asunto: esRecuperacion ? 'Restablece tu contraseña' : 'Te dieron acceso a la agenda de citas',
+        titulo: esRecuperacion ? 'Restablece tu contraseña' : 'Crea tu contraseña',
+        texto: esRecuperacion
+          ? 'pulsa el botón para elegir una contraseña nueva.'
+          : 'te dieron acceso a la agenda de citas. Pulsa el botón para elegir tu contraseña y entrar.',
+        boton: esRecuperacion ? 'Elegir contraseña nueva' : 'Crear mi contraseña',
+        enlace,
+      });
+      if (!envio.enviado) return json({ ok: false, error: envio.motivo || 'No se pudo enviar el correo.' }, 502);
       return json({ ok: true });
     }
 

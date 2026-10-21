@@ -256,7 +256,7 @@ function formularioAcceso(a){
    const r=await crearAcceso(config.empresa_id,{nombre:f.da_nombre.value.trim(),correo:f.da_correo.value.trim(),rol:f.da_rol.value,password,asesorId:a.id});
    a.usuario_id=r.usuario_id;
    el.replaceChildren();
-   aviso(modo==='directa'?'Acceso creado con la contraseña que pusiste.':'Acceso creado. Le llegará un correo de invitación.');
+   if(r.correo_enviado===false&&r.aviso)aviso(r.aviso,true);else aviso(modo==='directa'?'Acceso creado con la contraseña que pusiste.':'Acceso creado. Le llegará un correo de invitación.');
    await equipo();
   }catch(err){aviso(err.message,true);b.disabled=false;}
  };
@@ -694,8 +694,9 @@ async function accesosTab() {
   }
   boton.disabled = true;
   try {
-   await crearAcceso(config.empresa_id, { nombre: f.nombre.value.trim(), correo: f.correo.value.trim(), rol: f.rol.value, password });
-   aviso(modo === 'directa' ? 'Acceso creado con la contraseña que pusiste.' : 'Acceso creado. Le llegará un correo de invitación.');
+   const r = await crearAcceso(config.empresa_id, { nombre: f.nombre.value.trim(), correo: f.correo.value.trim(), rol: f.rol.value, password });
+   if (r.correo_enviado === false && r.aviso) aviso(r.aviso, true);
+   else aviso(modo === 'directa' ? 'Acceso creado con la contraseña que pusiste.' : 'Acceso creado. Le llegará un correo de invitación.');
    f.reset();
    await accesosTab();
   } catch (err) {
