@@ -145,7 +145,11 @@ bitácora completa sesión por sesión):
   Sedi → `agenda_inmuebles.codigo_*`): publicar, despublicar, publicado sin código en Sedi, precio
   distinto. Estados publicables: Disponible y Rentando. Visibilidad por jerarquía en la base de datos
   (asesor lo suyo, coordinador hasta nivel asesor, administrador todo); el navegador solo lee y
-  escribe por RPC (`agenda_portales_guardar`, `agenda_pendiente_actualizar`). `sql/008`, ya aplicado.
+  escribe por RPC (`agenda_portales_guardar`, `agenda_pendiente_actualizar`). `sql/008` y `sql/009`, ya
+  aplicados. Regla: los pendientes de portales NO se cierran a mano, los marca resueltos el sistema
+  cuando el siguiente Excel ya no muestra el problema; solo admin/coordinador pueden descartar (con
+  motivo). Responsable = asesor de comercialización de Sedi (si está vacío, el de captación). La
+  pantalla agrupa por inmueble (el mismo problema en varios portales sale en una tarjeta).
   La macro de Sedi desplegada en Apps Script TIENE que ser la de `sincronizacion/` (lee las columnas
   de portal y la propiedad `NOMBRE_HOJA` = Inmuebles); la versión vieja no traía los códigos.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario

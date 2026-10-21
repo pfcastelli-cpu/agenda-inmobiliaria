@@ -93,7 +93,7 @@ export function compararPortal(portal, registros, inmuebles) {
       tipo: 'publicar', numero_inmueble: i.numero_inmueble, clave: `portal:${portal}:publicar:${i.numero_inmueble}`,
       titulo: `Publicar inmueble ${i.numero_inmueble} en ${nombre}`,
       detalle: `Sedi tiene el código ${codigo} para ${nombre} y el inmueble está ${i.estado_crm}, pero no aparece activo en el archivo del portal. ${i.direccion || ''}`.trim(),
-      responsable_nombre: responsable(i), datos: { codigo, estado_crm: i.estado_crm },
+      responsable_nombre: responsable(i), datos: { codigo, estado_crm: i.estado_crm, direccion: i.direccion || '' },
     });
   }
 
@@ -115,7 +115,7 @@ export function compararPortal(portal, registros, inmuebles) {
         tipo: 'despublicar', numero_inmueble: i.numero_inmueble, clave: `portal:${portal}:despublicar:${i.numero_inmueble}`,
         titulo: `Despublicar inmueble ${i.numero_inmueble} de ${nombre}`,
         detalle: `En Sedi está "${i.estado_crm || 'sin estado'}" pero sigue activo en ${nombre} (${codigo}). ${i.direccion || ''}`.trim(),
-        responsable_nombre: responsable(i), datos: { codigo, estado_crm: i.estado_crm },
+        responsable_nombre: responsable(i), datos: { codigo, estado_crm: i.estado_crm, direccion: i.direccion || '' },
       });
       continue;
     }
@@ -128,7 +128,7 @@ export function compararPortal(portal, registros, inmuebles) {
         tipo: 'revisar_precio', numero_inmueble: i.numero_inmueble, clave: `portal:${portal}:revisar_precio:${i.numero_inmueble}`,
         titulo: `Precio distinto en ${nombre}: inmueble ${i.numero_inmueble}`,
         detalle: `Sedi: ${moneda(precioSedi)} · ${nombre}: ${moneda(precioPortal)} (${of}). Hay que corregir el que esté mal.`,
-        responsable_nombre: responsable(i), datos: { codigo, precio_sedi: precioSedi, precio_portal: precioPortal, oferta: of },
+        responsable_nombre: responsable(i), datos: { codigo, precio_sedi: precioSedi, precio_portal: precioPortal, oferta: of, direccion: i.direccion || '' },
       });
     }
   }
