@@ -323,7 +323,7 @@ async function ausenciasSeccion(el,asesorId){
 }
 const ETIQUETAS_GEO_PROBLEMA={sin_coordenadas:'Sin coordenadas (o en 0,0)',fuera_de_colombia:'Coordenadas fuera de Colombia',lejos_de_la_ciudad_configurada:'Lejos del centro de su ciudad (más de 30 km)'};
 const MOTIVOS_NO_DISPONIBLE_ETIQUETA={arrendado:'Se arrendó',vendido:'Se vendió',papeles_radicados:'Papeles radicados por otra persona',otro:'Otro motivo'};
-const ETIQUETA_DESTINATARIO={cliente:'A clientes',propietario:'A propietarios',interno:'Internos'};
+const ETIQUETA_DESTINATARIO={cliente:'A clientes',propietario:'A propietarios',interno:'Internos',arrendatario:'A arrendatarios'};
 
 async function cargarReporteGeolocalizacion(el){
  el.innerHTML='<p class="ad-muted">Revisando coordenadas…</p>';

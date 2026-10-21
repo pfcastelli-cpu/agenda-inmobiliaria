@@ -270,3 +270,118 @@ function sincronizarInmueblesConAvisoDeError() {
     throw error;
   }
 }
+
+/**
+ * Sincroniza el contacto del ARRENDATARIO de cada inmueble desde la hoja
+ * "InformeGeneralInmueblesArrendados" (pestaña "Inmuebles") hacia Supabase
+ * (tabla agenda_arrendatarios). Se usa para el botón "Informar al arrendatario"
+ * de los inmuebles con Estado CRM "Rentando".
+ *
+ * También es de SOLO LECTURA sobre la hoja. Propiedades de script nuevas:
+ *   HOJA_ARRENDADOS_ID         -> ID de esa hoja (11bwWCu-2H6gtPkRpiNWmqsjjwOmN-MNp3fjB434MouM)
+ *   NOMBRE_HOJA_ARRENDADOS     -> opcional, por defecto "Inmuebles"
+ * (usa las mismas SUPABASE_URL, SUPABASE_SERVICE_KEY y EMPRESA_ID de arriba)
+ *
+ * Si un inmueble tiene varias filas (contratos anteriores), se queda con la de
+ * estado NORMAL y fecha de vencimiento más reciente. Los inmuebles que dejan de
+ * aparecer en la hoja se borran de agenda_arrendatarios en la misma corrida.
+ */
+function sincronizarArrendatarios() {
+  const props = PropertiesService.getScriptProperties();
+  const hojaId = props.getProperty('HOJA_ARRENDADOS_ID');
+  const supabaseUrl = props.getProperty('SUPABASE_URL');
+  const serviceKey = props.getProperty('SUPABASE_SERVICE_KEY');
+  const nombreHoja = props.getProperty('NOMBRE_HOJA_ARRENDADOS') || 'Inmuebles';
+  let empresaId = props.getProperty('EMPRESA_ID');
+  if (!hojaId || !supabaseUrl || !serviceKey) {
+    throw new Error('Faltan Propiedades del script: HOJA_ARRENDADOS_ID, SUPABASE_URL o SUPABASE_SERVICE_KEY.');
+  }
+  if (!empresaId) {
+    empresaId = obtenerEmpresaId(supabaseUrl, serviceKey);
+    props.setProperty('EMPRESA_ID', empresaId);
+  }
+
+  const hoja = SpreadsheetApp.openById(hojaId).getSheetByName(nombreHoja);
+  if (!hoja) { throw new Error('No existe una pestaña llamada "' + nombreHoja + '" en la hoja de arrendados.'); }
+  const datos = hoja.getDataRange().getValues();
+  const encabezados = datos[0].map(function (h) { return String(h).trim(); });
+  const col = function (nombre) { return encabezados.indexOf(nombre); };
+  const idx = {
+    numero: col('No inmueble'),
+    estado: col('Estado'),
+    vence: col('Fec. de vencimiento'),
+    nombre: col('Arrendatario'),
+    telefono: col('Teléfono de arrendatario'),
+    celular: col('Celular de arrendatario'),
+    email: col('Email de arrendatario'),
+  };
+  Object.keys(idx).forEach(function (k) {
+    if (idx[k] === -1) { throw new Error('No se encontró la columna esperada para "' + k + '" en la hoja de arrendados. Se detiene sin tocar Supabase.'); }
+  });
+
+  const texto = function (v) { return (v === null || v === undefined) ? '' : String(v).trim(); };
+  const aFechaISO = function (v) {
+    if (v instanceof Date && !isNaN(v)) { return Utilities.formatDate(v, 'America/Bogota', 'yyyy-MM-dd'); }
+    const t = texto(v);
+    let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) { return m[1] + '-' + m[2] + '-' + m[3]; }
+    m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (m) { return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2); }
+    return null;
+  };
+
+  const inicio = new Date().toISOString();
+  const mejorPorInmueble = {};
+  datos.slice(1).forEach(function (fila) {
+    const numero = Number(fila[idx.numero]);
+    if (!numero || String(fila[idx.estado]).trim().toUpperCase() !== 'NORMAL') { return; }
+    const vence = aFechaISO(fila[idx.vence]);
+    const previo = mejorPorInmueble[numero];
+    if (previo && (previo.vencimiento_contrato || '') > (vence || '')) { return; }
+    mejorPorInmueble[numero] = {
+      empresa_id: empresaId,
+      numero_inmueble: numero,
+      nombre: texto(fila[idx.nombre]),
+      email: texto(fila[idx.email]),
+      celular: texto(fila[idx.celular]),
+      telefono: texto(fila[idx.telefono]),
+      vencimiento_contrato: vence,
+      sincronizado_en: inicio,
+    };
+  });
+  const filasSupabase = Object.keys(mejorPorInmueble).map(function (k) { return mejorPorInmueble[k]; });
+  if (filasSupabase.length === 0) {
+    throw new Error('La hoja de arrendados no devolvió ninguna fila NORMAL. Se detiene sin tocar Supabase, para no borrar todos los contactos por error.');
+  }
+
+  const cabeceras = { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey };
+  for (let i = 0; i < filasSupabase.length; i += 200) {
+    const r = UrlFetchApp.fetch(supabaseUrl + '/rest/v1/agenda_arrendatarios?on_conflict=empresa_id,numero_inmueble', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: Object.assign({ Prefer: 'resolution=merge-duplicates' }, cabeceras),
+      payload: JSON.stringify(filasSupabase.slice(i, i + 200)),
+      muteHttpExceptions: true,
+    });
+    if (r.getResponseCode() >= 300) {
+      throw new Error('Supabase respondió ' + r.getResponseCode() + ' al guardar arrendatarios: ' + r.getContentText());
+    }
+  }
+  // Quita los que ya no figuran en la hoja (arrendatario que se fue / contrato terminado).
+  UrlFetchApp.fetch(supabaseUrl + '/rest/v1/agenda_arrendatarios?empresa_id=eq.' + empresaId + '&sincronizado_en=lt.' + encodeURIComponent(inicio), {
+    method: 'delete',
+    headers: cabeceras,
+    muteHttpExceptions: true,
+  });
+  Logger.log('Arrendatarios sincronizados: ' + filasSupabase.length);
+}
+
+/** Apunta aquí el activador diario de arrendatarios (igual que el de inmuebles). */
+function sincronizarArrendatariosConAvisoDeError() {
+  try {
+    sincronizarArrendatarios();
+  } catch (error) {
+    MailApp.sendEmail('pf.castelli@patrimonios.co', 'Falló la sincronización diaria de arrendatarios', String(error));
+    throw error;
+  }
+}

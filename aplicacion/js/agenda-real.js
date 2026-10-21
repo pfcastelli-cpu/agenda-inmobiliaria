@@ -446,6 +446,7 @@ function citaCard(c) {
     <div class="v-row"><span class="v-avatar">${asesor ? escape(asesor.nombre.slice(0, 1)) : '?'}</span><span class="v-advisorname">${asesor ? escape(asesor.nombre) : 'Sin asesor'}${asesor && asesor.tipo_vinculacion === 'freelance' ? ' · freelance' : ''}</span></div>
     ${inmueble ? `<a class="v-link" href="${linkPublico(inmueble.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver inmueble</a>` : ''}
     ${c.estado === 'completada' ? (c.feedback_cliente ? `<p class="v-muted" style="margin-top:8px;font-size:12.5px">Comentario del cliente: ${escape(c.feedback_cliente)}</p>` : '') : `<div class="v-actions"><button data-completar="${c.id}">Realizada</button><button data-mover="${c.id}">Mover</button><button class="v-danger" data-cancelar="${c.id}">Cancelar</button></div>`}
+    ${inmueble && esRentando(inmueble) && c.estado !== 'cancelada' && c.tipo_cita === 'visita_cliente' ? `<div class="v-actions" style="margin-top:8px"><button data-avisar-arrendatario="${c.id}">${icon('mail')}${c.arrendatario_avisado_en ? 'Reenviar aviso al arrendatario' : 'Informar al arrendatario'}</button></div>${c.arrendatario_avisado_en ? `<p class="v-muted" style="font-size:12.5px;margin-top:4px">Arrendatario informado el ${new Date(c.arrendatario_avisado_en).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}</p>` : ''}` : ''}
     ${state.moveId === c.id ? `<div class="v-cancelbox">${esCaptacion ? '<p style="margin:0 0 8px;font-weight:600">Esta es una cita de captación con prioridad total.</p>' : ''}<label class="v-field">Nueva fecha<input type="date" id="v-mover-fecha" class="v-input" value="${state.moveFecha}"></label><label class="v-field">Nueva hora<input type="time" id="v-mover-hora" class="v-input" value="${state.moveHora}"></label>${state.moveError ? `<p class="v-error">${escape(state.moveError)}</p>` : ''}<div class="v-actions"><button class="v-primary" data-confirmarmover="${c.id}">Guardar nuevo horario</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
     ${state.cancelId === c.id ? `<div class="v-cancelbox">${esCaptacion ? 'Esta es una cita de captación con prioridad total. ' : ''}¿Cancelar esta ${esInterna ? 'actividad' : 'visita'} y liberar el horario?<div class="v-actions"><button class="v-danger" data-confirmarcancelar="${c.id}">Sí, cancelar</button><button data-mantener="${c.id}">Conservar</button></div></div>` : ''}
     ${state.completarId === c.id ? `<div class="v-cancelbox"><label class="v-field">¿Qué dijo el cliente? (para el informe al propietario)<textarea id="v-feedback-texto" class="v-input" rows="3" placeholder="Ej: le gustó mucho, va a decidir con su familia…"></textarea></label><div class="v-actions"><button class="v-primary" data-guardarrealizada="${c.id}">Guardar y marcar como realizada</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
@@ -535,6 +536,11 @@ async function renderAgendaMes(barraAcciones, selectorVista) {
     }).join('')}</div>`;
 }
 
+// Inmueble con arrendatario adentro que se está ofreciendo (Estado CRM "Rentando"): solo se
+// puede visitar dentro de un horario especial, y se le avisa al arrendatario de cada cita.
+const esRentando = (inm) => String(inm?.estado_crm || '').trim().toLowerCase() === 'rentando';
+const tieneRestriccionHorario = (inm) => Boolean((inm.dias_visita_permitidos && inm.dias_visita_permitidos.length) || inm.hora_visita_desde || inm.hora_visita_hasta);
+
 function restriccionResumen(inm) {
   const dias = inm.dias_visita_permitidos && inm.dias_visita_permitidos.length ? inm.dias_visita_permitidos.slice().sort((a, b) => a - b).map((d) => DIAS_CORTOS_LUN[d - 1]).join(', ') : null;
   const horas = inm.hora_visita_desde || inm.hora_visita_hasta ? `${inm.hora_visita_desde ? horaFmt(inm.hora_visita_desde) : 'inicio'}–${inm.hora_visita_hasta ? horaFmt(inm.hora_visita_hasta) : 'cierre'}` : null;
@@ -547,7 +553,7 @@ function restriccionEditor(inm) {
   const dias = inm.dias_visita_permitidos || [];
   return `<form id="v-restriccion-form" data-inmueble="${inm.id}" style="margin:10px 0 16px;padding:14px;border:1px solid var(--v-line);border-radius:12px;background:var(--v-tint)">
     <div class="v-sectiontitle" style="margin-bottom:8px">${icon('clock-3')}Restricción de horario para #${inm.numero_inmueble}</div>
-    <p class="v-muted" style="font-size:14px;margin-bottom:10px">Limita en qué días y en qué franja horaria se puede agendar una visita a este inmueble. Deja los días sin marcar y las horas vacías para no aplicar ninguna restricción.</p>
+    ${esRentando(inm) ? '<p class="v-note" style="margin-bottom:10px"><strong>Inmueble rentando:</strong> el horario especial es obligatorio (marca al menos los días o las horas). Mientras no esté configurado no se pueden agendar visitas.</p>' : ''}<p class="v-muted" style="font-size:14px;margin-bottom:10px">Limita en qué días y en qué franja horaria se puede agendar una visita a este inmueble. Deja los días sin marcar y las horas vacías para no aplicar ninguna restricción.</p>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${DIAS_CORTOS_LUN.map((d, i) => `<label class="v-check" style="text-transform:capitalize"><input type="checkbox" name="dia" value="${i + 1}" ${dias.includes(i + 1) ? 'checked' : ''}> ${d}</label>`).join('')}</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <label class="v-field" style="flex:1;min-width:140px">Desde<input type="time" class="v-input" name="hora_desde" value="${inm.hora_visita_desde ? hora(inm.hora_visita_desde) : ''}"></label>
@@ -556,7 +562,7 @@ function restriccionEditor(inm) {
     <label class="v-field" style="margin-top:10px;max-width:220px">Duración de la visita (min)<input type="number" min="1" step="1" class="v-input" name="duracion_minutos" placeholder="Por defecto de la empresa" value="${inm.duracion_visita_minutos || ''}"></label>
     <p class="v-muted" style="font-size:14px;margin:6px 0 0">Úsalo para inmuebles de visita rápida (p. ej. oficinas). Si es menor a la duración por defecto, al cliente se le muestra un aviso para que sea puntual, porque el asesor puede tener otra cita cerca.</p>
     <div id="v-restriccion-error" class="v-error" role="alert">${escape(state.errorRestriccion)}</div>
-    <div style="display:flex;gap:8px;margin-top:10px"><button class="v-btn v-primary" type="submit">${icon('check')}Guardar</button><button class="v-btn v-quiet" type="button" data-cerrar-restriccion>Cancelar</button>${inm.dias_visita_permitidos?.length || inm.hora_visita_desde || inm.hora_visita_hasta || inm.duracion_visita_minutos ? `<button class="v-btn v-quiet" type="button" data-borrar-restriccion="${inm.id}" style="margin-left:auto;color:#B3261E">${icon('trash-2')}Borrar restricciones</button>` : ''}</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="v-btn v-primary" type="submit">${icon('check')}Guardar</button><button class="v-btn v-quiet" type="button" data-cerrar-restriccion>Cancelar</button>${!esRentando(inm) && (inm.dias_visita_permitidos?.length || inm.hora_visita_desde || inm.hora_visita_hasta || inm.duracion_visita_minutos) ? `<button class="v-btn v-quiet" type="button" data-borrar-restriccion="${inm.id}" style="margin-left:auto;color:#B3261E">${icon('trash-2')}Borrar restricciones</button>` : ''}</div>
   </form>`;
 }
 
@@ -588,7 +594,7 @@ function inmuebleCard(inm) {
       <div class="v-prow-top">#${inm.numero_inmueble} · ${escape(inm.tipo_oferta)} · <strong>${escape(inm.direccion)}</strong></div>
       <div class="v-prow-sub">${escape(inm.ciudad)}${inm.barrio ? ' · ' + escape(inm.barrio) : ''}${inm.habitaciones ? ' · ' + inm.habitaciones + ' hab.' : ''} · ${precio}</div>
     </div>
-    <div class="v-prow-horario">${icon('clock-3')} ${escape(restriccionResumen(inm))} <button type="button" class="v-link" data-restriccion="${inm.id}">Editar</button></div>
+    <div class="v-prow-horario">${icon('clock-3')} ${esRentando(inm) ? '<strong>Rentando</strong> · ' : ''}${esRentando(inm) && !tieneRestriccionHorario(inm) ? '<span style="color:#B3261E">Falta el horario especial: no se puede agendar hasta configurarlo</span>' : escape(restriccionResumen(inm))} <button type="button" class="v-link" data-restriccion="${inm.id}">Editar</button></div>
     <div class="v-prow-asesor" title="${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor asignado en Sedi'}">${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor en Sedi'}</div>
     <div class="v-prow-actions">
       <a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha</a>
@@ -1659,6 +1665,26 @@ function adjuntarEventos(rootEl) {
       renderInmuebles();
       return;
     }
+    if (b.dataset.avisarArrendatario) {
+      const textoOriginal = b.innerHTML;
+      b.disabled = true;
+      b.textContent = 'Enviando…';
+      try {
+        const { data, error } = await supabase.functions.invoke('avisar-arrendatario', { body: { cita_id: b.dataset.avisarArrendatario } });
+        if (error) throw error;
+        if (data?.enviado) {
+          toast('Se informó al arrendatario.');
+          await render();
+          return;
+        }
+        toast(data?.motivo || 'No se pudo informar al arrendatario.');
+      } catch (err) {
+        toast('No se pudo informar al arrendatario: ' + (err?.message || 'error desconocido'));
+      }
+      b.disabled = false;
+      b.innerHTML = textoOriginal;
+      return;
+    }
     if (b.dataset.borrarRestriccion) {
       const inmuebleId = b.dataset.borrarRestriccion;
       if (!window.confirm('¿Borrar todas las restricciones de horario de este inmueble?')) return;
@@ -1946,6 +1972,12 @@ function adjuntarEventos(rootEl) {
       const dias = Array.from(e.target.querySelectorAll('input[name=dia]:checked')).map((c) => Number(c.value));
       const horaDesde = e.target.querySelector('[name=hora_desde]').value || null;
       const horaHasta = e.target.querySelector('[name=hora_hasta]').value || null;
+      const inmRestriccion = (todosInmueblesCache || inmueblesCache || []).find((i) => i.id === inmuebleId);
+      if (inmRestriccion && esRentando(inmRestriccion) && !dias.length && !horaDesde && !horaHasta) {
+        state.errorRestriccion = 'Este inmueble está rentando: marca al menos los días o las horas en que se puede visitar.';
+        renderInmuebles();
+        return;
+      }
       const duracionRaw = e.target.querySelector('[name=duracion_minutos]').value;
       const duracionMinutos = duracionRaw ? Number(duracionRaw) : null;
       if (horaDesde && horaHasta && horaDesde >= horaHasta) {

@@ -130,10 +130,21 @@ bitácora completa sesión por sesión):
   inmueble por `#NN`/`Inmueble NN`, inserta directo en `agenda_citas` (evita duplicados con
   `evento_calendar_id = 'ics:<uid>'`, no envía correos). Sin inmueble solo entra como
   Captación (restricción de la tabla).
+- Inmuebles "Rentando" (estado CRM, arrendatario viviendo adentro): el horario especial
+  (días u horas) es obligatorio — sin él `agenda_sugerir_horarios` no ofrece nada — y las
+  visitas de cliente tienen el botón "Informar al arrendatario" (Edge Function
+  `avisar-arrendatario`, exige sesión de miembro, correo SMTP, bitácora con destinatario
+  `arrendatario`, marca `agenda_citas.arrendatario_avisado_en`). El contacto sale de la tabla
+  `agenda_arrendatarios`, que llena la macro `sincronizarArrendatarios()` de
+  `sincronizacion/sincronizar-inmuebles.gs` desde la hoja InformeGeneralInmueblesArrendados
+  (`sql/007-inmuebles-rentando.sql`, ya aplicado).
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 
 ## Pendiente / próximos pasos conocidos
+00. Pegar `sincronizarArrendatarios` en el proyecto de Apps Script, agregar la propiedad
+   `HOJA_ARRENDADOS_ID` (11bwWCu-2H6gtPkRpiNWmqsjjwOmN-MNp3fjB434MouM) y el activador diario;
+   hasta entonces `agenda_arrendatarios` está vacía y el botón responde que no hay correo.
 0. Probar con red real: suscribir un enlace de Administración → Calendario en Google/Outlook,
    hacer una importación `.ics` pequeña, y el código de verificación de correo (Resend,
    `enviar-codigo-verificacion`, ninguna verificación completada aún; `correo_modo_pruebas`
