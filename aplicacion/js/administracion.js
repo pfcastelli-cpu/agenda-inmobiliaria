@@ -131,7 +131,7 @@ async function importarTab(){
  el.innerHTML=`<h2>Importar citas desde un calendario</h2>
  <p>Sirve con <strong>Google Calendar</strong>, <strong>Outlook / Microsoft 365</strong> y cualquier calendario que exporte un archivo <code>.ics</code>. Primero verás una vista previa y eliges qué importar; no se envía ningún correo a los clientes.</p>
  <p class="ad-note"><strong>Google:</strong> calendar.google.com → Configuración → Importar y exportar → Exportar (descarga un .zip: descomprímelo y usa el .ics). <strong>Outlook:</strong> Calendario → Archivo → Guardar calendario (.ics).</p>
- <p class="ad-note">Cada cita necesita un inmueble: se detecta si el título o la descripción trae su número (por ejemplo <code>#71</code> o <code>Inmueble 71</code>). Las que no lo traen quedan desmarcadas; solo se pueden importar como Captación. Las citas repetitivas, canceladas y de todo el día se omiten. Si vuelves a importar el mismo archivo, las citas ya importadas se saltan solas.</p>
+ <p class="ad-note">Cada cita necesita un inmueble: se detecta si el título o la descripción trae su número (por ejemplo <code>Inmueble 71</code>, <code>Inmueble Nº 71</code> o <code>Visita #71</code>; un <code>#</code> dentro de una dirección no cuenta). Las que no lo traen quedan desmarcadas; solo se pueden importar como Captación. Las citas repetitivas, canceladas y de todo el día se omiten. Si vuelves a importar el mismo archivo, las citas ya importadas se saltan solas.</p>
  <div class="ad-grid"><label>Archivo .ics<input type="file" id="imp-archivo" accept=".ics,text/calendar"></label>
  <label>Asesor por defecto<select id="imp-asesor">${importar.asesores.map(a=>`<option value="${a.id}">${esc(a.nombre)}</option>`).join('')}</select></label></div>
  <label class="ad-check"><input type="checkbox" id="imp-pasadas"> Incluir también citas pasadas</label>
@@ -147,7 +147,7 @@ function importarPreparar(texto,el){
  const porDefecto=el.querySelector('#imp-asesor').value;
  importar.omitidos=omitidos;
  importar.filas=eventos.filter(e=>incluirPasadas||e.fecha>=hoy).sort((a,b)=>(a.fecha+a.horaInicio).localeCompare(b.fecha+b.horaInicio)).slice(0,500).map(e=>{
-  const texto2=e.titulo+' '+e.descripcion;const m=/#\s*(\d{1,6})\b/.exec(texto2)||/inmueble\s*(?:n[°ºo.]*)?\s*(\d{1,6})/i.exec(texto2);
+  const texto2=e.titulo+' '+e.descripcion;const m=/inmueble\s*(?:n[°ºo.]*)?\s*(\d{1,6})\b/i.exec(texto2)||/(?:^|visita\s+)#\s*(\d{1,6})\b/i.exec(texto2);
   const inm=m?porNumero.get(Number(m[1])):null;
   const asesorId=e.correos.map(c=>porCorreo.get(c)).find(Boolean)||porDefecto;
   return {...e,inmuebleId:inm?inm.id:null,inmuebleNumero:inm?inm.numero_inmueble:null,asesorId,tipo:inm?'visita_cliente':'captacion',marcada:!!inm};
