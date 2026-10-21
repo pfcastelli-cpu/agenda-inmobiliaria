@@ -138,10 +138,26 @@ bitácora completa sesión por sesión):
   `agenda_arrendatarios`, que llena la macro `sincronizarArrendatarios()` de
   `sincronizacion/sincronizar-inmuebles.gs` desde la hoja InformeGeneralInmueblesArrendados
   (`sql/007-inmuebles-rentando.sql`, ya aplicado).
+- Pendientes (pestaña nueva, todos los roles) y Portales (sub-pestaña, admin/coordinador): tabla
+  `agenda_pendientes` (tareas con responsable, fecha límite, cierre manual o automático) y
+  `agenda_portales_cargas`. Se suben los Excel de Fincaraíz, Metrocuadrado y Ciencuadras
+  (`portales-logica.js` los reconoce y compara por CÓDIGO DE PORTAL contra las columnas de portal de
+  Sedi → `agenda_inmuebles.codigo_*`): publicar, despublicar, publicado sin código en Sedi, precio
+  distinto. Estados publicables: Disponible y Rentando. Visibilidad por jerarquía en la base de datos
+  (asesor lo suyo, coordinador hasta nivel asesor, administrador todo); el navegador solo lee y
+  escribe por RPC (`agenda_portales_guardar`, `agenda_pendiente_actualizar`). `sql/008`, ya aplicado.
+  La macro de Sedi desplegada en Apps Script TIENE que ser la de `sincronizacion/` (lee las columnas
+  de portal y la propiedad `NOMBRE_HOJA` = Inmuebles); la versión vieja no traía los códigos.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 
 ## Pendiente / próximos pasos conocidos
+000. Pendientes: probar en vivo la pestaña Pendientes → Portales con los 3 Excel; vincular las cuentas
+   de los asesores (hoy todos los pendientes salen "sin asignar" porque `agenda_asesores.usuario_id`
+   está vacío); siguiente fase: que el ruteador de info@ (Apps Script, Gemini) escriba pendientes de
+   asambleas/terminaciones/entregas (origen `correo`), aviso por correo y escalamiento al coordinador/
+   administrador al vencer, y verificar respuestas en los enviados de los asesores. Los 21 Disponibles
+   sin código de portal se verifican con asesores/propietarios más adelante (no crean pendientes).
 00. Pegar `sincronizarArrendatarios` en el proyecto de Apps Script, agregar la propiedad
    `HOJA_ARRENDADOS_ID` (11bwWCu-2H6gtPkRpiNWmqsjjwOmN-MNp3fjB434MouM) y el activador diario;
    hasta entonces `agenda_arrendatarios` está vacía y el botón responde que no hay correo.
