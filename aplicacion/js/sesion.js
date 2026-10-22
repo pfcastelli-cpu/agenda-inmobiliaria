@@ -169,6 +169,10 @@ export function reenviarInvitacion(empresaId, usuarioId) {
   });
 }
 
+export function vincularAsesorConAcceso(empresaId, usuarioId, asesorId) {
+  return llamarGestionAccesos('vincular_asesor', { empresa_id: empresaId, usuario_id: usuarioId, asesor_id: asesorId });
+}
+
 export function alternarActivoAcceso(empresaId, usuarioId, activo) {
   return llamarGestionAccesos('alternar_activo', { empresa_id: empresaId, usuario_id: usuarioId, activo });
 }

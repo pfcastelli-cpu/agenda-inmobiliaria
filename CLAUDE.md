@@ -157,6 +157,12 @@ bitácora completa sesión por sesión):
   menos recordado en el navegador), no solo en variables del módulo.
   La macro de Sedi desplegada en Apps Script TIENE que ser la de `sincronizacion/` (lee las columnas
   de portal y la propiedad `NOMBRE_HOJA` = Inmuebles); la versión vieja no traía los códigos.
+- Vigilante de correos (`sincronizacion/vigilante-correos.gs` + `LEEME-vigilante-correos.md`, proyecto de
+  Apps Script NUEVO, aún por desplegar): lee solo-lectura `solicitudes@`/`info@`/`contabilidad@` con cuenta de
+  servicio y delegación de dominio (`gmail.readonly`; rechaza buzones de administradores) y anota en una hoja
+  las terminaciones, entregas, asambleas y captaciones (con hoja Cobertura, aviso de fallos, latido y resumen
+  diario). Motivo: el ruteador solo ve `info@` y se le escapa lo que llega directo a `solicitudes@`.
+  Después se conectará a `agenda_pendientes` (origen `correo`).
 - Respaldo semanal de Supabase a Google Drive: `sincronizacion/respaldo-drive.gs` (mismo proyecto
   de Apps Script que la sincronización de inmuebles; propiedades `RESPALDO_CARPETA_ID` y opcional
   `RESPALDO_CONSERVAR`; no borra nada por defecto; no incluye las cuentas de Supabase Auth).
@@ -167,10 +173,25 @@ bitácora completa sesión por sesión):
   Administración → Accesos con rol Administrador/Coordinador, SIN ficha de asesor (la ficha de
   Equipo es solo para quien muestra inmuebles y entra al motor de horarios). Las pantallas de
   Equipo y Accesos lo explican.
+- Ficha de asesor <-> acceso: "es asesor" = tener una ficha de Equipo vinculada (`agenda_asesores.usuario_id`)
+  a su acceso. `gestion-accesos` vincula solo, al crear un acceso, la ficha sin acceso que tenga el
+  mismo correo; acción `vincular_asesor` para accesos/fichas que ya existían. Accesos muestra
+  "✓ Es asesor" o el botón "Activar también como asesor" (vale para administrador y coordinador);
+  Equipo muestra "Vincular con ese acceso" cuando hay un acceso con el mismo correo sin vincular.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 
 ## Pendiente / próximos pasos conocidos
+00000. Terminaciones en Sedi (Inmobiliaria → Terminaciones → Gestión de terminaciones, formulario obligatorio:
+   contrato, solicitante, canal, causa, estado, fecha de aviso, fecha de entrega). Cruce del 21-oct-2026 con el
+   cuadro de arrendados (fuente confiable; el Cuadro de Entregas es manual): FALTAN en Sedi Imoval XIII
+   (CT-7990, entrega 30/11/2026), Aquimin (CT-7933, 30/11/2026), Corales 589 (CT.B-310, 30/11/2026), Tribeca
+   1301 (CT-7947, 31/01/2027), Kandinsky 503 (CT-7757, 31/01/2027) y Gutenberg 206 (CT-7636, entrega 30/04/2027
+   por prórroga autorizada); y hay que CERRAR Versalles Reservado (CT-7983, ya re-arrendado con CT-8043).
+   Dudosos: El Parque 182 (473, CT.B-316, siniestro, contrato dice 31/03/2027) y Verona 170 (237, contrato dice
+   30/04/2027). Felipe quiere revisar primero los correos de la empresa (vigilante) antes de crearlas.
+   Errores del Cuadro de Entregas: Prado Park es AP 630 (no 603); Vía al Cedro VI AP 415 es el inmueble 489 con
+   contrato a 30/09/2027 (la fila con COD 487 y entrega 31/12/2026 no es terminación); Corales = COD 589.
 0000. Correos de acceso (invitación y "Olvidé mi contraseña"): NO salen por el correo integrado de
    Supabase (solo entrega a miembros del equipo de Supabase y ~2 por hora). Los envían las Edge
    Functions `gestion-accesos` (invitación/reenvío) y `recuperar-contrasena` (pública, respuesta

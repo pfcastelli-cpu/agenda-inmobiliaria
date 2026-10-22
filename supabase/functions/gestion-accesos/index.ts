@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
       const rol = String(body.rol || '');
       const redirectTo = body.redirect_to ? String(body.redirect_to) : undefined;
       const password = body.password ? String(body.password) : '';
-      const asesorId = body.asesor_id ? String(body.asesor_id) : '';
+      let asesorId = body.asesor_id ? String(body.asesor_id) : '';
       if (!correo || !nombre || !ROLES_VALIDOS.includes(rol)) {
         return json({ ok: false, error: 'Falta el nombre, el correo, o el rol no es válido.' }, 400);
       }
@@ -218,6 +218,20 @@ Deno.serve(async (req) => {
         if (ficha.usuario_id) {
           return json({ ok: false, error: 'Esa ficha ya tiene un acceso vinculado.' }, 400);
         }
+      }
+
+      // Si no se indicó ficha pero ya existe una ficha de Equipo con este mismo correo y sin
+      // acceso, se vinculan solas: es la misma persona.
+      if (!asesorId) {
+        const { data: fichaIgual } = await admin
+          .from('agenda_asesores')
+          .select('id')
+          .eq('empresa_id', empresaId)
+          .eq('correo', correo)
+          .is('usuario_id', null)
+          .limit(1)
+          .maybeSingle();
+        if (fichaIgual) asesorId = fichaIgual.id;
       }
 
       let usuarioId: string;
@@ -300,6 +314,39 @@ Deno.serve(async (req) => {
       }
 
       return json({ ok: true, usuario_id: usuarioId, correo_enviado: Boolean(enlaceInvitacion) });
+    }
+
+    if (accion === 'vincular_asesor') {
+      const usuarioId = String(body.usuario_id || '');
+      const asesorId = String(body.asesor_id || '');
+      if (!usuarioId || !asesorId) return json({ ok: false, error: 'Falta el usuario o la ficha.' }, 400);
+      const { data: miembro } = await admin
+        .from('agenda_miembros')
+        .select('usuario_id')
+        .eq('empresa_id', empresaId)
+        .eq('usuario_id', usuarioId)
+        .maybeSingle();
+      if (!miembro) return json({ ok: false, error: 'Ese usuario no pertenece a tu empresa.' }, 403);
+      const { data: ficha } = await admin
+        .from('agenda_asesores')
+        .select('id, usuario_id')
+        .eq('id', asesorId)
+        .eq('empresa_id', empresaId)
+        .maybeSingle();
+      if (!ficha) return json({ ok: false, error: 'Esa ficha de asesor no existe en tu empresa.' }, 404);
+      if (ficha.usuario_id && ficha.usuario_id !== usuarioId) {
+        return json({ ok: false, error: 'Esa ficha ya está vinculada a otro acceso.' }, 400);
+      }
+      const { error: errorVinculo } = await admin
+        .from('agenda_asesores')
+        .update({ usuario_id: usuarioId })
+        .eq('id', asesorId)
+        .eq('empresa_id', empresaId);
+      if (errorVinculo) {
+        const msg = errorVinculo.code === '23505' ? 'Ese acceso ya está vinculado a otra ficha de asesor.' : 'No se pudo vincular: ' + errorVinculo.message;
+        return json({ ok: false, error: msg }, 400);
+      }
+      return json({ ok: true });
     }
 
     if (accion === 'cambiar_password') {

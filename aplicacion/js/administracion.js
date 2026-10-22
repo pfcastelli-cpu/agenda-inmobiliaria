@@ -6,6 +6,7 @@ import {
  cambiarPasswordDeUsuario,
  reenviarInvitacion,
  alternarActivoAcceso,
+ vincularAsesorConAcceso,
 } from './sesion.js';
 import '../estilos/administracion.css';
 let root, acceso, config, asesores = [], ciudades = [], asesorCiudades = {}, coberturas = [], asesorCoberturas = {}, accesosPorUsuario = {}, revision = 0;
@@ -221,6 +222,9 @@ async function equipo(){
 function estadoAccesoHtml(a){
  const m=a.usuario_id?accesosPorUsuario[a.usuario_id]:null;
  if(m)return `<p class="ad-muted">Acceso: ${esc(m.rol)} · ${m.activo?'Activo':'Inactivo'}${!m.ultimo_acceso?' · nunca ha iniciado sesión':''}</p><button type="button" data-gestionar-acceso="${a.id}">Gestionar acceso</button>`;
+ const yaVinculados=new Set(asesores.map(x=>x.usuario_id).filter(Boolean));
+ const igual=Object.values(accesosPorUsuario).find(x=>String(x.correo||'').toLowerCase()===String(a.correo||'').toLowerCase()&&!yaVinculados.has(x.usuario_id));
+ if(igual)return `<p class="ad-muted">Ya existe un acceso con este correo (${esc(igual.rol)}) que no está vinculado a esta ficha.</p><button type="button" data-vincular-acceso="${a.id}" data-usuario="${igual.usuario_id}">Vincular con ese acceso</button>`;
  return `<p class="ad-muted">Sin acceso al sistema todavía</p><button type="button" data-dar-acceso="${a.id}">＋ Dar acceso</button>`;
 }
 function cards(busqueda=''){
@@ -230,11 +234,18 @@ function cards(busqueda=''){
   const darAccesoId=e.target.dataset.darAcceso;
   const gestionarId=e.target.dataset.gestionarAcceso;
   if(darAccesoId){const a=asesores.find(x=>x.id===darAccesoId);if(a)formularioAcceso(a);return;}
+  if(e.target.dataset.vincularAcceso){
+   e.target.disabled=true;
+   try{await vincularAsesorConAcceso(config.empresa_id,e.target.dataset.usuario,e.target.dataset.vincularAcceso);await equipo();aviso('Listo: la ficha y el acceso quedaron vinculados.');}
+   catch(err){aviso(err.message,true);e.target.disabled=false;}
+   return;
+  }
   if(gestionarId){root.querySelector('[data-subtab=accesos]')?.click();return;}
   const id=e.target.dataset.edit || e.target.dataset.toggle;if(!id)return;const a=asesores.find(x=>x.id===id);if(e.target.dataset.edit){editor(a);return;}if(!confirm(`${a.activo?'Desactivar':'Reactivar'} a ${a.nombre}? Se conservará su ficha. Esto todavía no modifica cuentas de acceso ni citas.`))return;e.target.disabled=true;const {error}=await supabase.from('agenda_asesores').update({activo:!a.activo}).eq('id',id).eq('empresa_id',config.empresa_id).select('id').single();if(error){aviso('No se pudo cambiar el estado.',true);e.target.disabled=false;}else{await equipo();aviso('Estado actualizado.');}};
 }
 function formularioAcceso(a){
  const el=root.querySelector('#ad-editor');
+ setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'center'}),0);
  el.innerHTML=`<form class="ad-form" id="ad-dar-acceso-form"><h3>Dar acceso a ${esc(a.nombre)}</h3>
  <div class="ad-grid">${campo('da_nombre','Nombre',a.nombre,'text','required maxlength="120"')}${campo('da_correo','Correo',a.correo,'email','required')}<label>Rol<select name="da_rol"><option value="asesor" selected>Asesor</option><option value="coordinador">Coordinador</option><option value="administrador">Administrador</option></select></label></div>
  <fieldset><legend>¿Cómo le das acceso?</legend>
@@ -271,6 +282,7 @@ async function cargarAusencias(asesorId){
 }
 function editor(a={}){
  const el=root.querySelector('#ad-editor');
+ setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'center'}),0);
  const ciudadesHtml=ciudades.length?ciudades.map(c=>`<label class="ad-check"><input type="checkbox" name="ciudad" value="${c.id}" ${(asesorCiudades[a.id]||[]).includes(c.id)?'checked':''}> ${esc(c.nombre)}</label>`).join(''):'<p class="ad-muted">Todavía no hay ciudades creadas. Ve a la pestaña "Ciudades y festivos" para agregarlas.</p>';
  const coberturasHtml=coberturas.length?coberturas.map(c=>`<label class="ad-check"><input type="checkbox" name="cobertura" value="${c.id}" ${(asesorCoberturas[a.id]||[]).includes(c.id)?'checked':''}> ${esc(c.nombre)} · ${esc(c.ciudadNombre)}</label>`).join(''):'<p class="ad-muted">Todavía no hay coberturas creadas. Ve a la pestaña "Ciudades y festivos" para agregarlas.</p>';
  el.innerHTML=`<form class="ad-form"><h3>${a.id?'Editar asesor':'Nuevo asesor'}</h3><div class="ad-grid">${campo('nombre','Nombre',a.nombre,'text','required maxlength="120"')}${campo('correo','Correo',a.correo,'email','required')}${campo('correos_adicionales','Correos adicionales (separados por ;)',a.correos_adicionales||'','text','placeholder="otro@gmail.com; agenda@empresa.com"')}${campo('celular','Celular con indicativo',a.celular||'+57','tel','required pattern="\\+[1-9][0-9]{7,14}" placeholder="+573001234567"')}<label>Rol<select name="rol"><option value="asesor">Asesor</option><option value="admin">Administrador</option><option value="super_admin">Super administrador</option></select></label><label>Prioridad<select name="prioridad">${[1,2,3,4,5].map(n=>`<option value="${n}">${n}${n===1?' · Mayor prioridad':''}</option>`).join('')}</select></label><label>Vinculación<select name="tipo_vinculacion"><option value="planta">De planta</option><option value="freelance">Freelance</option></select></label><label>Color en la agenda<input type="color" name="color" value="${a.color||PALETA_ASESORES[asesores.length%PALETA_ASESORES.length]}"></label><label>Supervisor (recibe copia de las solicitudes de propietarios)<select name="supervisor_id"><option value="">Sin supervisor</option>${asesores.filter(x=>x.id!==a.id).map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('')}</select></label>
@@ -309,6 +321,7 @@ function editor(a={}){
  const {data:guardado,error}=await q.select('id').single();
  if(error){b.disabled=false;aviso(error.code==='23505'?'Ya existe un asesor con ese correo en esta empresa.':'No se pudo guardar. Revisa los datos y la conexión.',true);return;}
  const asesorId=guardado.id;
+ if(a._vincular){try{await vincularAsesorConAcceso(config.empresa_id,a._vincular,asesorId);}catch(err){aviso('La ficha se guardó pero no se pudo vincular con el acceso: '+err.message,true);}}
  await supabase.from('agenda_asesores_ciudades').delete().eq('asesor_id',asesorId);
  if(ciudadIds.length)await supabase.from('agenda_asesores_ciudades').insert(ciudadIds.map(ciudad_id=>({asesor_id:asesorId,ciudad_id})));
  await supabase.from('agenda_asesores_coberturas').delete().eq('asesor_id',asesorId);
@@ -593,6 +606,14 @@ async function accesosTab() {
   el.innerHTML = `<p class="error">${esc(e.message)}</p>`;
   return;
  }
+ const { data: fichasAcceso } = await supabase.from('agenda_asesores').select('id,nombre,correo,usuario_id,activo').eq('empresa_id', config.empresa_id);
+ const fichas = fichasAcceso || [];
+ const filaAsesor = m => {
+  const ficha = fichas.find(f => f.usuario_id === m.usuario_id);
+  if (ficha) return `<span class="ad-pill">✓ Es asesor${ficha.activo ? '' : ' (ficha inactiva)'}</span>`;
+  const igual = fichas.find(f => !f.usuario_id && String(f.correo || '').toLowerCase() === String(m.correo || '').toLowerCase());
+  return `<button type="button" data-hacer-asesor="${m.usuario_id}" ${igual ? `data-ficha="${igual.id}"` : ''}>${igual ? 'Vincular con su ficha de asesor' : 'Activar también como asesor'}</button>`;
+ };
  const fila = m => {
   const abierta = accesoClaveAbiertaId === m.usuario_id;
   const estado = m.ultimo_acceso
@@ -601,7 +622,7 @@ async function accesosTab() {
   return `<li>
    <div class="ad-acceso-info"><strong>${esc(m.nombre)}</strong><span class="ad-muted">${esc(m.correo)}</span>
     <span class="ad-pill">${esc(m.rol)}</span><span class="ad-pill">${m.activo ? 'Activo' : 'Inactivo'}</span>
-    <span class="ad-muted">${esc(estado)}</span></div>
+    <span class="ad-muted">${esc(estado)}</span> ${filaAsesor(m)}</div>
    <div class="ad-acceso-botones">
     ${abierta
      ? `<form class="ad-acceso-clave-form" data-clave-form="${m.usuario_id}"><input type="password" name="clave" placeholder="Nueva contraseña (mín. 8)" minlength="8" required autocomplete="new-password"><button type="submit" class="ad-primary">Guardar</button><button type="button" data-cancelar-clave>Cancelar</button></form>`
@@ -631,6 +652,18 @@ async function accesosTab() {
  </form>
  <p class="ad-note">Si eliges invitar por correo, la persona recibe un enlace de un solo uso para elegir su propia contraseña. Si no le llega o el enlace expira, usa "Reenviar invitación". También puedes cambiarle la contraseña después con "Cambiar contraseña".</p>`;
 
+ el.querySelectorAll('[data-hacer-asesor]').forEach(b => b.addEventListener('click', async () => {
+  const usuarioId = b.dataset.hacerAsesor;
+  const m = accesosCache.find(x => x.usuario_id === usuarioId);
+  if (b.dataset.ficha) {
+   b.disabled = true;
+   try { await vincularAsesorConAcceso(config.empresa_id, usuarioId, b.dataset.ficha); await accesosTab(); aviso('Listo: ya es asesor (ficha vinculada).'); }
+   catch (err) { aviso(err.message, true); b.disabled = false; }
+   return;
+  }
+  await abrirSubtab('equipo');
+  editor({ nombre: m?.nombre || '', correo: m?.correo || '', _vincular: usuarioId });
+ }));
  const notaRol = () => {
   const rol = el.querySelector('#ad-acceso-form [name=rol]').value;
   el.querySelector('#ad-acceso-rol-nota').textContent = rol === 'asesor'
