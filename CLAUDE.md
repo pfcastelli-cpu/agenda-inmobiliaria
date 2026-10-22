@@ -158,11 +158,16 @@ bitácora completa sesión por sesión):
   La macro de Sedi desplegada en Apps Script TIENE que ser la de `sincronizacion/` (lee las columnas
   de portal y la propiedad `NOMBRE_HOJA` = Inmuebles); la versión vieja no traía los códigos.
 - Vigilante de correos (`sincronizacion/vigilante-correos.gs` + `LEEME-vigilante-correos.md`, proyecto de
-  Apps Script NUEVO, aún por desplegar): lee solo-lectura `solicitudes@`/`info@`/`contabilidad@` con cuenta de
-  servicio y delegación de dominio (`gmail.readonly`; rechaza buzones de administradores) y anota en una hoja
-  las terminaciones, entregas, asambleas y captaciones (con hoja Cobertura, aviso de fallos, latido y resumen
-  diario). Motivo: el ruteador solo ve `info@` y se le escapa lo que llega directo a `solicitudes@`.
-  Después se conectará a `agenda_pendientes` (origen `correo`).
+  Apps Script "Vigilante de correos", YA DESPLEGADO el 21-oct-2026 en la cuenta de Felipe; cuenta de servicio
+  `vigilante-correos@spartan-context-131023.iam.gserviceaccount.com` con delegación de dominio `gmail.readonly`):
+  lee solo-lectura solicitudes@/info@/soporte@/publicidad@/asesorbqa@/asesor1@ (rechaza buzones de administradores),
+  SOLO los últimos 3 meses, y anota en la hoja "Vigilante de correos — Patrimonios" (id
+  `1-g1_qVrm4vm1PaHlux-SlEZJ-ZiP78_d0sA7yLqY0IM`): pestaña Correos (terminaciones, entregas, asambleas, captaciones),
+  Hilos (estado vigente de cada conversación leyendo TODO el historial: prórroga, cambio de fecha, cancelación,
+  entregado), Cobertura y Busqueda. Gmail filtra en el servidor (sin portales ni citas); Gemini solo con topes
+  (12/corrida, 150/día, modelo más barato detectado solo, pausa si 429; la clave se comparte con el ruteador de info@).
+  Para actualizar el código en Apps Script: copiar el archivo al portapapeles y pegarlo en el editor (Monaco) y
+  verificar con SHA-256; no pegar secretos en el repo. Después se conectará a `agenda_pendientes` (origen `correo`).
 - Respaldo semanal de Supabase a Google Drive: `sincronizacion/respaldo-drive.gs` (mismo proyecto
   de Apps Script que la sincronización de inmuebles; propiedades `RESPALDO_CARPETA_ID` y opcional
   `RESPALDO_CONSERVAR`; no borra nada por defecto; no incluye las cuentas de Supabase Auth).
@@ -182,6 +187,10 @@ bitácora completa sesión por sesión):
   por inmueble: botón "Borrar restricciones".
 
 ## Pendiente / próximos pasos conocidos
+000000. Vigilante de correos: faltan por activar `instalarDisparadores` (cada 15 min, resumen diario, latido) cuando termine
+   el primer recorrido de 3 meses; recomendado crear una clave de Gemini PROPIA (otro proyecto) para no compartir cuota
+   con el ruteador; cruzar la pestaña Hilos con el Cuadro de Entregas y Gestión de terminaciones de Sedi (las 6
+   terminaciones seguras de abajo se crean en Sedi después de revisar los correos).
 00000. Terminaciones en Sedi (Inmobiliaria → Terminaciones → Gestión de terminaciones, formulario obligatorio:
    contrato, solicitante, canal, causa, estado, fecha de aviso, fecha de entrega). Cruce del 21-oct-2026 con el
    cuadro de arrendados (fuente confiable; el Cuadro de Entregas es manual): FALTAN en Sedi Imoval XIII
