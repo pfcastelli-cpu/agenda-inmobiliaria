@@ -187,8 +187,8 @@ bitácora completa sesión por sesión):
   por inmueble: botón "Borrar restricciones".
 
 ## Pendiente / próximos pasos conocidos
-000000. Vigilante de correos: faltan por activar `instalarDisparadores` (cada 15 min, resumen diario, latido) cuando termine
-   el primer recorrido de 3 meses; recomendado crear una clave de Gemini PROPIA (otro proyecto) para no compartir cuota
+000000. Vigilante de correos: disparadores YA instalados el 21-oct-2026 (corrida cada 15 min, latido cada hora, resumen diario 7 a. m.);
+   recomendado crear una clave de Gemini PROPIA (otro proyecto) para no compartir cuota
    con el ruteador; cruzar la pestaña Hilos con el Cuadro de Entregas y Gestión de terminaciones de Sedi (las 6
    terminaciones seguras de abajo se crean en Sedi después de revisar los correos).
 00000. Terminaciones en Sedi (Inmobiliaria → Terminaciones → Gestión de terminaciones, formulario obligatorio:
