@@ -205,14 +205,25 @@ function resumenDiario() {
   const n = hoja.getLastRow();
   const desde = Date.now() - 24 * 3600000;
   const filas = n < 2 ? [] : hoja.getRange(2, 1, n - 1, COLUMNAS_CORREOS.length).getValues();
-  const nuevas = filas.filter(function (f) { return Date.parse(f[19]) >= desde; });
+  // Solo correos que LLEGARON en las últimas 24 h (no los que el histórico acaba de registrar).
+  const fmt = function (v) {
+    const d = v instanceof Date ? v : new Date(v);
+    return isNaN(d.getTime()) ? String(v || '') : Utilities.formatDate(d, 'America/Bogota', 'dd/MM HH:mm');
+  };
+  const nuevas = filas.filter(function (f) {
+    const d = f[3] instanceof Date ? f[3].getTime() : Date.parse(f[3]);
+    return d >= desde;
+  });
   const porCategoria = {};
   nuevas.forEach(function (f) { porCategoria[f[7]] = (porCategoria[f[7]] || 0) + 1; });
-  const lineasTerm = nuevas.filter(function (f) { return f[7] === 'TERMINACION' || f[7] === 'ENTREGA'; }).map(function (f) {
-    return '- ' + f[3] + ' · ' + f[1] + ' · ' + f[6] + (f[8] ? ' · ' + f[8] : '') + (f[11] ? ' · entrega ' + f[11] : '') + '\n  ' + f[16];
+  const term = nuevas.filter(function (f) { return f[7] === 'TERMINACION' || f[7] === 'ENTREGA'; });
+  const lineasTerm = term.slice(0, 15).map(function (f) {
+    return '- ' + fmt(f[3]) + ' · ' + f[1] + ' · ' + f[6] + (f[8] ? ' · ' + f[8] : '') + '\n  ' + f[16];
   });
+  if (term.length > 15) lineasTerm.push('  ... y ' + (term.length - 15) + ' más en la hoja.');
   const cambiosHilo = resumenCambiosHilos_(desde);
-  const cuerpo = 'Correos importantes registrados en las últimas 24 horas: ' + nuevas.length + '\n' +
+  if (!nuevas.length && !cambiosHilo) return;   // sin novedades no se manda correo
+  const cuerpo = 'Correos importantes que llegaron en las últimas 24 horas: ' + nuevas.length + '\n' +
     Object.keys(porCategoria).map(function (k) { return '  ' + k + ': ' + porCategoria[k]; }).join('\n') +
     '\n\nTerminaciones y entregas:\n' + (lineasTerm.join('\n') || '  (ninguna)') +
     '\n\nCambios de estado en conversaciones (prórrogas, cancelaciones, entregas):\n' + (cambiosHilo || '  (ninguno)') +
@@ -227,7 +238,7 @@ function resumenCambiosHilos_(desdeMs) {
   if (n < 2) return '';
   return h.getRange(2, 1, n - 1, COLUMNAS_HILOS.length).getValues().filter(function (f) {
     return Date.parse(f[14]) >= desdeMs && ['PRORROGA', 'ENTREGA CANCELADA', 'ENTREGADO'].indexOf(f[9]) > -1;
-  }).map(function (f) { return '- ' + f[9] + ' · ' + (f[3] || f[2]) + (f[4] ? ' (COD ' + f[4] + ')' : '') + (f[10] ? ' · fecha vigente ' + f[10] : '') + '\n  ' + f[13]; }).join('\n');
+  }).slice(0, 15).map(function (f) { return '- ' + f[9] + ' · ' + (f[3] || f[2]) + (f[4] ? ' (COD ' + f[4] + ')' : '') + (f[10] ? ' · fecha vigente ' + f[10] : '') + '\n  ' + f[13]; }).join('\n');
 }
 
 /** Busca un texto puntual (nombre, inmueble…) en un buzón y lo anota en la pestaña "Busqueda". */
