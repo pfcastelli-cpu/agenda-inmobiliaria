@@ -316,10 +316,11 @@ Deno.serve(async (req) => {
   let latitud: number | string | null = null;
   let longitud: number | string | null = null;
   let numeroInmueble: number | null = null;
+  let inmuebleOcupado = false;
   if (cita.inmueble_id) {
     const { data: inmueble } = await admin
       .from('agenda_inmuebles')
-      .select('numero_inmueble, direccion, ciudad, barrio, latitud, longitud')
+      .select('numero_inmueble, direccion, ciudad, barrio, latitud, longitud, estado_crm')
       .eq('id', cita.inmueble_id)
       .maybeSingle();
     if (inmueble) {
@@ -328,6 +329,7 @@ Deno.serve(async (req) => {
       latitud = inmueble.latitud;
       longitud = inmueble.longitud;
       numeroInmueble = inmueble.numero_inmueble;
+      inmuebleOcupado = String(inmueble.estado_crm || '').trim().toLowerCase() === 'rentando';
     }
   }
   direccion = limpiarDireccion(direccion);
@@ -414,6 +416,11 @@ Deno.serve(async (req) => {
         : ''
     }
     <div style="background:#f4f6f8;padding:16px 26px;border-top:1px solid #e6eaee">
+      ${
+        inmuebleOcupado
+          ? `<p style="color:#526575;font-size:12.5px;margin:0 0 10px"><strong>Importante:</strong> este inmueble está arrendado y habitado actualmente. Si el arrendatario no puede recibirte a esa hora, podría proponerte otra: te escribiremos y tu visita solo cambia si tú aceptas el nuevo horario.</p>`
+          : ''
+      }
       <p style="color:#8492a6;font-size:12px;margin:0">Si necesitas cambiar o cancelar tu visita, comunícate directamente con tu asesor usando los botones de arriba. También te dejamos la cita guardada en el archivo adjunto para que quede en el calendario de tu teléfono, con recordatorios 24, 2 y 1 hora antes.</p>
     </div>
   </div>

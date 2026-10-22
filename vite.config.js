@@ -16,7 +16,7 @@ function reescrituraInmuebles() {
           req.url = '/propietario.html';
         } else if (req.url && /^\/opinion\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/opinion.html';
-        } else if (req.url && /^\/arrendatario\/[0-9a-f-]+/i.test(req.url)) {
+        } else if (req.url && /^\/(arrendatario|visita)\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/arrendatario.html';
         }
         next();

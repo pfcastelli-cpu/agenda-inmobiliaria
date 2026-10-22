@@ -138,17 +138,22 @@ bitácora completa sesión por sesión):
   `agenda_arrendatarios`, que llena la macro `sincronizarArrendatarios()` de
   `sincronizacion/sincronizar-inmuebles.gs` desde la hoja InformeGeneralInmueblesArrendados
   (`sql/007-inmuebles-rentando.sql`, ya aplicado).
-- Portal del arrendatario (CODIFICADO el 22-oct-2026, SIN aplicar en producción hasta que Felipe confirme): el correo
-  "Visita programada en tu vivienda" (`avisar-arrendatario`) lleva el botón "Gestionar esta visita" →
-  `citas.patrimonios.co/arrendatario/<token>` (`aplicacion/arrendatario.html` + `js/arrendatario.js`). Ahí el arrendatario
-  mueve ESTA visita a otro horario válido (mismo motor `agenda_sugerir_horarios` + `agenda_slot_disponible`, así respeta
-  jornada del asesor, traslados y el horario del inmueble; máx. 3 cambios), la cancela, o edita los días/horas en que se
-  muestra su vivienda (`agenda_inmuebles.dias_visita_permitidos/hora_visita_desde/hasta`, 6:00-21:00; las visitas que
-  queden fuera NO se mueven solas, se avisa al asesor). Todo vía Edge Function `portal-arrendatario` (`verify_jwt` APAGADO:
-  el token `agenda_citas.token_arrendatario` es la credencial; nunca muestra datos del cliente). Avisa por correo al asesor
-  (log tipo `asesor`) y, al mover/cancelar, al cliente (mover reusa `enviar-correo-cita` y `enviar-correo-propietario`).
-  Auditoría en `agenda_arrendatario_acciones` (sin pantalla aún). `sql/010-portal-arrendatario.sql`. Orden de despliegue:
-  SQL → desplegar `portal-arrendatario` (verify_jwt off) → redesplegar `avisar-arrendatario` → push (Netlify).
+- Acuerdo de horario en inmuebles arrendados (CODIFICADO el 22-oct-2026, SIN aplicar en producción hasta que Felipe
+  confirme): el correo "Visita programada en tu vivienda" (`avisar-arrendatario`) lleva el botón a
+  `citas.patrimonios.co/arrendatario/<token>`; el cliente recibe `/visita/<token>` (misma página,
+  `aplicacion/arrendatario.html` + `js/arrendatario.js`, el servidor dice el `rol`). El arrendatario PROPONE otra hora
+  (no mueve la cita); el cliente acepta, rechaza (queda la hora original) o contrapropone; cuando la OTRA parte acepta, la
+  cita pasa a la nueva hora (en firme) y se mandan los correos de siempre (`enviar-correo-cita` al cliente,
+  `enviar-correo-propietario`, y confirmación al arrendatario). NO se avisa al asesor: la agenda se coordina sola. Reglas:
+  una propuesta pendiente por cita, vence a las 48 h o si la cita cambia por otra vía, se revalida el horario al aceptar con
+  el mismo motor (`agenda_sugerir_horarios` + `agenda_slot_disponible`), máx. 6 propuestas por cita. El arrendatario también
+  cancela (avisa al cliente) y edita los días/horas en que se muestra su vivienda (`agenda_inmuebles.dias_visita_permitidos/
+  hora_visita_desde/hasta`, 6:00-21:00; las visitas ya agendadas que queden fuera se respetan). El correo de confirmación al
+  cliente (`enviar-correo-cita`) avisa que un inmueble rentando está ocupado y que el arrendatario podría proponer otra hora.
+  Edge Function `portal-visita` (`verify_jwt` APAGADO: tokens `agenda_citas.token_arrendatario` / `token_cliente` son la
+  credencial; cada parte solo ve lo suyo). Tablas `agenda_cita_propuestas` y `agenda_arrendatario_acciones` (auditoría, sin
+  pantalla aún). `sql/010-portal-arrendatario.sql`. Orden de despliegue: SQL → desplegar `portal-visita` (verify_jwt off) →
+  redesplegar `avisar-arrendatario` y `enviar-correo-cita` → push (Netlify).
 - Pendientes (pestaña nueva, todos los roles) y Portales (sub-pestaña, admin/coordinador): tabla
   `agenda_pendientes` (tareas con responsable, fecha límite, cierre manual o automático) y
   `agenda_portales_cargas`. Se suben los Excel de Fincaraíz, Metrocuadrado y Ciencuadras

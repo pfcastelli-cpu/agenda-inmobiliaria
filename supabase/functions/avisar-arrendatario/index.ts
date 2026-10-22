@@ -207,8 +207,8 @@ Deno.serve(async (req) => {
         <tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Hora</td><td style="padding:8px 0;color:#1A2C45;font-size:15px;font-weight:600">${escaparHtml(horaTexto)}</td></tr>
         ${asesorNombre ? `<tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Asesor a cargo</td><td style="padding:8px 0;color:#1A2C45;font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
       </table>
-      <p style="color:#526575;font-size:14px;margin:18px 0 0">¿No puedes recibir la visita en ese horario? Desde el siguiente botón puedes cambiarla a otro horario disponible, cancelarla o actualizar los días y horas en que se puede mostrar tu vivienda. Gracias por tu colaboración.</p>
-      <p style="margin:18px 0 6px"><a href="${enlacePortal}" style="display:inline-block;background:#1A2C45;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">Gestionar esta visita</a></p>
+      <p style="color:#526575;font-size:14px;margin:18px 0 0">¿No puedes recibir la visita en ese horario? Desde el siguiente botón puedes proponer otra hora disponible: la visita solo cambia cuando la persona interesada la acepte. También puedes cancelarla o actualizar los días y horas en que se puede mostrar tu vivienda. Gracias por tu colaboración.</p>
+      <p style="margin:18px 0 6px"><a href="${enlacePortal}" style="display:inline-block;background:#1A2C45;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">Proponer otra hora o gestionar la visita</a></p>
       <p style="color:#9aa7b0;font-size:12px;margin:10px 0 0">Este enlace es personal, no lo compartas. Si prefieres, también puedes comunicarte directamente con el asesor.</p>
     </div>
   </div>
