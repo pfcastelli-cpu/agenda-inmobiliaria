@@ -1043,3 +1043,58 @@ function sinTiempo_(t0, limite) { return (Date.now() - t0) / 1000 > (limite || V
 function diasAtras_(n) { return new Date(Date.now() - n * 86400000); }
 function fechaGmail_(d) { return Utilities.formatDate(d, 'America/Bogota', 'yyyy/MM/dd'); }
 function fechaHora_(ms) { return Utilities.formatDate(new Date(Number(ms)), 'America/Bogota', 'yyyy-MM-dd HH:mm'); }
+
+/* ============================================================================
+ * EXPORTAR CORREOS A PDF (para adjuntarlos en Sedi)
+ * Lee la conversación completa con el mismo permiso de solo lectura y la guarda como PDF en la carpeta
+ * "Correos para Sedi" de Drive. NO modifica ni borra nada en los buzones. Requiere autorizar Drive la primera vez.
+ * ========================================================================== */
+
+/** Guarda en PDF las conversaciones que coincidan con la consulta de Gmail (máx. `maximo`). Devuelve lo que guardó. */
+function exportarHilosAPdf(buzon, consulta, prefijo, maximo) {
+  verificarBuzonPermitido_(buzon);
+  const lista = gmail_(buzon, '/threads', { q: consulta, maxResults: maximo || 3 });
+  const carpetas = DriveApp.getFoldersByName('Correos para Sedi');
+  const carpeta = carpetas.hasNext() ? carpetas.next() : DriveApp.createFolder('Correos para Sedi');
+  const hechos = [];
+  (lista.threads || []).slice(0, maximo || 3).forEach(function (t) {
+    const hilo = gmail_(buzon, '/threads/' + t.id, { format: 'full' });
+    const partes = (hilo.messages || []).map(function (m) {
+      const html = htmlDe_(m.payload) || ('<pre style="white-space:pre-wrap;font-family:Arial">' + escaparHtml_(textoDe_(m.payload)) + '</pre>');
+      const adj = adjuntos_(m.payload);
+      return '<div style="border-top:2px solid #444;margin-top:18px;padding-top:8px;font-family:Arial;font-size:12px">' +
+        '<b>De:</b> ' + escaparHtml_(cab_(m, 'From')) + '<br><b>Para:</b> ' + escaparHtml_(cab_(m, 'To')) +
+        (cab_(m, 'Cc') ? '<br><b>Cc:</b> ' + escaparHtml_(cab_(m, 'Cc')) : '') +
+        '<br><b>Fecha:</b> ' + escaparHtml_(cab_(m, 'Date')) + '<br><b>Asunto:</b> ' + escaparHtml_(cab_(m, 'Subject')) +
+        (adj.length ? '<br><b>Adjuntos:</b> ' + escaparHtml_(adj.join(', ')) : '') + '</div><div style="font-family:Arial;font-size:12px">' + html + '</div>';
+    });
+    const asunto = cab_((hilo.messages || [{}])[0], 'Subject') || 'sin asunto';
+    const cabecera = '<div style="font-family:Arial;font-size:11px;color:#555">Copia de la conversación del buzón ' + escaparHtml_(buzon) +
+      ' (' + (hilo.messages || []).length + ' mensajes), exportada el ' + fechaHora_(Date.now()) + '</div>';
+    const nombre = (prefijo + ' - ' + asunto).replace(/[\\/:*?"<>|]/g, ' ').substring(0, 110) + '.pdf';
+    const pdf = Utilities.newBlob('<html><body>' + cabecera + partes.join('') + '</body></html>', 'text/html', 'correo.html').getAs('application/pdf').setName(nombre);
+    const archivo = carpeta.createFile(pdf);
+    hechos.push(nombre + ' -> ' + archivo.getUrl());
+    Logger.log('Guardado: ' + nombre + ' (' + (hilo.messages || []).length + ' mensajes) ' + archivo.getUrl());
+  });
+  if (!hechos.length) Logger.log('Sin resultados para: ' + buzon + ' / ' + consulta);
+  return hechos;
+}
+
+/** Los dos correos que faltan en Sedi: Aquimin 201 (hilo del 11/08/2026) e Imoval XIII 308 (carta del 29/05/2026). */
+function exportarCorreosSedi() {
+  exportarHilosAPdf('solicitudes@patrimonios.co', 'subject:"NO RENOVACION Y ENTREGA MATERIAL" after:2026/08/09 before:2026/08/14', 'Aquimin 201', 2);
+  exportarHilosAPdf('solicitudes@patrimonios.co', '(Inmoval OR "Apto 308" OR "145-88" OR "145 - 88") after:2026/05/26 before:2026/06/06', 'Imoval XIII 308', 4);
+}
+
+function htmlDe_(payload) {
+  let html = '';
+  (function recorrer(p) {
+    if (!p) return;
+    if (p.mimeType === 'text/html' && p.body && p.body.data && !p.filename) html += decodificar_(p.body.data);
+    (p.parts || []).forEach(recorrer);
+  })(payload);
+  return html.replace(/<script[\s\S]*?<\/script>/gi, '');
+}
+
+function escaparHtml_(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
