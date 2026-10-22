@@ -191,16 +191,25 @@ bitácora completa sesión por sesión):
    recomendado crear una clave de Gemini PROPIA (otro proyecto) para no compartir cuota
    con el ruteador; cruzar la pestaña Hilos con el Cuadro de Entregas y Gestión de terminaciones de Sedi (las 6
    terminaciones seguras de abajo se crean en Sedi después de revisar los correos).
-00000. Terminaciones en Sedi (Inmobiliaria → Terminaciones → Gestión de terminaciones, formulario obligatorio:
-   contrato, solicitante, canal, causa, estado, fecha de aviso, fecha de entrega). Cruce del 21-oct-2026 con el
-   cuadro de arrendados (fuente confiable; el Cuadro de Entregas es manual): FALTAN en Sedi Imoval XIII
-   (CT-7990, entrega 30/11/2026), Aquimin (CT-7933, 30/11/2026), Corales 589 (CT.B-310, 30/11/2026), Tribeca
-   1301 (CT-7947, 31/01/2027), Kandinsky 503 (CT-7757, 31/01/2027) y Gutenberg 206 (CT-7636, entrega 30/04/2027
-   por prórroga autorizada); y hay que CERRAR Versalles Reservado (CT-7983, ya re-arrendado con CT-8043).
-   Dudosos: El Parque 182 (473, CT.B-316, siniestro, contrato dice 31/03/2027) y Verona 170 (237, contrato dice
-   30/04/2027). Felipe quiere revisar primero los correos de la empresa (vigilante) antes de crearlas.
-   Errores del Cuadro de Entregas: Prado Park es AP 630 (no 603); Vía al Cedro VI AP 415 es el inmueble 489 con
-   contrato a 30/09/2027 (la fila con COD 487 y entrega 31/12/2026 no es terminación); Corales = COD 589.
+00000. Terminaciones en Sedi (Inmobiliaria -> Terminaciones -> Gestion de terminaciones). REGLA de Felipe: una entrega
+   es SEGURA solo si la fecha coincide (o esta a ~5 dias) con el vencimiento del contrato y el aviso se dio a tiempo
+   (contrato y Ley 820 de 2003, 3 meses); si no coincide es un ACUERDO (entrega cuando haya nuevo arrendatario) y no se
+   carga como entrega segura. Al cargar un caso en Sedi se adjunta SIEMPRE la carta/correo del arrendatario (esta en
+   Drive, carpeta de contratos por ciudad y numero de inmueble, subcarpeta "NO RENOVACION" del contrato).
+   HECHO el 22-oct-2026: cargados con carta adjunta Imoval XIII (CT-7990), Aquimin (CT-7933), Corales 2 Casa 97
+   (CT.B-310), Tribeca 1301 (CT-7947) y Kandinsky 503 (CT-7757) (procesos 8 a 12), y CERRADO Versalles (CT-7983).
+   Causa elegida a mano en Aquimin, Corales y Tribeca ("nuevas necesidades"): la carta no la dice; revisar si se quiere otra.
+   PENDIENTES por decidir (no seguras / sin confirmar): Gutenberg 410 (CT-7636, prorroga a 30/04/2027), Verona 170
+   (CT-7702), El Parque 182 (CT.B-316, siniestro/restitucion legal), Isabella 703 (420, sin contrato en arrendados),
+   Baleares 7 (CT-227, vence 31/10/2026, no renueva condicionado a reparaciones), Montiel 501 (CT-7858), Molino 704
+   (CT-7992), Pontevedra IV 601 (CT-7803, aviso 22/10 para 31/01/2027), Mirador de San Luis 1003 (CT-7709, pide 30/10
+   pero vence 31/05/2027), Torres de la Cien 1204 (CT-7911), Trento 1203 (CT-7835), Oficina 311 Colina Office Park
+   (CT-7874), Florencia T7 205 e Ikebana locales 10/11 (no figuran en arrendados). Falta verificar con los enviados de
+   solicitudes@ que se aviso a propietario y arrendatario en cada caso.
+   Errores del Cuadro de Entregas: Prado Park es AP 630 (no 603); Via al Cedro VI AP 415 es el inmueble 489 con
+   contrato a 30/09/2027; Corales = COD 589; faltan en el Cuadro Baleares, Montiel, Molino, Pontevedra, Mirador, Torres
+   de la Cien, Trento, Oficina 311. Tecnica para adjuntar en Sedi: el formulario vive en un iframe del mismo origen;
+   se sirve el PDF desde un servidor local temporal (CORS abierto) y se asigna al input file por JavaScript.
 0000. Correos de acceso (invitación y "Olvidé mi contraseña"): NO salen por el correo integrado de
    Supabase (solo entrega a miembros del equipo de Supabase y ~2 por hora). Los envían las Edge
    Functions `gestion-accesos` (invitación/reenvío) y `recuperar-contrasena` (pública, respuesta
