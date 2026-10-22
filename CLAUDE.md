@@ -224,6 +224,16 @@ bitácora completa sesión por sesión):
    que guarda la conversacion en PDF en la carpeta de Drive "Correos para Sedi"; requiere el permiso de Drive, ya autorizado
    el 22-oct-2026). Seguimientos en Sedi: cada uno pide
    confirmar con Aceptar y se guarda al instante; los adjuntos se acumulan y se guardan con Guardar.
+   22-oct-2026 (tarde): cargados tambien Montiel 501 (proceso 13, extemporaneo), Molino 704 (14, extemporaneo),
+   Mirador 1003 (15, "Envio propuesta 1" = cambio de arrendatario), Torres de la Cien 1204 (16, acuerdo, entrega estimada
+   dic-2026) y Gutenberg 410 (17, prorroga autorizada, entrega 30/04/2027), con adjuntos y 3 seguimientos. Como indicar el
+   estado de un acuerdo en Sedi: Estado solicitud "Envio propuesta 1" + Observaciones que empiezan por ACUERDO/EXTEMPORANEO;
+   causa "Terminacion anticipada de contrato" cuando el aviso llego tarde. Limite de ~400 caracteres por seguimiento; los
+   seguimientos NO se pueden borrar (en el proceso 10 quedaron 3 de Montiel por error, con una nota de correccion). La carta
+   modelo "RESPUESTA COMUNICACION EXTEMPORANEA" tiene fechas cruzadas en Mirador. Correo a Jessica con el resumen: borrador en
+   Gmail de Felipe. Revision hacia atras (enero-julio): sin entregas nuevas >= oct-2026 salvo Verona 170 (entrega 30/11/2026
+   por prorroga de 7 meses pedida en feb) y por verificar Oasis 827 (CT.B-289) y Apolo 202 (CT-7901). Funciones nuevas del
+   vigilante: exportarCasosATexto, exportarAdjuntosCasos, exportarNoRenovaciones, exportarMirador (pestanas Casos/NoRenov).
    PENDIENTES por decidir (no seguras / sin confirmar): Gutenberg 410 (CT-7636, prorroga a 30/04/2027), Verona 170
    (CT-7702), El Parque 182 (CT.B-316, siniestro/restitucion legal), Isabella 703 (420, sin contrato en arrendados),
    Baleares 7 (CT-227, vence 31/10/2026, no renueva condicionado a reparaciones), Montiel 501 (CT-7858), Molino 704

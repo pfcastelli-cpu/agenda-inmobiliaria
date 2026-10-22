@@ -1149,3 +1149,89 @@ function exportarCasosATexto() {
   if (filas.length) h.getRange(2, 1, filas.length, 9).setValues(filas);
   Logger.log('Casos exportados: ' + filas.length + ' mensajes');
 }
+
+/* ============================================================================
+ * EXPORTAR ADJUNTOS DE LOS CASOS A DRIVE (cartas enviadas y recibidas)
+ * Para cada caso guarda en "Correos para Sedi": la conversación en PDF y los archivos adjuntos (menos imágenes).
+ * Solo lectura de Gmail; escribe únicamente en Drive.
+ * ========================================================================== */
+const CASOS_ADJUNTOS = [
+  ['Montiel 501', 'solicitudes@patrimonios.co', '(Montiel OR "COD 344" OR from:dvf34@yahoo.com) after:2026/08/20'],
+  ['Molino 704', 'solicitudes@patrimonios.co', '(from:saidysanchez210@gmail.com OR subject:"Molino apto 704") after:2026/10/01'],
+  ['Mirador 1003', 'solicitudes@patrimonios.co', '"Apto 1003 Mirador de San Luis" after:2026/09/01'],
+  ['Torres de la Cien 1204', 'solicitudes@patrimonios.co', '(from:jonathan2050@gmail.com OR to:jonathan2050@gmail.com) after:2026/08/01'],
+  ['Pontevedra 601', 'solicitudes@patrimonios.co', 'from:ggdolly@hotmail.com after:2026/10/01'],
+  ['Baleares 7', 'solicitudes@patrimonios.co', 'from:gutierrezsonia2401@gmail.com after:2026/08/01'],
+  ['Gutenberg 410', 'solicitudes@patrimonios.co', '(from:andres.parrado.md@gmail.com OR to:andres.parrado.md@gmail.com) after:2026/07/01'],
+  ['El Parque 182', 'info@patrimonios.co', '(11994227 OR from:jramosabogado.com OR from:jramosabogados.com) after:2026/08/01']
+];
+
+function exportarAdjuntosCasos(lista) {
+  const casos = (lista && lista.length) ? lista : CASOS_ADJUNTOS;
+  const carpetas = DriveApp.getFoldersByName('Correos para Sedi');
+  const carpeta = carpetas.hasNext() ? carpetas.next() : DriveApp.createFolder('Correos para Sedi');
+  casos.forEach(function (c) {
+    try { exportarHilosAPdf(c[1], c[2], c[0], 3); } catch (e) { Logger.log('PDF ' + c[0] + ': ' + e); }
+    let lista;
+    try { lista = gmail_(c[1], '/threads', { q: c[2], maxResults: 3 }); } catch (e) { Logger.log('Adjuntos ' + c[0] + ': ' + e); return; }
+    (lista.threads || []).forEach(function (t) {
+      const hilo = gmail_(c[1], '/threads/' + t.id, { format: 'full' });
+      (hilo.messages || []).forEach(function (m) {
+        const fecha = Utilities.formatDate(new Date(Number(m.internalDate)), 'America/Bogota', 'yyyy-MM-dd');
+        const partes = [];
+        (function recorrer(p) { if (!p) return; if (p.filename && p.body && p.body.attachmentId && !/^image\//.test(p.mimeType || '') && (p.body.size || 0) < 8000000) partes.push(p); (p.parts || []).forEach(recorrer); })(m.payload);
+        partes.forEach(function (p) {
+          try {
+            const adj = gmail_(c[1], '/messages/' + m.id + '/attachments/' + p.body.attachmentId, {});
+            const nombre = (c[0] + ' - ' + fecha + ' - ' + p.filename).replace(/[\\/:*?"<>|]/g, ' ');
+            const archivo = carpeta.createFile(Utilities.newBlob(Utilities.base64DecodeWebSafe(adj.data), p.mimeType, nombre));
+            Logger.log('Adjunto: ' + nombre + ' -> ' + archivo.getId());
+          } catch (e) { Logger.log('Adjunto fallo ' + p.filename + ': ' + e); }
+        });
+      });
+    });
+  });
+  Logger.log('Listo exportarAdjuntosCasos');
+}
+
+/* ============================================================================
+ * REVISIÓN HACIA ATRÁS: avisos de no renovación / terminación desde enero
+ * Vuelca a la pestaña "NoRenov" los correos cuyo asunto habla de no renovación, terminación, entrega o aceptación
+ * (recibidos y enviados), para cruzarlos con Sedi y el Cuadro de Entregas. Solo lectura de Gmail.
+ * ========================================================================== */
+function exportarNoRenovaciones() {
+  const ss = hojaCorreos_().getParent();
+  let h = ss.getSheetByName('NoRenov');
+  if (!h) h = ss.insertSheet('NoRenov');
+  h.clear();
+  h.appendRow(['BUZON', 'HILO', 'FECHA', 'DE', 'PARA', 'ASUNTO', 'ADJUNTOS', 'TEXTO']);
+  const q = '(subject:"no renovación" OR subject:"no renovacion" OR subject:"no prorroga" OR subject:"no prórroga" OR subject:terminación OR subject:terminacion OR subject:"entrega de inmueble" OR subject:"entrega del inmueble" OR subject:"entrega de apartamento" OR subject:"aceptación solicitud" OR subject:"preaviso" OR subject:"finalización" OR subject:"finalizacion" OR subject:"rescindir" OR subject:"rescisión") after:2026/01/01 -subject:"Citas" -subject:"cita"';
+  const filas = [];
+  ['solicitudes@patrimonios.co', 'info@patrimonios.co'].forEach(function (buzon) {
+    let token = null, paginas = 0;
+    do {
+      const lista = gmail_(buzon, '/messages', { q: q, maxResults: 100, pageToken: token || undefined });
+      const ids = (lista.messages || []).map(function (m) { return m.id; });
+      for (let i = 0; i < ids.length; i += 25) {
+        const lote = leerCompletos_(buzon, ids.slice(i, i + 25));
+        Object.keys(lote).forEach(function (id) {
+          const m = lote[id];
+          if (!m) return;
+          let txt = textoDe_(m.payload).replace(/\r/g, '');
+          const corte = txt.search(/\n\s*(El .{5,80}escribió:|On .{5,80}wrote:|-{3,}\s*(Mensaje reenviado|Forwarded|Original))/i);
+          if (corte > 150) txt = txt.substring(0, corte);
+          filas.push([buzon, m.threadId, cab_(m, 'Date'), cab_(m, 'From'), cab_(m, 'To'), cab_(m, 'Subject'), adjuntos_(m.payload).join(', '),
+            txt.replace(/\s+/g, ' ').substring(0, 700)]);
+        });
+      }
+      token = lista.nextPageToken; paginas++;
+    } while (token && paginas < 6);
+  });
+  if (filas.length) h.getRange(2, 1, filas.length, 8).setValues(filas);
+  Logger.log('NoRenov: ' + filas.length + ' mensajes');
+}
+
+/** Caso suelto: Mirador de San Luis 1003 (la búsqueda general trajo solo alertas). */
+function exportarMirador() {
+  exportarAdjuntosCasos([['Mirador 1003', 'solicitudes@patrimonios.co', '(from:contabilidad@datasafecolombia.com OR to:contabilidad@datasafecolombia.com) after:2026/09/01']]);
+}
