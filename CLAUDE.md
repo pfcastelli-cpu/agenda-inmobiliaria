@@ -200,8 +200,10 @@ bitácora completa sesión por sesión):
    (CT.B-310), Tribeca 1301 (CT-7947) y Kandinsky 503 (CT-7757) (procesos 8 a 12), y CERRADO Versalles (CT-7983).
    Causa elegida a mano en Aquimin, Corales y Tribeca ("nuevas necesidades"): la carta no la dice; revisar si se quiere otra.
    Cada proceso lleva ademas la carta de aceptacion y 3 seguimientos (carta/correo del arrendatario, aceptacion, carta al
-   propietario "pendiente confirmar envio"). FALTA adjuntar el correo original del arrendatario en Aquimin e Imoval XIII
-   (viene de solicitudes@, no esta en Drive; este navegador no tiene ese buzon abierto). Seguimientos en Sedi: cada uno pide
+   propietario "pendiente confirmar envio"). Los 5 tienen tambien el correo original (Aquimin e Imoval XIII se
+   exportaron de solicitudes@ con `exportarCorreosSedi` / `exportarHilosAPdf(buzon, consulta, prefijo, maximo)` del vigilante,
+   que guarda la conversacion en PDF en la carpeta de Drive "Correos para Sedi"; requiere el permiso de Drive, ya autorizado
+   el 22-oct-2026). Seguimientos en Sedi: cada uno pide
    confirmar con Aceptar y se guarda al instante; los adjuntos se acumulan y se guardan con Guardar.
    PENDIENTES por decidir (no seguras / sin confirmar): Gutenberg 410 (CT-7636, prorroga a 30/04/2027), Verona 170
    (CT-7702), El Parque 182 (CT.B-316, siniestro/restitucion legal), Isabella 703 (420, sin contrato en arrendados),
