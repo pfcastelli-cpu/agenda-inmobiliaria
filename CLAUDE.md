@@ -153,6 +153,11 @@ bitácora completa sesión por sesión):
   Edge Function `portal-visita` (`verify_jwt` APAGADO: tokens `agenda_citas.token_arrendatario` / `token_cliente` son la
   credencial; cada parte solo ve lo suyo). Tablas `agenda_cita_propuestas` y `agenda_arrendatario_acciones` (auditoría, sin
   pantalla aún). `sql/010-portal-arrendatario.sql`. - Pendientes (pestaña nueva, todos los roles) y Portales (sub-pestaña, admin/coordinador): tabla
+  PROBADO de punta a punta el 22-oct-2026 con correo en modo pruebas (proponer, aceptar, contrapropuesta, rechazo, cancelar,
+  guardar horario, validaciones, y la página real en producción). Datos de prueba que quedaron en producción (NO borrar sin
+  preguntar): inmueble Nº 999901 «PRUEBA» (marcado no disponible), su fila en `agenda_arrendatarios` y una cita cancelada de
+  «Cliente de Prueba». NO probado: el botón «Informar al arrendatario» de la agenda (exige sesión) ni el correo real con el
+  enlace; `agenda_arrendatarios` sigue vacía hasta pegar la macro `sincronizarArrendatarios`.
   `agenda_pendientes` (tareas con responsable, fecha límite, cierre manual o automático) y
   `agenda_portales_cargas`. Se suben los Excel de Fincaraíz, Metrocuadrado y Ciencuadras
   (`portales-logica.js` los reconoce y compara por CÓDIGO DE PORTAL contra las columnas de portal de

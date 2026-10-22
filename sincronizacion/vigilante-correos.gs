@@ -1098,3 +1098,54 @@ function htmlDe_(payload) {
 }
 
 function escaparHtml_(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+/* ============================================================================
+ * LEER CASOS (para decidir terminaciones dudosas)
+ * Vuelca a la pestaña "Casos" de la hoja del vigilante, mensaje por mensaje, las conversaciones de cada caso
+ * (recibidas y enviadas) para poder leer qué se contestó y qué se acordó. Solo lectura de Gmail.
+ * ========================================================================== */
+const CASOS_TERMINACION = [
+  ['Baleares 7', 'Baleares'],
+  ['Montiel 501', 'Montiel'],
+  ['Molino 704', '"Molino" 704'],
+  ['Pontevedra IV 601', 'Pontevedra'],
+  ['Mirador de San Luis 1003', '"Mirador de San Luis"'],
+  ['Torres de la Cien 1204', '"Torres de la Cien"'],
+  ['Trento 1203', 'Trento'],
+  ['Oficina 311 Colina Office', 'jareic2001@gmail.com'],
+  ['Gutenberg 410', 'Gutenberg'],
+  ['Verona 170', 'Verona'],
+  ['El Parque 182 / solicitud 11994227', '11994227'],
+  ['Isabella 703', 'Isabella'],
+  ['Florencia T7', 'Florencia'],
+  ['Ikebana locales 10 y 11', 'Ikebana']
+];
+
+function exportarCasosATexto() {
+  const ss = hojaCorreos_().getParent();
+  let h = ss.getSheetByName('Casos');
+  if (!h) h = ss.insertSheet('Casos');
+  h.clear();
+  h.appendRow(['CASO', 'BUZON', 'HILO', 'FECHA', 'DE', 'PARA', 'ASUNTO', 'ADJUNTOS', 'TEXTO (sin citas anteriores)']);
+  const desde = '2026/05/01';
+  const filas = [];
+  CASOS_TERMINACION.forEach(function (c) {
+    ['solicitudes@patrimonios.co', 'info@patrimonios.co'].forEach(function (buzon) {
+      let lista;
+      try { lista = gmail_(buzon, '/threads', { q: c[1] + ' after:' + desde, maxResults: 6 }); } catch (e) { Logger.log(c[0] + ' ' + buzon + ': ' + e); return; }
+      (lista.threads || []).forEach(function (t) {
+        let hilo;
+        try { hilo = gmail_(buzon, '/threads/' + t.id, { format: 'full' }); } catch (e) { return; }
+        (hilo.messages || []).forEach(function (m) {
+          let txt = textoDe_(m.payload).replace(/\r/g, '');
+          const corte = txt.search(/\n\s*(El .{5,80}escribió:|On .{5,80}wrote:|-{3,}\s*(Mensaje reenviado|Forwarded|Original)|De:\s.+\n.*(Enviado|Sent):)/i);
+          if (corte > 200) txt = txt.substring(0, corte);
+          filas.push([c[0], buzon, t.id, cab_(m, 'Date'), cab_(m, 'From'), cab_(m, 'To'), cab_(m, 'Subject'), adjuntos_(m.payload).join(', '),
+            txt.replace(/\n{3,}/g, '\n\n').substring(0, 5000)]);
+        });
+      });
+    });
+  });
+  if (filas.length) h.getRange(2, 1, filas.length, 9).setValues(filas);
+  Logger.log('Casos exportados: ' + filas.length + ' mensajes');
+}

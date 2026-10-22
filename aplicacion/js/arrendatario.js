@@ -356,7 +356,7 @@ async function responder(aceptar) {
     await llamar('responder', { aceptar });
     await recargar();
     state.mensaje = aceptar
-      ? `Listo: la visita quedó en firme para el ${fechaLarga(state.cita.fecha)} a las ${hora12(state.cita.hora_inicio)}.`
+      ? `Listo: la visita quedó en firme para el ${fechaLarga(state.cita.fecha)} a las ${hora12(state.cita.hora_inicio).replace(/\.$/, '')}.`
       : 'Dejamos la visita en su hora original y avisamos a la otra persona.';
   } catch (e) {
     state.errorForm = e.message;
