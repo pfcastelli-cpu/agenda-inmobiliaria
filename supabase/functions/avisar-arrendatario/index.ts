@@ -9,6 +9,7 @@ import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SITIO_URL = 'https://citas.patrimonios.co';
 const IMAGEN_ENCABEZADO = 'https://adminpaxzu.patrimonios.co/uploads/images/Cita.jpg';
 
 const CORS_HEADERS = {
@@ -99,7 +100,7 @@ Deno.serve(async (req) => {
 
   const { data: cita } = await admin
     .from('agenda_citas')
-    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, tipo_cita, estado')
+    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, tipo_cita, estado, token_arrendatario')
     .eq('id', citaId)
     .maybeSingle();
   if (!cita) return json({ ok: false, error: 'Cita no encontrada.' }, 404);
@@ -184,6 +185,7 @@ Deno.serve(async (req) => {
   const horaTexto = formatearHora(cita.hora_inicio.slice(0, 5));
   const asunto = `Visita programada en tu vivienda · ${fechaTexto}`;
   const nombre = escaparHtml(arrendatario?.nombre || '');
+  const enlacePortal = `${SITIO_URL}/arrendatario/${cita.token_arrendatario}`;
   const remitenteNombre = config.correo_remitente_nombre || 'Patrimonios Inmobiliarios';
 
   const html = (destinatarioReal: string) => `<!doctype html>
@@ -205,7 +207,9 @@ Deno.serve(async (req) => {
         <tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Hora</td><td style="padding:8px 0;color:#1A2C45;font-size:15px;font-weight:600">${escaparHtml(horaTexto)}</td></tr>
         ${asesorNombre ? `<tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Asesor a cargo</td><td style="padding:8px 0;color:#1A2C45;font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
       </table>
-      <p style="color:#526575;font-size:14px;margin:18px 0 0">Si no puedes recibir la visita en ese horario, comunícate con el asesor para reprogramarla. Gracias por tu colaboración.</p>
+      <p style="color:#526575;font-size:14px;margin:18px 0 0">¿No puedes recibir la visita en ese horario? Desde el siguiente botón puedes cambiarla a otro horario disponible, cancelarla o actualizar los días y horas en que se puede mostrar tu vivienda. Gracias por tu colaboración.</p>
+      <p style="margin:18px 0 6px"><a href="${enlacePortal}" style="display:inline-block;background:#1A2C45;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">Gestionar esta visita</a></p>
+      <p style="color:#9aa7b0;font-size:12px;margin:10px 0 0">Este enlace es personal, no lo compartas. Si prefieres, también puedes comunicarte directamente con el asesor.</p>
     </div>
   </div>
   <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(remitenteNombre)}</p>

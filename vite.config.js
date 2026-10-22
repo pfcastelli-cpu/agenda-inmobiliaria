@@ -16,6 +16,8 @@ function reescrituraInmuebles() {
           req.url = '/propietario.html';
         } else if (req.url && /^\/opinion\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/opinion.html';
+        } else if (req.url && /^\/arrendatario\/[0-9a-f-]+/i.test(req.url)) {
+          req.url = '/arrendatario.html';
         }
         next();
       });
@@ -40,6 +42,7 @@ export default defineConfig({
         reservar: resolve(__dirname, 'aplicacion/reservar.html'),
         propietario: resolve(__dirname, 'aplicacion/propietario.html'),
         opinion: resolve(__dirname, 'aplicacion/opinion.html'),
+        arrendatario: resolve(__dirname, 'aplicacion/arrendatario.html'),
       },
     },
   },
