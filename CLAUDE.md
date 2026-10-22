@@ -163,6 +163,10 @@ bitácora completa sesión por sesión):
 - Hosting Netlify (plan gratis, créditos): cada push a `main` = 1 despliegue de producción = 15 de
   300 créditos/mes (~20 al mes; las vistas previas de ramas no gastan). Juntar cambios en pocos
   pushes y usar `[skip netlify]` en el mensaje del commit si solo cambian docs/.gs/.sql.
+- Usuarios que no son asesores (gerente, directivo, administrador que solo supervisa): se crean en
+  Administración → Accesos con rol Administrador/Coordinador, SIN ficha de asesor (la ficha de
+  Equipo es solo para quien muestra inmuebles y entra al motor de horarios). Las pantallas de
+  Equipo y Accesos lo explican.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 

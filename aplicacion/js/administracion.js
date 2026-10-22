@@ -215,7 +215,7 @@ async function equipo(){
  try{const r=await listarAccesos(config.empresa_id);accesosPorUsuario={};for(const m of (r.miembros||[]))accesosPorUsuario[m.usuario_id]=m;}catch{accesosPorUsuario={};}
  if(turno!==revision || root.querySelector('[data-subtab=equipo]').getAttribute('aria-pressed')!=='true')return;
  if(error){container.textContent='No se pudo cargar el equipo. Comprueba que la migración 002 esté aplicada y tu usuario sea administrador.';return;}
- asesores=data;container.innerHTML=`<header><div><h2>Tu equipo</h2><p>${asesores.filter(a=>a.activo).length} activos · ${asesores.length} registrados</p></div><button class="ad-primary" id="ad-nuevo">＋ Nuevo asesor</button></header><p class="ad-note">Estas fichas organizan tu equipo (horarios, ciudades, permisos de citas). Registrar una ficha no crea una cuenta de acceso por sí sola — usa el botón "Dar acceso" en la ficha del asesor cuando quieras que pueda iniciar sesión.</p><label>Buscar asesor<input id="ad-buscar" type="search" placeholder="Nombre, correo o ciudad"></label><div class="ad-cards"></div><div id="ad-editor"></div>`;
+ asesores=data;container.innerHTML=`<header><div><h2>Tu equipo</h2><p>${asesores.filter(a=>a.activo).length} activos · ${asesores.length} registrados</p></div><button class="ad-primary" id="ad-nuevo">＋ Nuevo asesor</button></header><p class="ad-note">Estas fichas son solo para quienes <strong>muestran inmuebles</strong> (horarios, ciudades, permisos de citas). Un gerente, directivo o administrador que solo supervisa la agenda NO necesita ficha: créale su acceso en <strong>Accesos</strong> con rol Administrador o Coordinador. Registrar una ficha no crea una cuenta de acceso por sí sola — usa el botón "Dar acceso" en la ficha del asesor cuando quieras que pueda iniciar sesión.</p><label>Buscar asesor<input id="ad-buscar" type="search" placeholder="Nombre, correo o ciudad"></label><div class="ad-cards"></div><div id="ad-editor"></div>`;
  container.querySelector('#ad-nuevo').onclick=()=>editor();container.querySelector('#ad-buscar').oninput=e=>cards(e.target.value);cards();
 }
 function estadoAccesoHtml(a){
@@ -621,6 +621,7 @@ async function accesosTab() {
    <label>Correo<input name="correo" type="email" required placeholder="nombre@empresa.com"></label>
    <label>Rol<select name="rol"><option value="asesor">Asesor</option><option value="coordinador">Coordinador</option><option value="administrador">Administrador</option></select></label>
   </div>
+  <p id="ad-acceso-rol-nota" class="ad-note" style="margin:0"></p>
   <fieldset><legend>¿Cómo le das acceso?</legend>
    <label class="ad-check"><input type="radio" name="modo" value="invitar" checked> Enviarle un correo para que cree su propia contraseña</label>
    <label class="ad-check"><input type="radio" name="modo" value="directa"> Ponerle la contraseña yo mismo ahora</label>
@@ -630,6 +631,14 @@ async function accesosTab() {
  </form>
  <p class="ad-note">Si eliges invitar por correo, la persona recibe un enlace de un solo uso para elegir su propia contraseña. Si no le llega o el enlace expira, usa "Reenviar invitación". También puedes cambiarle la contraseña después con "Cambiar contraseña".</p>`;
 
+ const notaRol = () => {
+  const rol = el.querySelector('#ad-acceso-form [name=rol]').value;
+  el.querySelector('#ad-acceso-rol-nota').textContent = rol === 'asesor'
+   ? 'Asesor: es quien muestra inmuebles. Además de este acceso necesita su ficha en Equipo (horario, ciudades); lo más fácil es crear la ficha en Equipo y usar "Dar acceso" desde ahí.'
+   : 'Este rol NO necesita ficha de asesor: solo se crea el acceso. Verá y controlará la agenda de todos, pero no aparece como asesor ni se le asignan visitas.';
+ };
+ el.querySelector('#ad-acceso-form [name=rol]').addEventListener('change', notaRol);
+ notaRol();
  el.querySelectorAll('[data-cambiar-pass]').forEach(b => b.addEventListener('click', () => {
   accesoClaveAbiertaId = b.dataset.cambiarPass;
   accesosTab();
