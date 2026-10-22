@@ -6,7 +6,7 @@
 --     contrapropone; cuando la otra parte acepta, la cita pasa a la nueva hora (en firme).
 --   * El arrendatario también puede cancelar y editar los días/horas en que se muestra su vivienda.
 --   * No se avisa al asesor: la agenda se coordina sola (la cita cambia en el sistema).
--- PENDIENTE DE APLICAR en producción (Felipe debe confirmar).
+-- Ya aplicado en producción (22-oct-2026), migración `portal_visita_arrendatario`.
 
 -- 1) Un token secreto por cita para cada parte. Se reparte por correo solo a esa parte; ninguno
 --    da acceso a datos de la otra.

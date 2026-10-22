@@ -138,8 +138,8 @@ bitácora completa sesión por sesión):
   `agenda_arrendatarios`, que llena la macro `sincronizarArrendatarios()` de
   `sincronizacion/sincronizar-inmuebles.gs` desde la hoja InformeGeneralInmueblesArrendados
   (`sql/007-inmuebles-rentando.sql`, ya aplicado).
-- Acuerdo de horario en inmuebles arrendados (CODIFICADO el 22-oct-2026, SIN aplicar en producción hasta que Felipe
-  confirme): el correo "Visita programada en tu vivienda" (`avisar-arrendatario`) lleva el botón a
+- Acuerdo de horario en inmuebles arrendados (DESPLEGADO el 22-oct-2026: SQL 010 aplicado, funciones `portal-visita`,
+  `avisar-arrendatario` y `enviar-correo-cita` desplegadas, push hecho): el correo "Visita programada en tu vivienda" (`avisar-arrendatario`) lleva el botón a
   `citas.patrimonios.co/arrendatario/<token>`; el cliente recibe `/visita/<token>` (misma página,
   `aplicacion/arrendatario.html` + `js/arrendatario.js`, el servidor dice el `rol`). El arrendatario PROPONE otra hora
   (no mueve la cita); el cliente acepta, rechaza (queda la hora original) o contrapropone; cuando la OTRA parte acepta, la
@@ -152,9 +152,7 @@ bitácora completa sesión por sesión):
   cliente (`enviar-correo-cita`) avisa que un inmueble rentando está ocupado y que el arrendatario podría proponer otra hora.
   Edge Function `portal-visita` (`verify_jwt` APAGADO: tokens `agenda_citas.token_arrendatario` / `token_cliente` son la
   credencial; cada parte solo ve lo suyo). Tablas `agenda_cita_propuestas` y `agenda_arrendatario_acciones` (auditoría, sin
-  pantalla aún). `sql/010-portal-arrendatario.sql`. Orden de despliegue: SQL → desplegar `portal-visita` (verify_jwt off) →
-  redesplegar `avisar-arrendatario` y `enviar-correo-cita` → push (Netlify).
-- Pendientes (pestaña nueva, todos los roles) y Portales (sub-pestaña, admin/coordinador): tabla
+  pantalla aún). `sql/010-portal-arrendatario.sql`. - Pendientes (pestaña nueva, todos los roles) y Portales (sub-pestaña, admin/coordinador): tabla
   `agenda_pendientes` (tareas con responsable, fecha límite, cierre manual o automático) y
   `agenda_portales_cargas`. Se suben los Excel de Fincaraíz, Metrocuadrado y Ciencuadras
   (`portales-logica.js` los reconoce y compara por CÓDIGO DE PORTAL contra las columnas de portal de
