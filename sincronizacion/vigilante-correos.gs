@@ -70,7 +70,8 @@ const VIG = {
 
 // Una fila por conversación (terminación / entrega) con su estado vigente según TODO el historial.
 const COLUMNAS_HILOS = ['HILO', 'BUZON', 'ASUNTO', 'INMUEBLE (TEXTO)', 'COD', 'CONTRATO', 'N MENSAJES', 'PRIMER MENSAJE', 'ULTIMO MENSAJE',
-  'ESTADO ACTUAL', 'FECHA ENTREGA VIGENTE', 'CAMBIOS (LINEA DE TIEMPO)', 'COMO SE DETERMINO', 'ENLACE', 'ACTUALIZADO'];
+  'ESTADO ACTUAL', 'FECHA ENTREGA VIGENTE', 'CAMBIOS (LINEA DE TIEMPO)', 'COMO SE DETERMINO', 'ENLACE', 'ACTUALIZADO',
+  'ULTIMO MENSAJE DE', 'CAMBIO DE ESTADO EL'];
 const ESTADOS_HILO = ['TERMINACION SOLICITADA', 'ENTREGA PROGRAMADA', 'PRORROGA', 'ENTREGA CANCELADA', 'ENTREGADO', 'SIN DEFINIR'];
 const ESTADOS_HILO_FINALES = ['ENTREGADO', 'ENTREGA CANCELADA'];
 
@@ -199,46 +200,74 @@ function vigilarLatido() {
   }
 }
 
-/** Resumen diario por correo: lo nuevo de las últimas 24 horas y la cobertura. */
-function resumenDiario() {
-  const hoja = hojaCorreos_();
-  const n = hoja.getLastRow();
-  const desde = Date.now() - 24 * 3600000;
-  const filas = n < 2 ? [] : hoja.getRange(2, 1, n - 1, COLUMNAS_CORREOS.length).getValues();
-  // Solo correos que LLEGARON en las últimas 24 h (no los que el histórico acaba de registrar).
-  const fmt = function (v) {
-    const d = v instanceof Date ? v : new Date(v);
-    return isNaN(d.getTime()) ? String(v || '') : Utilities.formatDate(d, 'America/Bogota', 'dd/MM HH:mm');
-  };
-  const nuevas = filas.filter(function (f) {
-    const d = f[3] instanceof Date ? f[3].getTime() : Date.parse(f[3]);
-    return d >= desde;
-  });
-  const porCategoria = {};
-  nuevas.forEach(function (f) { porCategoria[f[7]] = (porCategoria[f[7]] || 0) + 1; });
-  const term = nuevas.filter(function (f) { return f[7] === 'TERMINACION' || f[7] === 'ENTREGA'; });
-  const lineasTerm = term.slice(0, 15).map(function (f) {
-    return '- ' + fmt(f[3]) + ' · ' + f[1] + ' · ' + f[6] + (f[8] ? ' · ' + f[8] : '') + '\n  ' + f[16];
-  });
-  if (term.length > 15) lineasTerm.push('  ... y ' + (term.length - 15) + ' más en la hoja.');
-  const cambiosHilo = resumenCambiosHilos_(desde);
-  if (!nuevas.length && !cambiosHilo) return;   // sin novedades no se manda correo
-  const cuerpo = 'Correos importantes que llegaron en las últimas 24 horas: ' + nuevas.length + '\n' +
-    Object.keys(porCategoria).map(function (k) { return '  ' + k + ': ' + porCategoria[k]; }).join('\n') +
-    '\n\nTerminaciones y entregas:\n' + (lineasTerm.join('\n') || '  (ninguna)') +
-    '\n\nCambios de estado en conversaciones (prórrogas, cancelaciones, entregas):\n' + (cambiosHilo || '  (ninguno)') +
-    '\n\nHoja: ' + hoja.getParent().getUrl();
-  avisar_('Vigilante de correos — resumen diario', cuerpo);
+/** Convierte lo que devuelve Sheets (texto o Date) en milisegundos; NaN si no se puede. */
+function aMs_(v) {
+  if (v instanceof Date) return v.getTime();
+  const t = Date.parse(String(v).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(v)) ? '' : '-05:00'));
+  return isNaN(t) ? Date.parse(v) : t;
 }
 
-/** Líneas con las conversaciones que se prorrogaron, se cancelaron o ya se entregaron en las últimas 24 horas. */
-function resumenCambiosHilos_(desdeMs) {
-  const h = hojaHilos_();
-  const n = h.getLastRow();
-  if (n < 2) return '';
-  return h.getRange(2, 1, n - 1, COLUMNAS_HILOS.length).getValues().filter(function (f) {
-    return Date.parse(f[14]) >= desdeMs && ['PRORROGA', 'ENTREGA CANCELADA', 'ENTREGADO'].indexOf(f[9]) > -1;
-  }).slice(0, 15).map(function (f) { return '- ' + f[9] + ' · ' + (f[3] || f[2]) + (f[4] ? ' (COD ' + f[4] + ')' : '') + (f[10] ? ' · fecha vigente ' + f[10] : '') + '\n  ' + f[13]; }).join('\n');
+/** Texto corto de una fecha (Date o texto) para el correo. */
+function fechaCorta_(v, conHora) {
+  if (!v) return '';
+  const ms = aMs_(v);
+  if (isNaN(ms)) return String(v);
+  return Utilities.formatDate(new Date(ms), 'America/Bogota', conHora ? 'dd/MM HH:mm' : 'dd/MM/yyyy');
+}
+
+/**
+ * Resumen diario: NO es una lista de correos, es lo que hay que mirar hoy, por conversación (sin repetidos,
+ * aunque la misma conversación esté en dos buzones):
+ *   1) Novedades: conversaciones de terminación/entrega con un mensaje de las últimas 24 h.
+ *   2) Sin respuesta: el cliente escribió hace más de 24 h y nuestro buzón no ha contestado.
+ *   3) Cambios de estado de verdad (prórroga, cancelación, entregado) ocurridos en las últimas 24 h.
+ * Los enlaces llevan a la fila de la hoja (que sí puedes abrir). Si no hay nada, no se manda correo.
+ */
+function resumenDiario() {
+  const hojaH = hojaHilos_();
+  const n = hojaH.getLastRow();
+  if (n < 2) return;
+  const ahora = Date.now();
+  const hace24 = ahora - 24 * 3600000, hace14d = ahora - 14 * 86400000;
+  const base = hojaH.getParent().getUrl().replace(/\/edit.*$/, '') + '/edit#gid=' + hojaH.getSheetId() + '&range=A';
+  const sinPrefijo = function (a) { return normalizar_(String(a || '')).replace(/^((re|rv|fwd|fw)\s*:\s*)+/, '').trim().substring(0, 60); };
+  const filas = hojaH.getRange(2, 1, n - 1, COLUMNAS_HILOS.length).getValues().map(function (f, i) {
+    return { f: f, fila: i + 2, ultimo: aMs_(f[8]), cambio: f[16] ? aMs_(f[16]) : NaN, clave: f[4] ? 'COD' + f[4] : 'ASU' + sinPrefijo(f[2]) };
+  });
+  // Una sola entrada por caso (mismo COD o mismo asunto), la de mensaje más reciente.
+  const porCaso = {};
+  filas.forEach(function (x) { if (!porCaso[x.clave] || x.ultimo > porCaso[x.clave].ultimo) porCaso[x.clave] = x; });
+  const casos = Object.keys(porCaso).map(function (k) { return porCaso[k]; });
+  const abiertos = function (x) { return ESTADOS_HILO_FINALES.indexOf(x.f[9]) === -1; };
+  const titulo = function (x) {
+    const f = x.f;
+    return (f[3] || String(f[2]).replace(/^((re|rv|fwd|fw)\s*:\s*)+/i, '')) + (f[4] ? ' (COD ' + f[4] + (f[5] ? ', ' + f[5] : '') + ')' : '');
+  };
+  const linea = function (x, extra) {
+    const f = x.f;
+    return '• ' + titulo(x) + ' · ' + f[9] + (f[10] ? ' · entrega ' + fechaCorta_(f[10]) : '') + (extra ? ' · ' + extra : '') +
+      '\n   ' + String(f[11] || '').split(' || ')[0].substring(0, 170) + '\n   ' + base + x.fila;
+  };
+  const cambios = casos.filter(function (x) { return x.cambio >= hace24 && ['PRORROGA', 'ENTREGA CANCELADA', 'ENTREGADO'].indexOf(x.f[9]) > -1; });
+  // Cada caso sale en una sola sección: lo que cambió de estado va solo en "Cambios".
+  const enCambios = {};
+  cambios.forEach(function (x) { enCambios[x.clave] = 1; });
+  const novedades = casos.filter(function (x) { return x.ultimo >= hace24 && !enCambios[x.clave]; });
+  const sinRespuesta = casos.filter(function (x) { return x.f[15] === 'CLIENTE' && x.ultimo < hace24 && x.ultimo >= hace14d && abiertos(x) && !enCambios[x.clave]; });
+  if (!novedades.length && !sinRespuesta.length && !cambios.length) return;   // sin novedades no se manda correo
+  const seccion = function (titulo_, lista, fn) {
+    if (!lista.length) return '';
+    return titulo_ + ' (' + lista.length + ')\n' + lista.slice(0, 12).map(fn).join('\n') + (lista.length > 12 ? '\n   … y ' + (lista.length - 12) + ' más en la hoja.' : '') + '\n\n';
+  };
+  const cuerpo =
+    seccion('SIN RESPUESTA NUESTRA — el cliente escribió y nadie ha contestado', sinRespuesta,
+      function (x) { return linea(x, 'escribió ' + fechaCorta_(x.f[8], true)); }) +
+    seccion('NOVEDADES DE LAS ÚLTIMAS 24 HORAS', novedades,
+      function (x) { return linea(x, 'último mensaje ' + (x.f[15] === 'NOSOTROS' ? 'nuestro' : 'del cliente') + ' ' + fechaCorta_(x.f[8], true)); }) +
+    seccion('CAMBIOS DE ESTADO (prórroga, cancelación, entrega)', cambios, function (x) { return linea(x, ''); }) +
+    'Nota: solo se ve lo que pasa en los buzones vigilados; si alguien respondió desde otro buzón, aparecerá como "sin respuesta".\nHoja completa: ' +
+    hojaH.getParent().getUrl();
+  avisar_('Vigilante: ' + novedades.length + ' novedades · ' + sinRespuesta.length + ' sin respuesta · ' + cambios.length + ' cambios', cuerpo.replace(/\n/g, '\n'));
 }
 
 /** Busca un texto puntual (nombre, inmueble…) en un buzón y lo anota en la pestaña "Busqueda". */
@@ -825,8 +854,14 @@ function hojaHilos_() {
   let h = ss.getSheetByName(VIG.PESTANA_HILOS);
   if (!h) {
     h = ss.insertSheet(VIG.PESTANA_HILOS);
-    h.getRange(1, 1, 1, COLUMNAS_HILOS.length).setValues([COLUMNAS_HILOS]).setFontWeight('bold').setBackground('#7E2A20').setFontColor('#ffffff');
     h.setFrozenRows(1);
+  }
+  // Encabezado siempre al día (si se agregan columnas, las filas viejas simplemente quedan vacías ahí).
+  const actual = h.getRange(1, 1, 1, COLUMNAS_HILOS.length).getValues()[0];
+  if (actual.join('|') !== COLUMNAS_HILOS.join('|')) {
+    h.getRange(1, 1, 1, COLUMNAS_HILOS.length).setValues([COLUMNAS_HILOS]).setFontWeight('bold').setBackground('#7E2A20').setFontColor('#ffffff');
+    // La fecha de entrega vigente se guarda como texto: si no, Sheets la convierte en fecha y se ve "Tue Feb 17 2026 00:00…".
+    h.getRange(2, 11, Math.max(h.getMaxRows() - 1, 1), 1).setNumberFormat('@');
   }
   return h;
 }
@@ -856,7 +891,7 @@ function actualizarHilos_(hoja, t0, estadoIA) {
   const nh = hojaH.getLastRow();
   const existentes = {};
   if (nh >= 2) hojaH.getRange(2, 1, nh - 1, COLUMNAS_HILOS.length).getValues().forEach(function (f, i) {
-    existentes[f[0]] = { fila: i + 2, estado: f[9], actualizado: String(f[14]) };
+    existentes[f[0]] = { fila: i + 2, estado: f[9], actualizado: String(f[14]), cambio: f[16] || '' };
   });
   const limite = new Date(Date.now() - VIG.HORAS_REVISAR_HILO * 3600000).toISOString();
   const pendientes = Object.keys(hilos).map(function (k) { return hilos[k]; }).filter(function (h) {
@@ -879,8 +914,10 @@ function actualizarHilos_(hoja, t0, estadoIA) {
         if (!hilo) return;
         const fila = analizarHilo_(h, hilo, estadoIA);
         const e = existentes[h.clave];
+        // El estado "cambió" solo si ya lo conocíamos y ahora es otro (el primer análisis no cuenta como cambio).
+        fila[16] = e ? (e.estado !== fila[9] ? new Date().toISOString() : e.cambio) : '';
         if (e) hojaH.getRange(e.fila, 1, 1, COLUMNAS_HILOS.length).setValues([fila]);
-        else { hojaH.getRange(hojaH.getLastRow() + 1, 1, 1, COLUMNAS_HILOS.length).setValues([fila]); existentes[h.clave] = { fila: hojaH.getLastRow(), estado: fila[9], actualizado: fila[14] }; }
+        else { hojaH.getRange(hojaH.getLastRow() + 1, 1, 1, COLUMNAS_HILOS.length).setValues([fila]); existentes[h.clave] = { fila: hojaH.getLastRow(), estado: fila[9], actualizado: fila[14], cambio: '' }; }
         hechos++;
       });
     });
@@ -918,7 +955,8 @@ function analizarHilo_(h, hilo, estadoIA) {
   if (estado === 'ENTREGA CANCELADA') fechaVigente = '';   // si se canceló, ya no hay fecha de entrega que valga
   return [h.clave, h.buzon, h.asunto, h.inmueble, h.cod, h.contrato, mensajes.length,
     mensajes.length ? fechaHora_(mensajes[0].internalDate) : '', mensajes.length ? fechaHora_(mensajes[mensajes.length - 1].internalDate) : '',
-    estado, fechaVigente, (cambios || linea.slice(-3).join(' || ')).substring(0, 700), como, h.enlace, new Date().toISOString()];
+    estado, fechaVigente, (cambios || linea.slice(-3).join(' || ')).substring(0, 700), como, h.enlace, new Date().toISOString(),
+    lineas.length ? lineas[lineas.length - 1].dir : '', ''];
 }
 
 /* ---- Utilidades de mensaje ---- */

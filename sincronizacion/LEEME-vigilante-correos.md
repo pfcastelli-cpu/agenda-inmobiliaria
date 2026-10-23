@@ -30,7 +30,8 @@ Qué garantiza para que no se pierda nada (candado: dos corridas nunca se pisan;
 - Lee **cada buzón directamente**: no depende de que alguien reenvíe a `info@`.
 - Hoja **Cobertura**: en cada corrida anota cuántos mensajes vio por buzón frente al total del buzón.
 - Si una corrida falla, llega un correo. Si deja de correr más de 3 horas, llega otro (vigilancia).
-- Resumen diario a las 7 a. m. con lo nuevo de las últimas 24 horas.
+- Resumen diario a las 7 a. m., una línea por conversación (sin repetidos): sin respuesta nuestra, novedades de
+  24 h y cambios de estado, con enlace a la fila de la hoja. Si no hay nada, no llega correo.
 - Es amplio a propósito: prefiere anotar de más y descartar a mano que perder un correo.
 
 Qué **no** hace: no marca, mueve ni borra correos (permiso `gmail.readonly`), no lee buzones que no

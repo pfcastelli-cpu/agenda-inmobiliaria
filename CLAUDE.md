@@ -187,6 +187,12 @@ bitácora completa sesión por sesión):
   (12/corrida, 150/día, modelo más barato detectado solo, pausa si 429; la clave se comparte con el ruteador de info@).
   Para actualizar el código en Apps Script: copiar el archivo al portapapeles y pegarlo en el editor (Monaco) y
   verificar con SHA-256; no pegar secretos en el repo. Después se conectará a `agenda_pendientes` (origen `correo`).
+  23-oct-2026: resumen diario rehecho (Felipe lo calificó inútil: repetía conversaciones y los enlaces a Gmail de buzones
+  delegados no abrían). Ahora sale de la pestaña Hilos, UNA entrada por caso (mismo COD o asunto), en 3 secciones sin
+  solaparse: SIN RESPUESTA NUESTRA (cliente escribió hace >24 h y nadie contestó), NOVEDADES 24 h y CAMBIOS DE ESTADO
+  (prórroga/cancelación/entregado). Enlaces a la fila de la hoja. Hilos ganó columnas `ULTIMO MENSAJE DE` y
+  `CAMBIO DE ESTADO EL` (las filas viejas se llenan al reanalizarse). Sin novedades no manda correo. Desplegado en
+  Apps Script el 23-oct (no probado aún con datos reales; revisar el correo de las 7 a. m.).
 - Respaldo semanal de Supabase a Google Drive: `sincronizacion/respaldo-drive.gs` (mismo proyecto
   de Apps Script que la sincronización de inmuebles; propiedades `RESPALDO_CARPETA_ID` y opcional
   `RESPALDO_CONSERVAR`; no borra nada por defecto; no incluye las cuentas de Supabase Auth).
