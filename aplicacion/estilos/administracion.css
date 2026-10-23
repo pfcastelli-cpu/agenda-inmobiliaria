@@ -107,3 +107,6 @@
 
 /* Logo en la barra superior del panel: más grande y sobre placa blanca */
 .pa-head img { height: 64px; width: auto; max-width: 300px; max-height: none; background: #fff; padding: 8px 14px; border-radius: 4px 14px 14px 14px; }
+
+.pa-head img { height: 78px; max-width: 340px; }
+@media (max-width: 650px) { .pa-head img { height: 52px; max-width: 220px; } }
