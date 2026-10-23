@@ -4,7 +4,7 @@
 -- con suficientes inmuebles se ajusta, con lo que ya está cargado, un plano  latitud = f(calle, carrera)  y
 -- longitud = f(calle, carrera)  (2 pasadas: la 2.ª ignora los puntos muy raros para que un error no contamine el
 -- modelo). Un inmueble se marca "ubicación dudosa" si su coordenada queda a más de max(3,5 km, 4 x el error
--- típico) de donde su dirección dice que debería estar (en ciudades distintas de Bogotá, más holgado: max(8 km, 5 x).
+-- típico) de donde su dirección dice que debería estar (en ciudades distintas de Bogotá, más holgado: max(20 km, 5 x).
 -- Las diagonales no se usan (en el norte se numeran como carreras y en el sur como calles). Es una alerta, no una corrección.
 -- Funciones: agenda_ols_plano (matemática), agenda_ubicaciones_dudosas_calc (el cálculo, no expuesta) y
 -- agenda_ubicaciones_dudosas (la que usa la pantalla; exige ser miembro activo de la empresa).
@@ -84,7 +84,7 @@ as $$
   ),
   umbral as (
     select ciu, case when ciu = 'BOG' then greatest(3.5, 4 * percentile_cont(0.5) within group (order by km2))
-                     else greatest(8.0, 5 * percentile_cont(0.5) within group (order by km2)) end as maximo
+                     else greatest(20.0, 5 * percentile_cont(0.5) within group (order by km2)) end as maximo
     from r3 where id in (select id from keep) group by ciu
   )
   select r3.id, r3.numero_inmueble, r3.direccion, r3.ciudad, r3.barrio,
