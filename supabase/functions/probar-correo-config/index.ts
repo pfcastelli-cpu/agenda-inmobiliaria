@@ -6,7 +6,7 @@
 // Solo administradores activos de la empresa pueden usarla — se verifica con el JWT
 // del que llama, igual que en gestion-accesos.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
+import { marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;

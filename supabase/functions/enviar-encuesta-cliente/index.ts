@@ -7,7 +7,7 @@
 // cliente" junto con el comentario que el asesor ya puede dejar al marcar la
 // cita como realizada (columna feedback_cliente, agenda_citas).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
+import { marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
