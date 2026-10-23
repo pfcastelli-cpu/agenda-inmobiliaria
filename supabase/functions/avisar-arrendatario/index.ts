@@ -4,8 +4,10 @@
 // la hora y el asesor a cargo. No revela nombre ni datos del cliente que visita.
 // Requiere sesión: el llamador debe ser un miembro activo de la empresa de la cita. El
 // destinatario sale siempre de agenda_arrendatarios (nunca del cuerpo de la solicitud).
+// También la llama enviar-correo-cita al agendar una visita en un inmueble Rentando (llamada interna con la
+// service role: el aviso al arrendatario sale solo, sin que el asesor tenga que acordarse del botón).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
+import { encabezadoImagen, enlaceInmueble, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -94,25 +96,32 @@ Deno.serve(async (req) => {
   });
 
   const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-  const { data: usuarioData } = await admin.auth.getUser(jwt);
-  const usuario = usuarioData?.user;
-  if (!usuario) return json({ ok: false, error: 'Sesión no válida.' }, 401);
+  const interno = jwt.length > 20 && jwt === SERVICE_ROLE_KEY;
+  const { data: usuarioData } = interno ? { data: null } : await admin.auth.getUser(jwt);
+  const usuario = usuarioData?.user ?? null;
+  if (!interno && !usuario) return json({ ok: false, error: 'Sesión no válida.' }, 401);
 
   const { data: cita } = await admin
     .from('agenda_citas')
-    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, tipo_cita, estado, token_arrendatario')
+    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, tipo_cita, estado, token_arrendatario, arrendatario_avisado_en')
     .eq('id', citaId)
     .maybeSingle();
   if (!cita) return json({ ok: false, error: 'Cita no encontrada.' }, 404);
 
-  const { data: miembro } = await admin
-    .from('agenda_miembros')
-    .select('id')
-    .eq('empresa_id', cita.empresa_id)
-    .eq('usuario_id', usuario.id)
-    .eq('activo', true)
-    .maybeSingle();
-  if (!miembro) return json({ ok: false, error: 'No perteneces a esta empresa.' }, 403);
+  if (!interno && usuario) {
+    const { data: miembro } = await admin
+      .from('agenda_miembros')
+      .select('id')
+      .eq('empresa_id', cita.empresa_id)
+      .eq('usuario_id', usuario.id)
+      .eq('activo', true)
+      .maybeSingle();
+    if (!miembro) return json({ ok: false, error: 'No perteneces a esta empresa.' }, 403);
+  }
+
+  if (interno && cita.arrendatario_avisado_en && Date.now() - new Date(cita.arrendatario_avisado_en).getTime() < 120000) {
+    return json({ ok: true, enviado: false, motivo: 'El arrendatario ya recibió este aviso hace instantes.' });
+  }
 
   if (cita.estado === 'cancelada' || cita.tipo_cita !== 'visita_cliente' || !cita.inmueble_id) {
     return json({ ok: true, enviado: false, motivo: 'Solo se informa de visitas de clientes activas sobre un inmueble.' });
@@ -130,7 +139,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion, plantilla_enlace_inmueble, dominio_publico',
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
@@ -143,10 +152,13 @@ Deno.serve(async (req) => {
     .eq('empresa_id', cita.empresa_id)
     .eq('numero_inmueble', inmueble.numero_inmueble)
     .maybeSingle();
-  const correos = String(arrendatario?.email || '')
+  let correos = String(arrendatario?.email || '')
     .split(/[;,\s]+/)
     .map((c) => c.trim())
     .filter((c) => /\S+@\S+\.\S+/.test(c));
+  // En modo de pruebas, aunque el inmueble no tenga correo de arrendatario se manda igual al correo de
+  // pruebas, para poder ver cómo le llegaría.
+  if (!correos.length && modoPruebas && config?.correo_pruebas_destino) correos = ['(este inmueble no tiene correo de arrendatario registrado)'];
   if (!correos.length) {
     await registrarLog(admin, {
       empresa_id: cita.empresa_id,
@@ -187,10 +199,12 @@ Deno.serve(async (req) => {
   const asunto = `Visita programada en tu vivienda · ${fechaTexto}`;
   const nombre = escaparHtml(arrendatario?.nombre || '');
   const enlacePortal = `${SITIO_URL}/arrendatario/${cita.token_arrendatario}`;
+  const enlaceSitio = enlaceInmueble(config, inmueble.numero_inmueble);
   const remitenteNombre = config.correo_remitente_nombre || 'Patrimonios Inmobiliarios';
 
   const html = (destinatarioReal: string) => `<!doctype html>
-<html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${
@@ -202,18 +216,19 @@ Deno.serve(async (req) => {
     ${encabezadoImagen(marca, `Visita programada`)}
     <div style="padding:28px 26px 20px">
       <h1 style="color:${marca.principal};font-size:21px;margin:0 0 6px">Visita programada en tu vivienda</h1>
-      <p style="color:#526575;font-size:14px;margin:0 0 18px">Hola ${nombre}, te informamos que se programó una visita a la vivienda que ocupas${direccion ? ` en ${escaparHtml(direccion)}${ciudad ? ', ' + escaparHtml(ciudad) : ''}` : ''}, por parte de una persona interesada en el inmueble.</p>
+      <p style="color:#526575;font-size:14px;margin:0 0 18px">Hola ${nombre}, una persona interesada quiere conocer la vivienda que ocupas${direccion ? ` en ${escaparHtml(direccion)}${ciudad ? ', ' + escaparHtml(ciudad) : ''}` : ''}. Queremos respetar tu tiempo: si la hora no te sirve, puedes proponer otra.</p>
       <table style="width:100%;border-collapse:collapse">
-        <tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Fecha</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(fechaTexto)}</td></tr>
-        <tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Hora</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(horaTexto)}</td></tr>
-        ${asesorNombre ? `<tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Asesor a cargo</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
+        <tr><td style="padding:8px 0;color:#5b6b7d;font-size:13px">Fecha</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(fechaTexto)}</td></tr>
+        <tr><td style="padding:8px 0;color:#5b6b7d;font-size:13px">Hora</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(horaTexto)}</td></tr>
+        ${asesorNombre ? `<tr><td style="padding:8px 0;color:#5b6b7d;font-size:13px">Asesor a cargo</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
       </table>
-      <p style="color:#526575;font-size:14px;margin:18px 0 0">¿No puedes recibir la visita en ese horario? Desde el siguiente botón puedes proponer otra hora disponible: la visita solo cambia cuando la persona interesada la acepte. También puedes cancelarla o actualizar los días y horas en que se puede mostrar tu vivienda. Gracias por tu colaboración.</p>
-      <p style="margin:18px 0 6px"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">Proponer otra hora o gestionar la visita</a></p>
-      <p style="color:#9aa7b0;font-size:12px;margin:10px 0 0">Este enlace es personal, no lo compartas. Si prefieres, también puedes comunicarte directamente con el asesor.</p>
+      <p style="color:#526575;font-size:14px;margin:18px 0 0">¿No puedes recibir la visita a esa hora? Con el botón de abajo propones otra hora disponible; la visita solo cambia cuando la persona interesada la acepte. Si no respondes, la visita se mantiene a la hora indicada. También puedes cancelarla o cambiar los días y horas en que se muestra tu vivienda. Gracias por tu colaboración.</p>
+      <p style="margin:18px 0 6px"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:12px">Ver la visita o proponer otra hora</a></p>
+      <p style="margin:10px 0 6px"><a href="${enlaceSitio}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:12px;border:2px solid ${marca.principal}">Ver el inmueble en nuestro sitio</a></p>
+      <p style="color:#66758a;font-size:12px;margin:10px 0 0">Este enlace es solo para ti, no lo compartas. ¿Prefieres hablar? Llama o escríbele a tu asesor.</p>
     </div>
   </div>
-  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(remitenteNombre)}</p>
+  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(remitenteNombre)}</p>
 </div>
 </body>
 </html>`;
@@ -262,7 +277,7 @@ Deno.serve(async (req) => {
   }
   await admin
     .from('agenda_citas')
-    .update({ arrendatario_avisado_en: new Date().toISOString(), arrendatario_avisado_por: usuario.id })
+    .update({ arrendatario_avisado_en: new Date().toISOString(), arrendatario_avisado_por: usuario?.id ?? null })
     .eq('id', cita.id);
   return json({ ok: true, enviado: true, enviados });
 });

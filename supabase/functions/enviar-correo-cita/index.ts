@@ -96,7 +96,7 @@ function filaDato(icono: string, etiqueta: string, valor: string): string {
       <tr>
         <td style="padding:11px 0;font-size:20px;width:32px;vertical-align:top">${icono}</td>
         <td style="padding:11px 0;vertical-align:top">
-          <div style="font-size:11.5px;color:#8492a6;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${etiqueta}</div>
+          <div style="font-size:11.5px;color:#5b6b7d;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${etiqueta}</div>
           <div style="font-size:15px;color:#1A2C45;font-weight:700;line-height:1.35">${valor}</div>
         </td>
       </tr>`;
@@ -368,12 +368,12 @@ Deno.serve(async (req) => {
   const llamarUrl = asesorCelular ? `tel:${asesorCelular.replace(/\s+/g, '')}` : null;
 
   let filasBotones = '';
-  if (wazeUrl) filasBotones += filaBoton(wazeUrl, '#05C3DD', '#ffffff', '🚗', 'Ver ruta en Waze');
-  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#4285F4', '#ffffff', '🧭', 'Ver ruta en Google Maps');
+  if (wazeUrl) filasBotones += filaBoton(wazeUrl, '#0A7C8F', '#ffffff', '🚗', 'Ver ruta en Waze');
+  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#1A5FD0', '#ffffff', '🧭', 'Ver ruta en Google Maps');
   if (whatsappUrl)
     filasBotones += filaBoton(
       whatsappUrl,
-      '#25D366',
+      '#128C4A',
       '#ffffff',
       '💬',
       `Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp`,
@@ -394,7 +394,8 @@ Deno.serve(async (req) => {
   }
 
   const html = `<!doctype html>
-<html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
@@ -422,10 +423,10 @@ Deno.serve(async (req) => {
           ? `<p style="color:#526575;font-size:12.5px;margin:0 0 10px"><strong>Importante:</strong> este inmueble está arrendado y habitado actualmente. Si el arrendatario no puede recibirte a esa hora, podría proponerte otra: te escribiremos y tu visita solo cambia si tú aceptas el nuevo horario.</p>`
           : ''
       }
-      <p style="color:#8492a6;font-size:12px;margin:0">Si necesitas cambiar o cancelar tu visita, comunícate directamente con tu asesor usando los botones de arriba. También te dejamos la cita guardada en el archivo adjunto para que quede en el calendario de tu teléfono, con recordatorios 24, 2 y 1 hora antes.</p>
+      <p style="color:#5b6b7d;font-size:12px;margin:0">Si necesitas cambiar o cancelar tu visita, comunícate directamente con tu asesor usando los botones de arriba. También te dejamos la cita guardada en el archivo adjunto para que quede en el calendario de tu teléfono, con recordatorios 24, 2 y 1 hora antes.</p>
     </div>
   </div>
-  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
+  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
 </div>
 </body>
 </html>`;
@@ -524,6 +525,23 @@ Deno.serve(async (req) => {
       estado: 'enviado',
       modo_pruebas: modoPruebas,
     });
+
+    // Inmueble Rentando: el arrendatario se entera solo (no depende de que el asesor se acuerde del botón).
+    // El portal de acuerdo de horario manda sin_aviso_arrendatario porque él mismo ya notifica a las partes.
+    if (inmuebleOcupado && body.sin_aviso_arrendatario !== true) {
+      try {
+        const respuesta = await fetch(`${SUPABASE_URL}/functions/v1/avisar-arrendatario`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY },
+          body: JSON.stringify({ cita_id: cita.id }),
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!respuesta.ok) console.error('enviar-correo-cita: el aviso al arrendatario respondió', respuesta.status);
+      } catch (e) {
+        // El correo al cliente ya salió; el aviso al arrendatario también se puede mandar a mano desde la agenda.
+        console.error('enviar-correo-cita: no se pudo avisar al arrendatario', e instanceof Error ? e.message : e);
+      }
+    }
 
     return json({ ok: true, enviado: true });
   } catch (e) {

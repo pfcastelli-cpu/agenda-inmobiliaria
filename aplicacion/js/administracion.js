@@ -332,7 +332,7 @@ async function ausenciasSeccion(el,asesorId){
  el.onclick=async e=>{const id=e.target.dataset.delAusencia;if(!id)return;await supabase.from('agenda_asesores_ausencias').delete().eq('id',id);await ausenciasSeccion(el,asesorId);};
  el.querySelector('#ad-ausencia-form').onsubmit=async e=>{e.preventDefault();const f=e.target;const {error}=await supabase.from('agenda_asesores_ausencias').insert({asesor_id:asesorId,fecha_inicio:f.fecha_inicio.value,fecha_fin:f.fecha_fin.value,motivo:f.motivo.value.trim()||null});if(error){aviso('No se pudo guardar la ausencia.',true);return;}await ausenciasSeccion(el,asesorId);};
 }
-const ETIQUETAS_GEO_PROBLEMA={sin_coordenadas:'Sin coordenadas (o en 0,0)',fuera_de_colombia:'Coordenadas fuera de Colombia',lejos_de_la_ciudad_configurada:'Lejos del centro de su ciudad (más de 30 km)'};
+const ETIQUETAS_GEO_PROBLEMA={no_coincide_con_direccion:'La ubicación no coincide con la dirección (revisar en el mapa)',sin_coordenadas:'Sin coordenadas (o en 0,0)',fuera_de_colombia:'Coordenadas fuera de Colombia',lejos_de_la_ciudad_configurada:'Lejos del centro de su ciudad (más de 30 km)'};
 const MOTIVOS_NO_DISPONIBLE_ETIQUETA={arrendado:'Se arrendó',vendido:'Se vendió',papeles_radicados:'Papeles radicados por otra persona',otro:'Otro motivo'};
 const ETIQUETA_DESTINATARIO={cliente:'A clientes',propietario:'A propietarios',interno:'Internos',arrendatario:'A arrendatarios'};
 
@@ -342,12 +342,13 @@ async function cargarReporteGeolocalizacion(el){
  if(error){el.innerHTML='<p class="ad-muted">No se pudo cargar el reporte.</p>';return;}
  const {data:disp}=await supabase.from('agenda_inmuebles').select('id').eq('empresa_id',config.empresa_id).eq('disponible',true).range(0,4999);
  const idsDisponibles=new Set((disp||[]).map(i=>i.id));
- const filtrados=(data||[]).filter(f=>idsDisponibles.has(f.inmueble_id));
+ const {data:dudosas}=await supabase.rpc('agenda_ubicaciones_dudosas',{p_empresa_id:config.empresa_id});
+ const filtrados=[...(dudosas||[]).filter(f=>idsDisponibles.has(f.inmueble_id)).map(f=>({...f,problema:'no_coincide_con_direccion'})),...(data||[]).filter(f=>idsDisponibles.has(f.inmueble_id))];
  if(!filtrados.length){el.innerHTML='<p class="ad-muted">Sin problemas detectados: todos los inmuebles disponibles tienen coordenadas dentro de lo esperado.</p>';return;}
  const grupos={};
  for(const fila of filtrados){(grupos[fila.problema]=grupos[fila.problema]||[]).push(fila);}
  el.innerHTML=Object.entries(grupos).map(([problema,filas])=>`<details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600">${esc(ETIQUETAS_GEO_PROBLEMA[problema]||problema)} · ${filas.length}</summary>
-  <ul class="ad-ciudades">${filas.map(f=>`<li>#${f.numero_inmueble} · ${esc(f.direccion||'')} · ${esc(f.ciudad||'')}${f.distancia_km_a_ciudad?` · ${Math.round(f.distancia_km_a_ciudad)} km del centro configurado`:''}</li>`).join('')}</ul>
+  <ul class="ad-ciudades">${filas.map(f=>`<li>#${f.numero_inmueble} · ${esc(f.direccion||'')} · ${esc(f.ciudad||'')}${f.distancia_km_a_ciudad?` · ${Math.round(f.distancia_km_a_ciudad)} km del centro configurado`:''}${f.problema==='no_coincide_con_direccion'?` · a ${esc(String(f.km))} km de donde dice la dirección · <a href="https://www.google.com/maps?q=${esc(String(f.latitud))},${esc(String(f.longitud))}" target="_blank" rel="noopener">ver el punto guardado</a>`:''}</li>`).join('')}</ul>
  </details>`).join('');
 }
 

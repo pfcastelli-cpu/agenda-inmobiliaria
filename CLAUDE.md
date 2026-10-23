@@ -224,6 +224,22 @@ bitácora completa sesión por sesión):
   en Supabase hasta que Felipe lo autorice; sin él las páginas públicas quedan como antes (no se rompe nada). El logo (`logo_url`) se ve grande, sobre
   placa blanca, en la barra del panel, el menú lateral y las páginas públicas. Configuración usa riel lateral de secciones en escritorio. Para ver el panel de administrador sin sesión se
   puede montar en el navegador de desarrollo con `iniciarAdministracion({membresia:{rol:'administrador',empresa:{...}}})`.
+- 23-oct-2026 (tarde), SIN publicar del todo: (1) Rentando ofrece por defecto TODO el horario de la empresa (`sql/013`, YA aplicado en Supabase: se quitó el
+  bloque "sin horario especial => nada" de `agenda_sugerir_horarios`; el horario especial sigue siendo opcional y se respeta si existe). (2) Alerta de ubicación
+  dudosa (`sql/014`, funciones `agenda_ubicaciones_dudosas` / `_calc` / `agenda_ols_plano`, aplicadas en su versión inicial; el AJUSTE del archivo —sin diagonales,
+  umbral 3,5 km en Bogotá— quedó escrito en el .sql pero NO aplicado en Supabase porque el sistema bloqueó esa migración): ajusta por ciudad un plano
+  latitud/longitud = f(calle, carrera) con los inmuebles ya cargados y marca los que quedan lejos de donde su dirección dice; sale en Inmuebles (aviso ámbar) y en
+  Administración → Ciudades → Calidad de geolocalización. (3) Pendientes ya no pisa la pestaña actual: `render()` pinta cada vista en un contenedor nuevo. (4) Al agendar
+  una visita en un inmueble Rentando, `enviar-correo-cita` llama a `avisar-arrendatario` (llamada interna con service role, sin sesión) para avisar al arrendatario solo;
+  en modo de pruebas, si no hay correo de arrendatario se manda igual al correo de pruebas. El portal de acuerdo de horario manda `sin_aviso_arrendatario` para no
+  duplicar. (5) Correos al propietario y al arrendatario llevan botón "Ver el inmueble en nuestro sitio" (`plantilla_enlace_inmueble`). (6) `correo_pruebas_destino` =
+  pf.castelli@patrimonios.co (modo de pruebas sigue activo). Las funciones `avisar-arrendatario`, `enviar-correo-cita`, `enviar-correo-propietario` y `portal-visita`
+  con estos cambios están en el repo; verificar si se desplegaron antes de dar por hecho el aviso al arrendatario.
+- 23-oct-2026, revisión con 5 expertos (diseño/textos, marketing, jurídico, personas reales, ingeniería) y correcciones ya hechas en el repo: contraste de textos en correos, `lang="es"` + viewport en todas las plantillas,
+  botones de Waze/Maps/WhatsApp con mejor contraste, textos más cálidos al arrendatario, mensajes de error unificados y botones táctiles de 44-48 px en las páginas públicas, aviso al arrendatario sin
+  duplicados (<2 min) y con tiempo límite. PENDIENTE DE DECIDIR (no implementado): aviso de privacidad con casilla obligatoria en Reservar (Ley 1581), botón para que el cliente cambie/cancele su visita,
+  aviso al asesor cuando el arrendatario propone/acepta/cancela, recordatorio por correo 24 h antes, banner visible de "modo de pruebas", comentario obligatorio al marcar realizada, y CTAs de captación
+  de otro inmueble en correos informativos (nunca en acceso/recuperar contraseña/cancelaciones).
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 

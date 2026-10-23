@@ -517,7 +517,7 @@ function formularioCliente() {
   if (dupMismoInmueble) {
     avisoDuplicados = `<div class="pu-error">Ya tienes una visita agendada para este mismo inmueble el ${dupMismoInmueble.fecha} a las ${formatoHora(dupMismoInmueble.hora_inicio)}. ¿Quieres cambiarla a este nuevo horario o agendar una visita adicional?</div>`;
   } else if (hayDuplicados) {
-    avisoDuplicados = `<div class="pu-error">Ya tienes ${otrosDuplicados.length > 1 ? 'varias visitas' : 'una visita'} agendada${otrosDuplicados.length > 1 ? 's' : ''}: ${otrosDuplicados.map((d) => `inmueble ${d.numero_inmueble} el ${d.fecha} a las ${formatoHora(d.hora_inicio)}`).join('; ')}. ¿Deseas agendar esta también?</div>`;
+    avisoDuplicados = `<div class="pu-error">Ya tienes ${otrosDuplicados.length > 1 ? 'varias visitas' : 'una visita'} agendada${otrosDuplicados.length > 1 ? 's' : ''}: ${otrosDuplicados.map((d) => `inmueble ${d.numero_inmueble} el ${d.fecha} a las ${formatoHora(d.hora_inicio)}`).join('; ')}. ¿Quieres agendar esta también?</div>`;
   }
 
   const bloqueVerificacion = mostrarVerificacion
@@ -591,7 +591,7 @@ function vistaConfirmado() {
 
 function render() {
   if (!hayConfiguracionSupabase()) {
-    raiz.innerHTML = `<div class="pu-error">No se pudo conectar con el servicio de agendamiento. Intenta más tarde.</div>`;
+    raiz.innerHTML = `<div class="pu-error">No pudimos cargar la página. Revisa tu internet e inténtalo otra vez en unos minutos.</div>`;
     return;
   }
   let html = '';

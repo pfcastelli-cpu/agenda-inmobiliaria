@@ -63,7 +63,7 @@ async function cargarInforme() {
   state.token = tokenDesdeUrl();
   if (!state.token) {
     state.paso = 'error';
-    state.errorMsg = 'Este enlace no incluye un código válido. Pide a tu asesor que te reenvíe el informe.';
+    state.errorMsg = 'Este enlace no funciona o ya venció. Pídele a tu asesor que te envíe el informe de nuevo.';
     render();
     return;
   }
@@ -72,7 +72,7 @@ async function cargarInforme() {
   const { data, error } = await supabase.rpc('agenda_informe_propietario_datos', { p_token: state.token });
   if (error || !data || data.error === 'no_encontrado') {
     state.paso = 'error';
-    state.errorMsg = 'Este enlace no es válido o ya no está activo. Si crees que esto es un error, contacta a tu asesor.';
+    state.errorMsg = 'Este enlace no funciona o ya venció. Pídele a tu asesor que te envíe el informe de nuevo.';
     render();
     return;
   }
@@ -257,7 +257,7 @@ function vistaListo() {
 
 function render() {
   if (!hayConfiguracionSupabase()) {
-    raiz.innerHTML = `<div class="pu-error">No se pudo conectar con el servicio. Intenta más tarde.</div>`;
+    raiz.innerHTML = `<div class="pu-error">No pudimos cargar la página. Revisa tu internet e inténtalo otra vez en unos minutos.</div>`;
     return;
   }
   let html = '';

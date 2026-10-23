@@ -67,7 +67,8 @@ async function enviarCorreoAcceso(
   const destino = modoPruebas ? config.correo_pruebas_destino || o.correo : o.correo;
   const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Patrimonios Inmobiliarios';
   const html = `<!doctype html>
-<html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${
@@ -81,10 +82,10 @@ async function enviarCorreoAcceso(
       <h1 style="color:${marca.principal};font-size:21px;margin:0 0 8px">${escaparHtml(o.titulo)}</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 22px">Hola ${escaparHtml(o.nombre)}, ${escaparHtml(o.texto)}</p>
       <a href="${escaparHtml(o.enlace)}" style="display:inline-block;background:${marca.accion};color:${marca.textoAccion};text-decoration:none;font-weight:700;font-size:15px;padding:14px 26px;border-radius:12px">${escaparHtml(o.boton)}</a>
-      <p style="color:#8492a6;font-size:12.5px;margin:22px 0 0">El enlace es de un solo uso. Si no lo pediste, ignora este correo.</p>
+      <p style="color:#5b6b7d;font-size:12.5px;margin:22px 0 0">El enlace es de un solo uso. Si no lo pediste, ignora este correo.</p>
     </div>
   </div>
-  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(remitente)}</p>
+  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(remitente)}</p>
 </div>
 </body>
 </html>`;

@@ -217,21 +217,21 @@ Deno.serve(async (req) => {
     : destinoReal;
 
   const filasDetalle: string[] = [
-    `<tr><td style="padding:6px 0;color:#8492a6;font-size:12px;text-transform:uppercase">Inmueble</td></tr><tr><td style="padding:0 0 10px;font-size:15px;font-weight:700;color:${marca.principal}">Nº ${numeroInmueble}</td></tr>`,
+    `<tr><td style="padding:6px 0;color:#5b6b7d;font-size:12px;text-transform:uppercase">Inmueble</td></tr><tr><td style="padding:0 0 10px;font-size:15px;font-weight:700;color:${marca.principal}">Nº ${numeroInmueble}</td></tr>`,
   ];
   if (tipo === 'cambio_precio' && valorPropuesto != null) {
     filasDetalle.push(
-      `<tr><td style="padding:6px 0;color:#8492a6;font-size:12px;text-transform:uppercase">Precio propuesto por el propietario</td></tr><tr><td style="padding:0 0 10px;font-size:15px;font-weight:700;color:${marca.principal}">$${valorPropuesto.toLocaleString('es-CO')}</td></tr>`,
+      `<tr><td style="padding:6px 0;color:#5b6b7d;font-size:12px;text-transform:uppercase">Precio propuesto por el propietario</td></tr><tr><td style="padding:0 0 10px;font-size:15px;font-weight:700;color:${marca.principal}">$${valorPropuesto.toLocaleString('es-CO')}</td></tr>`,
     );
   }
   if (detalle) {
     filasDetalle.push(
-      `<tr><td style="padding:6px 0;color:#8492a6;font-size:12px;text-transform:uppercase">Mensaje del propietario</td></tr><tr><td style="padding:0 0 10px;font-size:14px;color:${marca.principal}">${escaparHtml(detalle)}</td></tr>`,
+      `<tr><td style="padding:6px 0;color:#5b6b7d;font-size:12px;text-transform:uppercase">Mensaje del propietario</td></tr><tr><td style="padding:0 0 10px;font-size:14px;color:${marca.principal}">${escaparHtml(detalle)}</td></tr>`,
     );
   }
   if (propietarioNombre || propietarioEmail) {
     filasDetalle.push(
-      `<tr><td style="padding:6px 0;color:#8492a6;font-size:12px;text-transform:uppercase">Quién escribió</td></tr><tr><td style="padding:0 0 4px;font-size:14px;color:${marca.principal}">${escaparHtml(propietarioNombre) || ''}${propietarioEmail ? ` · ${escaparHtml(propietarioEmail)}` : ''}</td></tr>`,
+      `<tr><td style="padding:6px 0;color:#5b6b7d;font-size:12px;text-transform:uppercase">Quién escribió</td></tr><tr><td style="padding:0 0 4px;font-size:14px;color:${marca.principal}">${escaparHtml(propietarioNombre) || ''}${propietarioEmail ? ` · ${escaparHtml(propietarioEmail)}` : ''}</td></tr>`,
     );
   }
 
@@ -242,7 +242,8 @@ Deno.serve(async (req) => {
     : '';
 
   const html = `<!doctype html>
-<html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
@@ -254,7 +255,7 @@ Deno.serve(async (req) => {
     <table style="width:100%;border-collapse:collapse">${filasDetalle.join('')}</table>
     </div>
   </div>
-  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'} · aviso automático</p>
+  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'} · aviso automático</p>
 </div>
 </body>
 </html>`;

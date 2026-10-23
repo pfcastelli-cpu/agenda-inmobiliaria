@@ -219,7 +219,8 @@ Deno.serve(async (req) => {
       </div>`
       : '';
     return `<!doctype html>
-<html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
@@ -237,10 +238,10 @@ Deno.serve(async (req) => {
       </tr></table>
     </div>
     <div style="background:#f4f6f8;padding:16px 26px;border-top:1px solid #e6eaee">
-      <p style="color:#8492a6;font-size:12px;margin:0">Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>
+      <p style="color:#5b6b7d;font-size:12px;margin:0">Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>
     </div>
   </div>
-  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
+  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
 </div>
 </body>
 </html>`;

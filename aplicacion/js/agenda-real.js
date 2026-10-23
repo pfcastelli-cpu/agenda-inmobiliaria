@@ -18,6 +18,8 @@ import {
   History,
   House,
   ListChecks,
+  Mail,
+  MapPinOff,
   Plus,
   Search,
   Star,
@@ -44,6 +46,8 @@ const icons = {
   History,
   House,
   ListChecks,
+  Mail,
+  MapPinOff,
   Plus,
   Search,
   Star,
@@ -339,6 +343,28 @@ async function cargarTodosInmuebles() {
   return todosInmueblesCache;
 }
 
+// Inmuebles cuya coordenada no coincide con su dirección (función agenda_ubicaciones_dudosas, sql/014). Es solo
+// una alerta: si la función no existe o falla, la lista sigue igual.
+let ubicacionesDudosasCache = null;
+async function cargarUbicacionesDudosas() {
+  if (ubicacionesDudosasCache) return ubicacionesDudosasCache;
+  const mapa = new Map();
+  try {
+    const { data } = await supabase.rpc('agenda_ubicaciones_dudosas', { p_empresa_id: contexto.empresaId });
+    for (const f of data || []) mapa.set(f.inmueble_id, f);
+  } catch {
+    // sin alerta
+  }
+  ubicacionesDudosasCache = mapa;
+  return mapa;
+}
+function avisoUbicacion(inm) {
+  const f = ubicacionesDudosasCache?.get(inm.id);
+  if (!f) return '';
+  const km = Number(f.km) >= 10 ? Math.round(Number(f.km)) : Number(f.km).toFixed(1).replace('.', ',');
+  return `<div class="v-geo-alerta" role="note">${icon('map-pin-off')}<span><strong>Ubicación dudosa:</strong> el punto del mapa queda a unos ${km} km de donde indica la dirección. Pídele a Sedi que lo corrija; mientras tanto, las rutas del correo pueden llevar a otro lugar.</span></div>`;
+}
+
 async function cargarAsesores() {
   if (asesoresCache) return asesoresCache;
   const { data, error } = await supabase
@@ -422,8 +448,15 @@ function setView(view) {
   render();
 }
 
+let renderSeq = 0;
 async function render() {
   nav();
+  const mi = ++renderSeq;
+  // Cada pintado trabaja sobre un contenedor nuevo: si el usuario cambia de pestaña mientras otra todavía carga
+  // (p. ej. Pendientes → Inmuebles), la que llega tarde escribe en el contenedor viejo, que ya no se ve,
+  // en vez de pisar la pestaña actual.
+  const viejo = main();
+  if (viejo) viejo.replaceWith(viejo.cloneNode(false));
   try {
     if (state.view === 'agenda') await renderAgenda();
     else if (state.view === 'interna') await renderInterna();
@@ -435,6 +468,7 @@ async function render() {
     else if (state.view === 'reserva') await renderReserva();
     else if (state.view === 'exito') renderExito();
   } catch (error) {
+    if (mi !== renderSeq) return;
     main().innerHTML = `<div class="v-empty">${icon('calendar-days')}<h3>No se pudo cargar</h3><p style="margin-top:8px">${escape(error.message)}</p></div>`;
   }
   refreshIcons();
@@ -545,8 +579,9 @@ async function renderAgendaMes(barraAcciones, selectorVista) {
     }).join('')}</div>`;
 }
 
-// Inmueble con arrendatario adentro que se está ofreciendo (Estado CRM "Rentando"): solo se
-// puede visitar dentro de un horario especial, y se le avisa al arrendatario de cada cita.
+// Inmueble con arrendatario adentro que se está ofreciendo (Estado CRM "Rentando"): por defecto se ofrece todo el
+// horario de la empresa (así nunca queda sin citas por un horario olvidado); el horario especial es opcional y,
+// si existe, se respeta. Al agendar se le avisa al arrendatario por correo.
 const esRentando = (inm) => String(inm?.estado_crm || '').trim().toLowerCase() === 'rentando';
 const tieneRestriccionHorario = (inm) => Boolean((inm.dias_visita_permitidos && inm.dias_visita_permitidos.length) || inm.hora_visita_desde || inm.hora_visita_hasta);
 
@@ -562,7 +597,7 @@ function restriccionEditor(inm) {
   const dias = inm.dias_visita_permitidos || [];
   return `<form id="v-restriccion-form" data-inmueble="${inm.id}" style="margin:10px 0 16px;padding:14px;border:1px solid var(--v-line);border-radius:12px;background:var(--v-tint)">
     <div class="v-sectiontitle" style="margin-bottom:8px">${icon('clock-3')}Restricción de horario para #${inm.numero_inmueble}</div>
-    ${esRentando(inm) ? '<p class="v-note" style="margin-bottom:10px"><strong>Inmueble rentando:</strong> el horario especial es obligatorio (marca al menos los días o las horas). Mientras no esté configurado no se pueden agendar visitas.</p>' : ''}<p class="v-muted" style="font-size:14px;margin-bottom:10px">Limita en qué días y en qué franja horaria se puede agendar una visita a este inmueble. Deja los días sin marcar y las horas vacías para no aplicar ninguna restricción.</p>
+    ${esRentando(inm) ? '<p class="v-note" style="margin-bottom:10px"><strong>Inmueble rentando:</strong> si no pones ningún horario aquí, se ofrece todo el horario de la empresa y se le avisa al arrendatario de cada visita. Pon un horario solo si el arrendatario lo pidió.</p>' : ''}<p class="v-muted" style="font-size:14px;margin-bottom:10px">Limita en qué días y en qué franja horaria se puede agendar una visita a este inmueble. Deja los días sin marcar y las horas vacías para no aplicar ninguna restricción.</p>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${DIAS_CORTOS_LUN.map((d, i) => `<label class="v-check" style="text-transform:capitalize"><input type="checkbox" name="dia" value="${i + 1}" ${dias.includes(i + 1) ? 'checked' : ''}> ${d}</label>`).join('')}</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <label class="v-field" style="flex:1;min-width:140px">Desde<input type="time" class="v-input" name="hora_desde" value="${inm.hora_visita_desde ? hora(inm.hora_visita_desde) : ''}"></label>
@@ -602,8 +637,9 @@ function inmuebleCard(inm) {
     <div class="v-prow-info">
       <div class="v-prow-top">#${inm.numero_inmueble} · ${escape(inm.tipo_oferta)} · <strong>${escape(inm.direccion)}</strong></div>
       <div class="v-prow-sub">${escape(inm.ciudad)}${inm.barrio ? ' · ' + escape(inm.barrio) : ''}${inm.habitaciones ? ' · ' + inm.habitaciones + ' hab.' : ''} · ${precio}</div>
+      ${avisoUbicacion(inm)}
     </div>
-    <div class="v-prow-horario">${icon('clock-3')} ${esRentando(inm) ? '<strong>Rentando</strong> · ' : ''}${esRentando(inm) && !tieneRestriccionHorario(inm) ? '<span style="color:#B3261E">Falta el horario especial: no se puede agendar hasta configurarlo</span>' : escape(restriccionResumen(inm))} <button type="button" class="v-link" data-restriccion="${inm.id}">Editar</button></div>
+    <div class="v-prow-horario">${icon('clock-3')} ${esRentando(inm) ? '<strong>Rentando</strong> · ' : ''}${esRentando(inm) && !tieneRestriccionHorario(inm) ? 'Horario completo de la empresa (sin restricción)' : escape(restriccionResumen(inm))} <button type="button" class="v-link" data-restriccion="${inm.id}">Editar</button></div>
     <div class="v-prow-asesor" title="${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor asignado en Sedi'}">${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor en Sedi'}</div>
     <div class="v-prow-actions">
       <a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha</a>
@@ -642,6 +678,7 @@ async function renderInmuebles() {
   if (state.mostrarNoDisponibles && !puedeVerNoDisponibles) state.mostrarNoDisponibles = false;
 
   const todosParaFiltros = await cargarTodosInmuebles();
+  await cargarUbicacionesDudosas();
   const ciudades = [...new Set(todosParaFiltros.map((inm) => inm.ciudad).filter(Boolean))].sort();
   const q = state.query
     .normalize('NFD')
@@ -1981,12 +2018,6 @@ function adjuntarEventos(rootEl) {
       const dias = Array.from(e.target.querySelectorAll('input[name=dia]:checked')).map((c) => Number(c.value));
       const horaDesde = e.target.querySelector('[name=hora_desde]').value || null;
       const horaHasta = e.target.querySelector('[name=hora_hasta]').value || null;
-      const inmRestriccion = (todosInmueblesCache || inmueblesCache || []).find((i) => i.id === inmuebleId);
-      if (inmRestriccion && esRentando(inmRestriccion) && !dias.length && !horaDesde && !horaHasta) {
-        state.errorRestriccion = 'Este inmueble está rentando: marca al menos los días o las horas en que se puede visitar.';
-        renderInmuebles();
-        return;
-      }
       const duracionRaw = e.target.querySelector('[name=duracion_minutos]').value;
       const duracionMinutos = duracionRaw ? Number(duracionRaw) : null;
       if (horaDesde && horaHasta && horaDesde >= horaHasta) {

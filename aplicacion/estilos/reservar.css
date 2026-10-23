@@ -254,3 +254,9 @@
 #pub-app .pu-head > div { display: flex; align-items: center; min-width: 0; }
 #pub-app .pu-logo { display: block; height: 64px; width: auto; max-width: min(300px, 62vw); object-fit: contain; background: #fff; padding: 8px 14px; border-radius: 4px 14px 14px 14px; }
 @media (max-width: 560px) { #pub-app .pu-logo { height: 52px; } }
+
+/* Tamaños cómodos para el pulgar en celular (mínimo ~44-48 px) */
+#pub-app .pu-link { font-size: 15px; padding: 12px 4px; min-height: 44px; }
+#pub-app .pu-slot { min-height: 48px; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+#pub-app .pu-fecha { font-size: 14px; min-height: 64px; }
+#pub-app .pu-option { min-height: 48px; font-size: 15px; }

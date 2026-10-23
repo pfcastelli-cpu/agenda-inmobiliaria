@@ -6,7 +6,7 @@
 // guardados en agenda_propietarios para ese inmueble — nunca a un
 // destinatario arbitrario que venga en la solicitud.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
+import { encabezadoImagen, enlaceInmueble, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -193,7 +193,7 @@ function filaDato(icono: string, etiqueta: string, valor: string): string {
       <tr>
         <td style="padding:11px 0;font-size:20px;width:32px;vertical-align:top">${icono}</td>
         <td style="padding:11px 0;vertical-align:top">
-          <div style="font-size:11.5px;color:#8492a6;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${etiqueta}</div>
+          <div style="font-size:11.5px;color:#5b6b7d;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${etiqueta}</div>
           <div style="font-size:15px;color:#1A2C45;font-weight:700;line-height:1.35">${valor}</div>
         </td>
       </tr>`;
@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion, plantilla_enlace_inmueble, dominio_publico',
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
@@ -374,12 +374,13 @@ Deno.serve(async (req) => {
   const llamarUrl = asesorCelular ? `tel:${asesorCelular.replace(/\s+/g, '')}` : null;
 
   let filasBotones = '';
-  if (wazeUrl) filasBotones += filaBoton(wazeUrl, '#05C3DD', '#ffffff', '🚗', 'Ver ruta en Waze');
-  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#4285F4', '#ffffff', '🧭', 'Ver ruta en Google Maps');
+  filasBotones += filaBoton(enlaceInmueble(config, inmueble.numero_inmueble), marca.principal, '#ffffff', '🏠', 'Ver el inmueble en nuestro sitio');
+  if (wazeUrl) filasBotones += filaBoton(wazeUrl, '#0A7C8F', '#ffffff', '🚗', 'Ver ruta en Waze');
+  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#1A5FD0', '#ffffff', '🧭', 'Ver ruta en Google Maps');
   if (whatsappUrl)
     filasBotones += filaBoton(
       whatsappUrl,
-      '#25D366',
+      '#128C4A',
       '#ffffff',
       '💬',
       `Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp`,
@@ -436,7 +437,8 @@ Deno.serve(async (req) => {
       </div>`
       : '';
     return `<!doctype html>
-<html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
@@ -459,10 +461,10 @@ Deno.serve(async (req) => {
         : ''
     }
     <div style="background:#f4f6f8;padding:16px 26px;border-top:1px solid #e6eaee">
-      <p style="color:#8492a6;font-size:12px;margin:0">Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>
+      <p style="color:#5b6b7d;font-size:12px;margin:0">Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>
     </div>
   </div>
-  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
+  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
 </div>
 </body>
 </html>`;

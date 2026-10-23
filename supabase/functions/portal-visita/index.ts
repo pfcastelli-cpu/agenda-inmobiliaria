@@ -134,7 +134,7 @@ function plantillaCorreo(opts: {
   remitente: string;
   marca: MarcaCorreo;
 }) {
-  return `<!doctype html><html><body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
 ${opts.modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">🧪 MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(opts.destinatarioReal)}</div>` : ''}
 <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
@@ -145,7 +145,7 @@ ${encabezadoImagen(opts.marca, opts.titulo)}
 ${opts.boton ? `<p style="margin:22px 0 0"><a href="${esc(opts.boton.url)}" style="display:inline-block;background:${opts.marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">${esc(opts.boton.texto)}</a></p>` : ''}
 </div>
 </div>
-<p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${esc(opts.remitente)}</p>
+<p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${esc(opts.remitente)}</p>
 </div></body></html>`;
 }
 
@@ -530,7 +530,7 @@ Deno.serve(async (req) => {
       // cita en su agenda y en su calendario compartido.
       const cabeceras = { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY };
       for (const f of ['enviar-correo-cita', 'enviar-correo-propietario']) {
-        fetch(`${SUPABASE_URL}/functions/v1/${f}`, { method: 'POST', headers: cabeceras, body: JSON.stringify({ cita_id: cita.id }) }).catch(() => {});
+        fetch(`${SUPABASE_URL}/functions/v1/${f}`, { method: 'POST', headers: cabeceras, body: JSON.stringify({ cita_id: cita.id, sin_aviso_arrendatario: true }) }).catch(() => {});
       }
       const t = await correosArrendatario(admin, cita.empresa_id, inmueble.numero_inmueble);
       const nuevaLinea = `<b>${esc(formatearFecha(p.fecha))}, ${esc(formatearHora(p.hora_inicio.slice(0, 5)))}</b>${direccion ? ` en ${esc(direccion)}` : ''}`;

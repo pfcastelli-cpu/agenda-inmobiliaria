@@ -190,7 +190,8 @@ Deno.serve(async (req) => {
     : '';
 
   const html = `<!doctype html>
-<html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
@@ -205,7 +206,7 @@ Deno.serve(async (req) => {
       </td>
     </tr></table>
   </div>
-  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
+  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
 </div>
 </body>
 </html>`;

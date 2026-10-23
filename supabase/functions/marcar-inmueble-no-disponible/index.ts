@@ -396,7 +396,7 @@ Deno.serve(async (req) => {
           : '';
     return `
       <tr><td style="padding:10px 0;border-top:1px solid #e6eaee">
-        <div style="font-size:11.5px;color:#8492a6;text-transform:uppercase;letter-spacing:.04em">#${inm.numero_inmueble} · ${escaparHtml(inm.ciudad as string)}${inm.barrio ? ' · ' + escaparHtml(inm.barrio as string) : ''}</div>
+        <div style="font-size:11.5px;color:#5b6b7d;text-transform:uppercase;letter-spacing:.04em">#${inm.numero_inmueble} · ${escaparHtml(inm.ciudad as string)}${inm.barrio ? ' · ' + escaparHtml(inm.barrio as string) : ''}</div>
         <div style="font-size:15px;color:${marca.principal};font-weight:700;margin:2px 0">${escaparHtml(direccionLimpia)}</div>
         <div style="font-size:14px;color:${marca.accion};font-weight:700;margin-bottom:6px">${escaparHtml(precio)}</div>
         <a href="${linkPublico(inm.numero_inmueble as number)}" target="_blank" style="font-size:13px;color:${marca.principal};font-weight:600;text-decoration:underline">Ver este inmueble →</a>
@@ -472,7 +472,8 @@ Deno.serve(async (req) => {
       : '';
 
     const html = `<!doctype html>
-<html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
@@ -481,7 +482,7 @@ Deno.serve(async (req) => {
     <div style="padding:28px 26px 8px">
       <h1 style="color:${marca.principal};font-size:20px;margin:0 0 4px">Tu visita fue cancelada</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 14px">Hola ${escaparHtml(fila.cliente_nombre) || ''}, te escribimos porque el inmueble que ibas a visitar${citaOriginal ? ` el ${escaparHtml(formatearFecha(citaOriginal.fecha))} a las ${escaparHtml(formatearHora(citaOriginal.hora_inicio.slice(0, 5)))}` : ''} (Nº ${inmueble.numero_inmueble}, ${escaparHtml(direccionInmueble)}${ciudadTexto ? ', ' + escaparHtml(ciudadTexto) : ''}) ${escaparHtml(etiquetaMotivo)}, así que ya no está disponible para visitas.</p>
-      <p style="color:#526575;font-size:14px;margin:0 0 18px">Lamentamos mucho el inconveniente y las molestias que esto te pueda ocasionar. Tu cita quedó cancelada automáticamente y también se eliminó del calendario de tu teléfono.${detalle ? ' ' + escaparHtml(detalle) : ''}</p>
+      <p style="color:#526575;font-size:14px;margin:0 0 18px">Por eso tu cita quedó cancelada y también se quitó del calendario de tu teléfono. Si quieres, tu asesor te ayuda a encontrar otras opciones.${detalle ? ' ' + escaparHtml(detalle) : ''}</p>
       ${
         similares.length
           ? `<div style="font-size:13px;color:${marca.principal};font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">Estos inmuebles pueden interesarte</div>
@@ -490,10 +491,10 @@ Deno.serve(async (req) => {
       }
     </div>
     <div style="background:#f4f6f8;padding:16px 26px;border-top:1px solid #e6eaee">
-      <p style="color:#8492a6;font-size:12px;margin:0">Si tienes dudas o quieres agendar una visita a alguno de estos inmuebles, comunícate con tu asesor.</p>
+      <p style="color:#5b6b7d;font-size:12px;margin:0">Si tienes dudas o quieres agendar una visita a alguno de estos inmuebles, comunícate con tu asesor.</p>
     </div>
   </div>
-  <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${escaparHtml(nombreRemitente)}</p>
+  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(nombreRemitente)}</p>
 </div>
 </body>
 </html>`;

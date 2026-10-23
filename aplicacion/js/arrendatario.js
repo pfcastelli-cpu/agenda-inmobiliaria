@@ -81,7 +81,7 @@ async function llamar(accion, extra = {}) {
     } catch {
       /* sin cuerpo legible */
     }
-    throw new Error(msg || 'No se pudo conectar. Inténtalo de nuevo.');
+    throw new Error(msg || 'No pudimos conectar. Revisa tu internet e inténtalo otra vez.');
   }
   if (!data?.ok) throw new Error(data?.error || 'No se pudo completar la acción.');
   return data;
@@ -110,7 +110,7 @@ async function cargar() {
   state.token = tokenDesdeUrl();
   if (!state.token) {
     state.paso = 'error';
-    state.errorMsg = 'Este enlace no incluye un código válido.';
+    state.errorMsg = 'Este enlace no funciona o ya venció. Pídele a tu asesor que te lo envíe de nuevo.';
     render();
     return;
   }
@@ -120,7 +120,7 @@ async function cargar() {
     state.paso = 'principal';
   } catch (e) {
     state.paso = 'error';
-    state.errorMsg = e.message || 'Este enlace no es válido o ya no está activo.';
+    state.errorMsg = e.message || 'Este enlace no funciona o ya venció. Pídele a tu asesor que te lo envíe de nuevo.';
   }
   render();
 }
@@ -299,7 +299,7 @@ function vistaCancelada() {
 
 function render() {
   if (!hayConfiguracionSupabase()) {
-    raiz.innerHTML = `<div class="pu-error">No se pudo conectar con el servicio. Intenta más tarde.</div>`;
+    raiz.innerHTML = `<div class="pu-error">No pudimos cargar la página. Revisa tu internet e inténtalo otra vez en unos minutos.</div>`;
     return;
   }
   let html = '';

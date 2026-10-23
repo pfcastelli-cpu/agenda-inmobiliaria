@@ -35,5 +35,17 @@ export function marcaCorreo(config: any): MarcaCorreo {
 export function encabezadoImagen(marca: MarcaCorreo, alt: string): string {
   if (!marca.imagen) return `<div style="height:8px;background:${marca.accion}"></div>`;
   const a = alt.replace(/[&<>"']/g, '');
-  return `<img src="${marca.imagen}" alt="${a}" width="580" style="width:100%;max-width:580px;height:auto;display:block" />`;
+  return `<img src="${marca.imagen}" alt="${a}" width="580" border="0" style="width:100%;max-width:580px;height:auto;display:block;border:0;outline:none" />`;
+}
+
+// Enlace para VER el inmueble en el sitio de la empresa (plantilla con {numero}); si la empresa no la
+// configuró, cae a la página pública de agendamiento.
+// deno-lint-ignore no-explicit-any
+export function enlaceInmueble(config: any, numero: number | string): string {
+  const plantilla = String(config?.plantilla_enlace_inmueble ?? '');
+  const dominio = String(config?.dominio_publico || 'citas.patrimonios.co').replace(/[^a-zA-Z0-9.-]/g, '');
+  const respaldo = `https://${dominio}/inmuebles/${encodeURIComponent(String(numero))}`;
+  if (!plantilla.includes('{numero}')) return respaldo;
+  const url = plantilla.replace(/\{numero\}/g, encodeURIComponent(String(numero))).replace(/["'<>\s]/g, '');
+  return /^https:\/\//i.test(url) ? url : respaldo;
 }

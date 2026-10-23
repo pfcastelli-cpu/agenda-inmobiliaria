@@ -81,7 +81,7 @@ async function cargarEncuesta() {
   state.token = tokenDesdeUrl();
   if (!state.token) {
     state.paso = 'error';
-    state.errorMsg = 'Este enlace no incluye un código válido.';
+    state.errorMsg = 'Este enlace no funciona o ya venció. Pídele a tu asesor que te lo envíe de nuevo.';
     render();
     return;
   }
@@ -90,7 +90,7 @@ async function cargarEncuesta() {
   const { data, error } = await supabase.rpc('agenda_obtener_encuesta', { p_token: state.token });
   if (error || !data || data.error === 'no_encontrada') {
     state.paso = 'error';
-    state.errorMsg = 'Este enlace no es válido o ya expiró.';
+    state.errorMsg = 'Este enlace no funciona o ya venció. Pídele a tu asesor que te lo envíe de nuevo.';
     render();
     return;
   }
@@ -192,7 +192,7 @@ function vistaEnviado() {
 
 function render() {
   if (!hayConfiguracionSupabase()) {
-    raiz.innerHTML = `<div class="pu-error">No se pudo conectar con el servicio. Intenta más tarde.</div>`;
+    raiz.innerHTML = `<div class="pu-error">No pudimos cargar la página. Revisa tu internet e inténtalo otra vez en unos minutos.</div>`;
     return;
   }
   let html = '';
