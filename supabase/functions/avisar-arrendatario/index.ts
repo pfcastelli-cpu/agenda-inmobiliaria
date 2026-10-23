@@ -5,12 +5,12 @@
 // Requiere sesión: el llamador debe ser un miembro activo de la empresa de la cita. El
 // destinatario sale siempre de agenda_arrendatarios (nunca del cuerpo de la solicitud).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SITIO_URL = 'https://citas.patrimonios.co';
-const IMAGEN_ENCABEZADO = 'https://adminpaxzu.patrimonios.co/uploads/images/Cita.jpg';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -130,10 +130,11 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
+  const marca = marcaCorreo(config);
   const modoPruebas = config?.correo_modo_pruebas !== false;
 
   const { data: arrendatario } = await admin
@@ -198,17 +199,17 @@ Deno.serve(async (req) => {
       : ''
   }
   <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
-    <img src="${IMAGEN_ENCABEZADO}" alt="Visita programada" width="580" style="width:100%;max-width:580px;height:auto;display:block" />
+    ${encabezadoImagen(marca, `Visita programada`)}
     <div style="padding:28px 26px 20px">
-      <h1 style="color:#1A2C45;font-size:21px;margin:0 0 6px">Visita programada en tu vivienda</h1>
+      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 6px">Visita programada en tu vivienda</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 18px">Hola ${nombre}, te informamos que se programó una visita a la vivienda que ocupas${direccion ? ` en ${escaparHtml(direccion)}${ciudad ? ', ' + escaparHtml(ciudad) : ''}` : ''}, por parte de una persona interesada en el inmueble.</p>
       <table style="width:100%;border-collapse:collapse">
-        <tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Fecha</td><td style="padding:8px 0;color:#1A2C45;font-size:15px;font-weight:600">${escaparHtml(fechaTexto)}</td></tr>
-        <tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Hora</td><td style="padding:8px 0;color:#1A2C45;font-size:15px;font-weight:600">${escaparHtml(horaTexto)}</td></tr>
-        ${asesorNombre ? `<tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Asesor a cargo</td><td style="padding:8px 0;color:#1A2C45;font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
+        <tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Fecha</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(fechaTexto)}</td></tr>
+        <tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Hora</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(horaTexto)}</td></tr>
+        ${asesorNombre ? `<tr><td style="padding:8px 0;color:#8492a6;font-size:13px">Asesor a cargo</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
       </table>
       <p style="color:#526575;font-size:14px;margin:18px 0 0">¿No puedes recibir la visita en ese horario? Desde el siguiente botón puedes proponer otra hora disponible: la visita solo cambia cuando la persona interesada la acepte. También puedes cancelarla o actualizar los días y horas en que se puede mostrar tu vivienda. Gracias por tu colaboración.</p>
-      <p style="margin:18px 0 6px"><a href="${enlacePortal}" style="display:inline-block;background:#1A2C45;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">Proponer otra hora o gestionar la visita</a></p>
+      <p style="margin:18px 0 6px"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">Proponer otra hora o gestionar la visita</a></p>
       <p style="color:#9aa7b0;font-size:12px;margin:10px 0 0">Este enlace es personal, no lo compartas. Si prefieres, también puedes comunicarte directamente con el asesor.</p>
     </div>
   </div>

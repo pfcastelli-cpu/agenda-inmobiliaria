@@ -6,11 +6,11 @@
 // se envía por el SMTP de la empresa (el del correo de citas), no por el correo integrado de
 // Supabase (límite ~2 por hora y solo a miembros del equipo de Supabase).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const IMAGEN_ENCABEZADO = 'https://adminpaxzu.patrimonios.co/uploads/images/Cita.jpg';
 const MAX_ENVIOS_POR_HORA = 5;
 
 const CORS_HEADERS = {
@@ -89,10 +89,11 @@ Deno.serve(async (req) => {
     const { data: config } = await admin
       .from('agenda_configuracion')
       .select(
-        'nombre_comercial, dominio_publico, correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino',
+        'nombre_comercial, dominio_publico, correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
       )
       .eq('empresa_id', empresaId)
       .maybeSingle();
+  const marca = marcaCorreo(config);
     if (!config?.correo_smtp_host || !config.correo_remitente_email) return respuestaGenerica();
     const { data: password } = await admin.rpc('agenda_obtener_password_correo', { p_empresa_id: empresaId });
     if (!password) return respuestaGenerica();
@@ -125,11 +126,11 @@ Deno.serve(async (req) => {
       : ''
   }
   <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
-    <img src="${IMAGEN_ENCABEZADO}" alt="${escaparHtml(remitente)}" width="580" style="width:100%;max-width:580px;height:auto;display:block" />
+    ${encabezadoImagen(marca, `${escaparHtml(remitente)}`)}
     <div style="padding:28px 26px 26px;text-align:center">
-      <h1 style="color:#1A2C45;font-size:21px;margin:0 0 8px">Restablece tu contraseña</h1>
+      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 8px">Restablece tu contraseña</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 22px">Hola ${escaparHtml(miembro.nombre || '')}, pulsa el botón para elegir una contraseña nueva.</p>
-      <a href="${escaparHtml(accion)}" style="display:inline-block;background:#00A9A5;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 26px;border-radius:12px">Elegir contraseña nueva</a>
+      <a href="${escaparHtml(accion)}" style="display:inline-block;background:${marca.accion};color:${marca.textoAccion};text-decoration:none;font-weight:700;font-size:15px;padding:14px 26px;border-radius:12px">Elegir contraseña nueva</a>
       <p style="color:#8492a6;font-size:12.5px;margin:22px 0 0">El enlace es de un solo uso. Si no lo pediste, ignora este correo: tu contraseña sigue igual.</p>
     </div>
   </div>

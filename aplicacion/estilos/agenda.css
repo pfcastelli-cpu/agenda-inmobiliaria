@@ -1,17 +1,17 @@
 #visita-app {
-  --v-bg: light-dark(#f4f4f4, #111725);
+  --v-bg: light-dark(var(--tema-fondo,#f4f4f4), #111725);
   --v-surface: light-dark(#fff, #1a2233);
   --v-text: light-dark(#15233b, #edf2ff);
   --v-muted: light-dark(#586780, #a5b3cd);
   --v-line: light-dark(#e2e8f2, #303d54);
-  --v-blue: light-dark(#1a2c45, #8eb0ff);
-  --v-tint: light-dark(#e3f8f7, #253555);
+  --v-blue: light-dark(var(--empresa-principal,#1a2c45), var(--tema-claro,#8eb0ff));
+  --v-tint: light-dark(var(--tema-tinte,#e3f8f7), #253555);
   --v-green: light-dark(#177153, #78dab5);
   --v-greenbg: light-dark(#e8f6ef, #203f36);
   --v-red: light-dark(#b32f43, #ffa4ad);
   --v-amber: light-dark(#8a5200, #ffc98a);
   --v-amberbg: light-dark(#fff4e5, #3a2c12);
-  font: 400 16px/1.45 Poppins, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 400 16px/1.45 "Hanken Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--v-text);
   background: var(--v-bg);
   isolation: isolate;
@@ -23,7 +23,8 @@
 #visita-app button { cursor: pointer; color: inherit; }
 #visita-app button:disabled { cursor: not-allowed; opacity: .4; }
 #visita-app h2, #visita-app h3, #visita-app p { margin: 0; }
-#visita-app h2 { font-size: 28px; line-height: 1.2; font-weight: 650; letter-spacing: -.8px; }
+#visita-app h2, #visita-app .v-brand { font-family: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif; }
+#visita-app h2 { font-size: 30px; line-height: 1.15; font-weight: 700; letter-spacing: -.6px; }
 #visita-app h3 { font-size: 17px; font-weight: 600; line-height: 1.35; }
 #visita-app svg[data-lucide] { width: 20px; height: 20px; flex-shrink: 0; }
 #visita-app .v-header {
@@ -40,7 +41,7 @@
   width: 35px;
   height: 35px;
   border-radius: 11px;
-  background: #1a2c45;
+  background: var(--empresa-principal,#1a2c45);
   color: #fff;
   display: grid;
   place-items: center;
@@ -67,7 +68,7 @@
 #visita-app .v-content { padding: 22px; min-height: 540px; }
 #visita-app .v-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
 #visita-app .v-muted { color: var(--v-muted); font-size: 14px; }
-#visita-app .v-eyebrow { color: var(--v-blue); font-size: 14px; letter-spacing: 1.3px; font-weight: 700; text-transform: uppercase; margin-bottom: 7px; }
+#visita-app .v-eyebrow { color: var(--v-blue); font-size: 14px; font-weight: 600; margin-bottom: 7px; }
 #visita-app .v-btn {
   display: inline-flex;
   align-items: center;
@@ -82,7 +83,7 @@
   font-weight: 600;
   text-decoration: none;
 }
-#visita-app .v-primary { background: #1a2c45; border-color: #1a2c45; color: #fff; }
+#visita-app .v-primary { background: var(--empresa-principal,#1a2c45); border-color: var(--empresa-principal,#1a2c45); color: #fff; }
 #visita-app .v-quiet { background: transparent; border: 0; color: var(--v-blue); padding: 10px 4px; }
 #visita-app .v-iconbtn {
   width: 44px;
@@ -125,8 +126,8 @@
 #visita-app .v-day strong { font-size: 19px; font-weight: 650; }
 #visita-app .v-day small { font-size: 12px; min-height: 13px; color: var(--v-muted); }
 #visita-app .v-day[aria-pressed=true] {
-  background: #1a2c45;
-  border-color: #1a2c45;
+  background: var(--empresa-principal,#1a2c45);
+  border-color: var(--empresa-principal,#1a2c45);
   color: #fff;
   box-shadow: 0 4px 12px #1a2c4522;
 }
@@ -269,7 +270,7 @@
 #visita-app .v-sectiontitle { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 650; margin-bottom: 12px; }
 #visita-app .v-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0 10px; }
 #visita-app .v-slot { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 11px; min-height: 44px; font-size: 14px; font-weight: 500; }
-#visita-app .v-slot[aria-pressed=true] { background: #1a2c45; border-color: #1a2c45; color: #fff; }
+#visita-app .v-slot[aria-pressed=true] { background: var(--empresa-principal,#1a2c45); border-color: var(--empresa-principal,#1a2c45); color: #fff; }
 #visita-app .v-slot:disabled { text-decoration: line-through; }
 #visita-app .v-note { font-size: 14px; color: var(--v-muted); margin-bottom: 20px; }
 #visita-app .v-bookinggrid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
@@ -324,7 +325,7 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   #visita-app .v-btn, #visita-app .v-day, #visita-app .v-slot { transition: background .15s, border-color .15s; }
-  #visita-app .v-primary:hover { background: #00a9a5; }
+  #visita-app .v-primary:hover { background: var(--empresa-accion,#00a9a5); color: var(--empresa-texto,#111); }
 }
 #visita-app .v-viewtoggle { display: inline-flex; gap: 4px; background: var(--v-tint); border-radius: 12px; padding: 4px; margin: 14px 0; }
 #visita-app .v-viewtoggle button { min-height: 34px; padding: 6px 14px; font-size: 13px; font-weight: 600; border-radius: 9px; background: transparent; color: var(--v-muted); }
@@ -357,3 +358,76 @@
   #visita-app .v-monthday { padding: 6px 2px; min-height: 46px; }
   #visita-app .v-monthdaynum { font-size: 13px; }
 }
+
+/* ===== Rediseño de distribución (23-oct-2026) =====
+   Escritorio: menú lateral de color de marca + área de trabajo ancha.
+   Celular (<= 860px): cabecera compacta y menú fijo abajo. */
+#visita-app {
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas: "marca contenido" "menu contenido" "menu pie";
+  min-height: 640px;
+  background: linear-gradient(to right, var(--empresa-principal, #1a2c45) 244px, var(--v-bg) 244px);
+}
+#visita-app .v-header { grid-area: marca; flex-direction: column; align-items: flex-start; gap: 14px; padding: 26px 22px 18px; background: var(--empresa-principal, #1a2c45); color: var(--empresa-texto-principal, #fff); border-bottom: 0; }
+#visita-app .v-header .v-company, #visita-app .v-header .v-demo { color: inherit; opacity: .72; border-color: currentColor; }
+#visita-app .v-header .v-brand { font-size: 26px; letter-spacing: -.8px; }
+#visita-app .v-header .v-brand span { color: var(--empresa-accion, #00a9a5) !important; }
+#visita-app .v-header .v-logo { background: var(--empresa-accion, #00a9a5); color: var(--empresa-texto, #111); }
+#visita-app .v-header .v-logo.v-logo-img { background: none; }
+#visita-app .v-nav { grid-area: menu; position: sticky; top: 0; align-self: start; display: flex; flex-direction: column; gap: 2px; align-content: start; padding: 4px 12px 24px; background: var(--empresa-principal, #1a2c45); border-top: 0; color: var(--empresa-texto-principal, #fff); }
+#visita-app .v-nav button { justify-content: flex-start; gap: 12px; min-height: 46px; padding: 0 14px; border-radius: 4px 12px 12px 4px; font-size: 15px; font-weight: 500; color: inherit; opacity: .78; text-align: left; }
+#visita-app .v-nav button:hover { opacity: 1; background: #ffffff14; }
+#visita-app .v-nav button[aria-current=page] { opacity: 1; font-weight: 700; background: #ffffff1f; color: inherit; box-shadow: inset 4px 0 0 var(--empresa-accion, #00a9a5); }
+#visita-app .v-nav button:focus-visible { outline: 3px solid var(--empresa-accion, #00a9a5); outline-offset: -3px; }
+#visita-app #v-toast { position: fixed; z-index: 30; top: 16px; right: 16px; max-width: 360px; border-radius: 12px; box-shadow: 0 6px 24px #00000026; }
+#visita-app .v-content { grid-area: contenido; padding: 30px 38px 40px; min-height: 0; max-width: 1040px; width: 100%; }
+#visita-app .v-footnote { grid-area: pie; background: transparent; }
+
+/* Cifras del día: sin caja, números grandes con el tipo de los títulos */
+#visita-app .v-statbar { background: none; border: 0; border-radius: 0; padding: 0; gap: 8px 40px; display: flex; flex-wrap: wrap; margin-bottom: 24px; }
+#visita-app .v-stat { border: 0; padding: 0; }
+#visita-app .v-stat strong { font-family: "Bricolage Grotesque", "Hanken Grotesk", sans-serif; font-size: 40px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; color: var(--v-blue); }
+#visita-app .v-stat span { display: block; margin-top: 4px; }
+
+/* Citas como línea de tiempo: la hora queda sobre un riel y cada punto lleva el color del asesor */
+#visita-app .v-list { gap: 0; margin-top: 8px; }
+#visita-app .v-appt { grid-template-columns: 76px minmax(0, 1fr); gap: 0; padding-bottom: 14px; }
+#visita-app .v-time { position: relative; padding: 16px 20px 0 0; text-align: right; font-size: 15px; }
+#visita-app .v-time::after { content: ""; position: absolute; top: 0; bottom: -14px; right: 0; width: 2px; background: var(--v-line); }
+#visita-app .v-appt:last-child .v-time::after { bottom: 0; }
+#visita-app .v-time::before { content: ""; position: absolute; z-index: 1; top: 20px; right: -5px; width: 12px; height: 12px; border-radius: 50%; background: var(--advisor-color, var(--v-blue)); box-shadow: 0 0 0 3px var(--v-bg); }
+#visita-app .v-apptbody { margin-left: 22px; border-left: 0; border-top: 3px solid var(--advisor-color, var(--v-blue)); border-radius: 4px 16px 16px 16px; }
+#visita-app .v-appt-captacion .v-apptbody { border-top-color: var(--v-amber); }
+
+/* Días: la seleccionada lleva la franja de acento en la base */
+#visita-app .v-day { border-radius: 4px 4px 14px 14px; }
+
+@media (max-width: 860px) {
+  #visita-app { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: "marca" "contenido" "pie"; padding-bottom: 74px; background: var(--v-bg); }
+  #visita-app .v-header { flex-direction: row; align-items: center; padding: 14px 18px; }
+  #visita-app .v-nav { position: fixed; top: auto; align-self: auto; z-index: 20; left: 0; right: 0; bottom: 0; flex-direction: row; gap: 0; padding: 6px 6px max(6px, env(safe-area-inset-bottom)); overflow-x: auto; box-shadow: 0 -2px 14px #00000033; }
+  #visita-app .v-nav button { flex: 1 0 auto; flex-direction: column; justify-content: center; gap: 3px; min-height: 54px; padding: 4px 12px; border-radius: 10px; font-size: 12.5px; }
+  #visita-app .v-nav button[aria-current=page] { box-shadow: inset 0 3px 0 var(--empresa-accion, #00a9a5); }
+  #visita-app .v-content { padding: 22px 16px 28px; }
+  #visita-app .v-stat strong { font-size: 32px; }
+  #visita-app .v-appt { grid-template-columns: 58px minmax(0, 1fr); }
+  #visita-app .v-time { padding-right: 14px; font-size: 14px; }
+  #visita-app .v-apptbody { margin-left: 16px; }
+}
+
+/* ===== Inmuebles y Equipo: fichas con el mismo lenguaje (esquina recta arriba a la izquierda, filo de color) ===== */
+#visita-app .v-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+#visita-app .v-property, #visita-app .v-teamcard { border-radius: 4px 18px 18px 18px; border-top: 3px solid var(--advisor-color, var(--v-blue)); }
+#visita-app .v-property h3, #visita-app .v-teamcard h3 { font-family: "Bricolage Grotesque", "Hanken Grotesk", sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -.3px; }
+#visita-app .v-building { width: 48px; height: 48px; border-radius: 4px 14px 14px 14px; background: var(--empresa-principal, #1a2c45); color: var(--empresa-texto-principal, #fff); }
+#visita-app .v-price { font-family: "Bricolage Grotesque", "Hanken Grotesk", sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -.8px; color: var(--v-blue); }
+#visita-app .v-teamcard .v-avatar { border-radius: 4px 16px 16px 16px; width: 52px; height: 52px; font-size: 20px; font-family: "Bricolage Grotesque", "Hanken Grotesk", sans-serif; }
+#visita-app .v-teamcard .v-btn { border-radius: 4px 12px 12px 12px; }
+#visita-app .v-property .v-btn.v-primary, #visita-app .v-cardfoot .v-btn { border-radius: 4px 12px 12px 12px; }
+#visita-app .v-proplist .v-property { border-top-width: 1px; border-left: 4px solid var(--v-blue); border-radius: 4px 14px 14px 4px; }
+#visita-app .v-input, #visita-app .v-filters select { border-radius: 4px 12px 12px 12px; }
+#visita-app .v-btn { border-radius: 4px 12px 12px 12px; }
+#visita-app .v-slot { border-radius: 4px 11px 11px 11px; }
+#visita-app .v-slot[aria-pressed=true] { box-shadow: inset 0 -4px 0 var(--empresa-accion, #00a9a5); color: var(--empresa-texto-principal, #fff); }

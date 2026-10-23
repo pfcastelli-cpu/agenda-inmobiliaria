@@ -208,6 +208,18 @@ bitácora completa sesión por sesión):
   mismo correo; acción `vincular_asesor` para accesos/fichas que ya existían. Accesos muestra
   "✓ Es asesor" o el botón "Activar también como asesor" (vale para administrador y coordinador);
   Equipo muestra "Vincular con ese acceso" cuando hay un acceso con el mismo correo sin vincular.
+- Rediseño y marca por empresa (23-oct-2026, SIN desplegar ni commitear aún): tipografía Bricolage Grotesque (títulos) + Hanken
+  Grotesk (texto) en lugar de Poppins; distribución nueva de la agenda (final de `estilos/agenda.css`): menú lateral de color de
+  marca en escritorio, barra inferior fija en celular (<=860px), citas como línea de tiempo y cifras del día sin caja; mismo lenguaje en Inmuebles/Equipo (fichas con esquina recta y filo de color), Configuración (pestañas subrayadas), acceso en dos paneles (marca | formulario, vía `:has()` en acceso.css) y páginas públicas (franja delgada, tarjetas con filo de acento); todos los CSS leen la marca de variables (`--empresa-principal/-accion/-texto*`,
+  `--tema-fondo/-tinte/-claro`) que aplica `aplicacion/js/paletas.js`. Administración → Configuración tiene 7 paletas
+  (clic llena color principal + de botones, vista previa al instante; no necesita columnas nuevas, la paleta se reconoce por
+  los dos colores). Convención: ningún color de marca va fijo en CSS/HTML de correos; usar las variables / `marcaCorreo()`.
+  Correos: `supabase/functions/_shared/marca-correo.ts` (imagen, colores) usado por enviar-correo-cita, -propietario, -informe,
+  avisar-arrendatario, enviar-encuesta-cliente, gestion-accesos y recuperar-contrasena. `sql/011-marca-correos.sql` agrega
+  `agenda_configuracion.imagen_correo_url` (campo nuevo en Configuración). ORDEN: aplicar el SQL 011 primero y luego
+  desplegar esas funciones (sus SELECT piden la columna). Faltan por migrar a la marca: portal-visita,
+  marcar-inmueble-no-disponible, enviar-solicitud-propietario, probar-correo-config; y las páginas públicas (reservar,
+  opinión, propietario, arrendatario) aún no cargan la paleta de la empresa (necesitan una RPC pública de marca por host).
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 

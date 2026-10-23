@@ -9,11 +9,11 @@
 // empresa (el mismo del correo de citas, contraseña en Vault), con su bitácora y modo de
 // pruebas.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const IMAGEN_ENCABEZADO = 'https://adminpaxzu.patrimonios.co/uploads/images/Cita.jpg';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -52,10 +52,11 @@ async function enviarCorreoAcceso(
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'nombre_comercial, correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino',
+      'nombre_comercial, correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
     )
     .eq('empresa_id', empresaId)
     .maybeSingle();
+  const marca = marcaCorreo(config);
   if (!config?.correo_smtp_host || !config.correo_remitente_email) {
     return { enviado: false, motivo: 'El correo de la empresa no está configurado (Administración → Correo).' };
   }
@@ -75,11 +76,11 @@ async function enviarCorreoAcceso(
       : ''
   }
   <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
-    <img src="${IMAGEN_ENCABEZADO}" alt="${escaparHtml(remitente)}" width="580" style="width:100%;max-width:580px;height:auto;display:block" />
+    ${encabezadoImagen(marca, `${escaparHtml(remitente)}`)}
     <div style="padding:28px 26px 26px;text-align:center">
-      <h1 style="color:#1A2C45;font-size:21px;margin:0 0 8px">${escaparHtml(o.titulo)}</h1>
+      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 8px">${escaparHtml(o.titulo)}</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 22px">Hola ${escaparHtml(o.nombre)}, ${escaparHtml(o.texto)}</p>
-      <a href="${escaparHtml(o.enlace)}" style="display:inline-block;background:#00A9A5;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 26px;border-radius:12px">${escaparHtml(o.boton)}</a>
+      <a href="${escaparHtml(o.enlace)}" style="display:inline-block;background:${marca.accion};color:${marca.textoAccion};text-decoration:none;font-weight:700;font-size:15px;padding:14px 26px;border-radius:12px">${escaparHtml(o.boton)}</a>
       <p style="color:#8492a6;font-size:12.5px;margin:22px 0 0">El enlace es de un solo uso. Si no lo pediste, ignora este correo.</p>
     </div>
   </div>

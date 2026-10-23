@@ -7,6 +7,7 @@
 // cliente" junto con el comentario que el asesor ya puede dejar al marcar la
 // cita como realizada (columna feedback_cliente, agenda_citas).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -89,10 +90,11 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, dominio_publico',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, dominio_publico, imagen_correo_url, color_principal, color_accion',
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
+  const marca = marcaCorreo(config);
 
   const modoPruebas = config?.correo_modo_pruebas !== false;
   const asunto = '¿Qué te pareció la visita?';
@@ -193,10 +195,10 @@ Deno.serve(async (req) => {
 <div style="max-width:560px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
   <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08);padding:28px 26px;text-align:center">
-    <h1 style="color:#1A2C45;font-size:21px;margin:0 0 10px">¿Qué te pareció la visita?</h1>
+    <h1 style="color:${marca.principal};font-size:21px;margin:0 0 10px">¿Qué te pareció la visita?</h1>
     <p style="color:#526575;font-size:14px;margin:0 0 22px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, gracias por visitar el inmueble. Tu opinión nos ayuda a mejorar y le llega directo al propietario.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td align="center" bgcolor="#1A2C45" style="border-radius:12px">
+      <td align="center" bgcolor="${marca.principal}" style="border-radius:12px">
         <a href="${linkOpinion}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px">
           ⭐&nbsp;&nbsp;Dejar mi opinión (1 minuto)
         </a>

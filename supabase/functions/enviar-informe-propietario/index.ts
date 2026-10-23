@@ -10,13 +10,13 @@
 // necesita sesión — el token (uuid en agenda_inmuebles.token_informe_propietario)
 // es el único requisito de acceso, igual que /inmuebles/:numero para reservar.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-const IMAGEN_ENCABEZADO = 'https://adminpaxzu.patrimonios.co/uploads/images/Cita.jpg';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -114,10 +114,11 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, dominio_publico',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, dominio_publico, imagen_correo_url, color_principal, color_accion',
     )
     .eq('empresa_id', empresaId)
     .maybeSingle();
+  const marca = marcaCorreo(config);
 
   const modoPruebas = config?.correo_modo_pruebas !== false;
 
@@ -223,12 +224,12 @@ Deno.serve(async (req) => {
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
   <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
-    <img src="${IMAGEN_ENCABEZADO}" alt="Informe de tu inmueble" width="580" style="width:100%;max-width:580px;height:auto;display:block" />
+    ${encabezadoImagen(marca, `Informe de tu inmueble`)}
     <div style="padding:28px 26px 10px">
-      <h1 style="color:#1A2C45;font-size:21px;margin:0 0 4px">El informe de tu inmueble Nº ${numeroInmueble}</h1>
+      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 4px">El informe de tu inmueble Nº ${numeroInmueble}</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, te compartimos el link con el informe en vivo de tu inmueble: cuántas visitas ha tenido, qué han dicho los clientes que lo han visto, y un espacio para pedirnos un cambio de precio, de fotos, o una asesoría cuando quieras. Se actualiza solo, así que puedes volver a verlo cuando quieras con este mismo link.</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td align="center" bgcolor="#1A2C45" style="border-radius:12px">
+        <td align="center" bgcolor="${marca.principal}" style="border-radius:12px">
           <a href="${linkInforme}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px">
             📊&nbsp;&nbsp;Ver el informe de mi inmueble
           </a>

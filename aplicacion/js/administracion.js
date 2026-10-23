@@ -8,6 +8,7 @@ import {
  alternarActivoAcceso,
  vincularAsesorConAcceso,
 } from './sesion.js';
+import { aplicarTema, quitarTema, tarjetasPaletas, PALETAS } from './paletas.js';
 import '../estilos/administracion.css';
 let root, acceso, config, asesores = [], ciudades = [], asesorCiudades = {}, coberturas = [], asesorCoberturas = {}, accesosPorUsuario = {}, revision = 0;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -17,16 +18,13 @@ const campo = (name,label,value='',type='text',extra='') => `<label>${label}<inp
 function aviso(texto,error=false){const e=root?.querySelector('[role=status]');if(e){e.textContent=texto;e.classList.toggle('error',error);}}
 function colorTexto(hex){const a=hex.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return a[0]*.2126+a[1]*.7152+a[2]*.0722>.179?'#111111':'#ffffff';}
 function marca(){
- document.documentElement.style.setProperty('--empresa-principal',config.color_principal);
- document.documentElement.style.setProperty('--empresa-texto-principal',colorTexto(config.color_principal));
- document.documentElement.style.setProperty('--empresa-accion',config.color_accion);
- document.documentElement.style.setProperty('--empresa-texto',colorTexto(config.color_accion));
+ aplicarTema(config);
  const head=document.querySelector('.pa-head > div');
  head.replaceChildren();
  if(config.logo_url){const img=document.createElement('img');img.src=config.logo_url;img.alt='';img.referrerPolicy='no-referrer';img.addEventListener('error',()=>img.remove());head.append(img);}
  const name=document.createElement('strong');name.textContent=config.nombre_comercial;head.append(name);
 }
-export function limpiarAdministracion(){revision++;root?.remove();root=null;acceso=null;asesores=[];ciudades=[];asesorCiudades={};config=null;document.getElementById('pa-agenda-content').hidden=false;for(const k of ['--empresa-principal','--empresa-accion','--empresa-texto','--empresa-texto-principal'])document.documentElement.style.removeProperty(k);const h=document.querySelector('.pa-head > div');h.innerHTML='<strong>PATRIMONIOS</strong><small>INMOBILIARIOS</small>';}
+export function limpiarAdministracion(){revision++;root?.remove();root=null;acceso=null;asesores=[];ciudades=[];asesorCiudades={};config=null;document.getElementById('pa-agenda-content').hidden=false;quitarTema();const h=document.querySelector('.pa-head > div');h.innerHTML='<strong>PATRIMONIOS</strong><small>INMOBILIARIOS</small>';}
 export async function iniciarAdministracion(a){
  limpiarAdministracion();acceso=a;const turno=revision;
  if(!a.membresia)return;
@@ -391,7 +389,7 @@ function marcaForm(){
  const el=root.querySelector('.ad-subbody');
  const enlaceEjemplo=config.dominio_publico?`https://${config.dominio_publico}/inmuebles/245`:'configura el dominio para ver un ejemplo';
  const enlaceInmuebleEjemplo=config.plantilla_enlace_inmueble&&config.plantilla_enlace_inmueble.includes('{numero}')?config.plantilla_enlace_inmueble.replace('{numero}','245'):'usa el dominio de arriba mientras no configures esta plantilla';
- el.innerHTML=`<h2>Configuración de empresa</h2><p>Personaliza la identidad y las reglas de agenda de tu empresa. Cada empresa conserva su propia configuración.</p><form class="ad-form"><div class="ad-grid">${campo('nombre_comercial','Nombre comercial',config.nombre_comercial,'text','required maxlength="120"')}${campo('logo_url','Enlace HTTPS del logo',config.logo_url,'url','pattern="https://.*" placeholder="https://…/logo.png"')}${campo('color_principal','Color principal',config.color_principal,'color')}${campo('color_accion','Color de botones',config.color_accion,'color')}${campo('correo_contacto','Correo de contacto (uso general / comercial)',config.correo_contacto,'email')}${campo('telefono','Teléfono',config.telefono,'tel')}${campo('enlace_documentos','Enlace para radicar documentos',config.enlace_documentos,'url','pattern="https://.*"')}</div>
+ el.innerHTML=`<h2>Configuración de empresa</h2><p>Personaliza la identidad y las reglas de agenda de tu empresa. Cada empresa conserva su propia configuración.</p><form class="ad-form">${tarjetasPaletas(config)}<div class="ad-grid">${campo('nombre_comercial','Nombre comercial',config.nombre_comercial,'text','required maxlength="120"')}${campo('logo_url','Enlace HTTPS del logo',config.logo_url,'url','pattern="https://.*" placeholder="https://…/logo.png"')}${'imagen_correo_url' in config?campo('imagen_correo_url','Imagen de encabezado de los correos (HTTPS, ancho ideal 1160 px)',config.imagen_correo_url||'','url','pattern="https://.*" placeholder="https://…/encabezado-correo.jpg"'):''}${campo('color_principal','Color principal',config.color_principal,'color')}${campo('color_accion','Color de botones',config.color_accion,'color')}${campo('correo_contacto','Correo de contacto (uso general / comercial)',config.correo_contacto,'email')}${campo('telefono','Teléfono',config.telefono,'tel')}${campo('enlace_documentos','Enlace para radicar documentos',config.enlace_documentos,'url','pattern="https://.*"')}</div>
  <h3>Página pública de agendamiento</h3>
  <div class="ad-grid">${campo('dominio_publico','Dominio de la página de agendamiento (donde el cliente reserva)',config.dominio_publico,'text','placeholder="citas.patrimonios.co"')}</div>
  <p class="ad-note">El botón "Agendar cita" usa este dominio, con este formato: <code>${enlaceEjemplo}</code>.</p>
@@ -419,9 +417,13 @@ function marcaForm(){
  const rolesEquipo=Array.isArray(config.equipo_visible_roles)&&config.equipo_visible_roles.length?config.equipo_visible_roles:['administrador'];
  el.querySelector('[name=equipo_ve_coordinador]').checked=rolesEquipo.includes('coordinador');
  el.querySelector('[name=equipo_ve_asesor]').checked=rolesEquipo.includes('asesor');
- el.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.target;const b=f.querySelector('button');b.disabled=true;
+ const formCfg=el.querySelector('form');
+ const vistaPrevia=()=>aplicarTema({...config,color_principal:formCfg.color_principal.value,color_accion:formCfg.color_accion.value});
+ formCfg.querySelectorAll('.ad-paleta').forEach(btn=>btn.onclick=()=>{const p=PALETAS.find(x=>x.id===btn.dataset.paleta);formCfg.color_principal.value=p.principal.toLowerCase();formCfg.color_accion.value=p.accion.toLowerCase();formCfg.querySelectorAll('.ad-paleta').forEach(o=>o.setAttribute('aria-pressed',String(o===btn)));vistaPrevia();});
+ for(const n of ['color_principal','color_accion'])formCfg[n].addEventListener('input',()=>{formCfg.querySelectorAll('.ad-paleta').forEach(o=>o.setAttribute('aria-pressed','false'));vistaPrevia();});
+ formCfg.onsubmit=async e=>{e.preventDefault();const f=e.target;const b=f.querySelector('[type=submit]');b.disabled=true;
  const equipoVisibleRoles=['administrador'];if(f.equipo_ve_coordinador.checked)equipoVisibleRoles.push('coordinador');if(f.equipo_ve_asesor.checked)equipoVisibleRoles.push('asesor');
- const v={empresa_id:config.empresa_id,nombre_comercial:f.nombre_comercial.value.trim(),logo_url:f.logo_url.value.trim(),color_principal:f.color_principal.value,color_accion:f.color_accion.value,correo_contacto:f.correo_contacto.value.trim(),telefono:f.telefono.value.trim(),enlace_documentos:f.enlace_documentos.value.trim(),dominio_publico:f.dominio_publico.value.trim()||null,plantilla_enlace_inmueble:f.plantilla_enlace_inmueble.value.trim()||null,duracion_visita_minutos:Number(f.duracion_visita_minutos.value),minutos_traslado_entre_inmuebles:Number(f.minutos_traslado_entre_inmuebles.value),modo_mismo_inmueble:f.modo_mismo_inmueble.value,separacion_mismo_inmueble_minutos:Number(f.separacion_mismo_inmueble_minutos.value),radio_zona_km:Number(f.radio_zona_km.value),valor_minimo_canon_seguimiento:Number(f.valor_minimo_canon_seguimiento.value),valor_minimo_venta_seguimiento:Number(f.valor_minimo_venta_seguimiento.value),valor_alto_canon_zona:Number(f.valor_alto_canon_zona.value),valor_alto_venta_zona:Number(f.valor_alto_venta_zona.value),horas_minimas_anticipacion:Number(f.horas_minimas_anticipacion.value),horas_minimas_anticipacion_mismo_inmueble:Number(f.horas_minimas_anticipacion_mismo_inmueble.value),formato_hora:f.formato_hora.value,almuerzo_activo:f.almuerzo_activo.checked,almuerzo_inicio:f.almuerzo_inicio.value,almuerzo_fin:f.almuerzo_fin.value,equipo_visible_roles:equipoVisibleRoles};
+ const v={empresa_id:config.empresa_id,nombre_comercial:f.nombre_comercial.value.trim(),logo_url:f.logo_url.value.trim(),...('imagen_correo_url' in config?{imagen_correo_url:f.imagen_correo_url.value.trim()||null}:{}),color_principal:f.color_principal.value,color_accion:f.color_accion.value,correo_contacto:f.correo_contacto.value.trim(),telefono:f.telefono.value.trim(),enlace_documentos:f.enlace_documentos.value.trim(),dominio_publico:f.dominio_publico.value.trim()||null,plantilla_enlace_inmueble:f.plantilla_enlace_inmueble.value.trim()||null,duracion_visita_minutos:Number(f.duracion_visita_minutos.value),minutos_traslado_entre_inmuebles:Number(f.minutos_traslado_entre_inmuebles.value),modo_mismo_inmueble:f.modo_mismo_inmueble.value,separacion_mismo_inmueble_minutos:Number(f.separacion_mismo_inmueble_minutos.value),radio_zona_km:Number(f.radio_zona_km.value),valor_minimo_canon_seguimiento:Number(f.valor_minimo_canon_seguimiento.value),valor_minimo_venta_seguimiento:Number(f.valor_minimo_venta_seguimiento.value),valor_alto_canon_zona:Number(f.valor_alto_canon_zona.value),valor_alto_venta_zona:Number(f.valor_alto_venta_zona.value),horas_minimas_anticipacion:Number(f.horas_minimas_anticipacion.value),horas_minimas_anticipacion_mismo_inmueble:Number(f.horas_minimas_anticipacion_mismo_inmueble.value),formato_hora:f.formato_hora.value,almuerzo_activo:f.almuerzo_activo.checked,almuerzo_inicio:f.almuerzo_inicio.value,almuerzo_fin:f.almuerzo_fin.value,equipo_visible_roles:equipoVisibleRoles};
  const {data,error}=await supabase.from('agenda_configuracion').upsert(v).select('*').single();b.disabled=false;if(error){aviso('No se pudo guardar la configuración. Verifica permisos y conexión.',true);return;}config=data;marca();invalidarDominioPublico();marcaForm();aviso('Configuración guardada.');};
 }
 

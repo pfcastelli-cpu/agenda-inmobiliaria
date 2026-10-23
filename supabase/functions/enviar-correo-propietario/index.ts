@@ -6,12 +6,12 @@
 // guardados en agenda_propietarios para ese inmueble — nunca a un
 // destinatario arbitrario que venga en la solicitud.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const IMAGEN_ENCABEZADO = 'https://adminpaxzu.patrimonios.co/uploads/images/Cita.jpg';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -272,10 +272,11 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
+  const marca = marcaCorreo(config);
 
   const modoPruebas = config?.correo_modo_pruebas !== false;
 
@@ -383,7 +384,7 @@ Deno.serve(async (req) => {
       '💬',
       `Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp`,
     );
-  if (llamarUrl) filasBotones += filaBoton(llamarUrl, '#1A2C45', '#ffffff', '📞', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`);
+  if (llamarUrl) filasBotones += filaBoton(llamarUrl, marca.principal, '#ffffff', '📞', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`);
 
   let filasDatos = filaDato('🏠', 'Inmueble', `Nº ${inmueble.numero_inmueble}`);
   filasDatos += filaDato('📅', 'Fecha de la visita', escaparHtml(fechaTexto));
@@ -440,9 +441,9 @@ Deno.serve(async (req) => {
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
   <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
-    <img src="${IMAGEN_ENCABEZADO}" alt="Se agendó una visita en tu inmueble" width="580" style="width:100%;max-width:580px;height:auto;display:block" />
+    ${encabezadoImagen(marca, `Se agendó una visita en tu inmueble`)}
     <div style="padding:28px 26px 8px">
-      <h1 style="color:#1A2C45;font-size:21px;margin:0 0 4px">Se agendó una visita en tu inmueble</h1>
+      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 4px">Se agendó una visita en tu inmueble</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, te informamos que un cliente interesado visitará tu inmueble:</p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
         ${filasDatos}

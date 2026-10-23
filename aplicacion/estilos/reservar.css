@@ -1,8 +1,8 @@
 #pub-app {
-  font: 400 16px/1.5 Poppins, system-ui, sans-serif;
-  --pu-navy: #1a2c45;
-  --pu-teal: #00a9a5;
-  --pu-bg: light-dark(#f4f4f4, #101a28);
+  font: 400 16px/1.5 "Hanken Grotesk", system-ui, sans-serif;
+  --pu-navy: var(--empresa-principal,#1a2c45);
+  --pu-teal: var(--empresa-accion,#00a9a5);
+  --pu-bg: light-dark(var(--tema-fondo,#f4f4f4), #101a28);
   --pu-card: light-dark(#fff, #182638);
   --pu-text: light-dark(#1a2c45, #eef7fa);
   --pu-muted: light-dark(#5a6a7d, #b8c9d7);
@@ -58,7 +58,7 @@
   border: none;
   border-radius: 10px;
   background: var(--pu-teal);
-  color: #06231f;
+  color: var(--empresa-texto,#06231f);
   font-weight: 600;
   font-size: 15px;
   cursor: pointer;
@@ -176,7 +176,7 @@
   width: 56px; height: 56px;
   border-radius: 50%;
   background: var(--pu-teal);
-  color: #06231f;
+  color: var(--empresa-texto,#06231f);
   display: flex; align-items: center; justify-content: center;
   margin: 0 auto 16px;
 }
@@ -231,3 +231,21 @@
 }
 #pub-app .pu-option:hover { border-color: var(--pu-teal); }
 #pub-app .pu-option.activa { background: var(--pu-teal); color: #06231f; border-color: var(--pu-teal); font-weight: 600; }
+
+#pub-app h2, #pub-app .pu-head strong { font-family: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif; font-weight: 700; }
+#pub-app .pu-head strong { letter-spacing: 1px; }
+#pub-app input:focus-visible, #pub-app select:focus-visible, #pub-app button:focus-visible { outline: 3px solid var(--empresa-accion, #00a9a5); outline-offset: 2px; }
+
+/* ===== Páginas públicas: franja de marca delgada, tarjetas con filo de acento ===== */
+#pub-app .pu-head { padding: 14px 22px; border-bottom-width: 6px; }
+#pub-app main { max-width: 640px; padding-top: 32px; }
+#pub-app h2 { font-size: 30px; line-height: 1.15; letter-spacing: -.6px; }
+#pub-app .pu-card { border-radius: 4px 20px 20px 20px; border-top: 4px solid var(--pu-teal); }
+#pub-app .pu-precio { font-family: "Bricolage Grotesque", "Hanken Grotesk", sans-serif; font-size: 28px; letter-spacing: -.8px; }
+#pub-app input, #pub-app select, #pub-app textarea { border-radius: 4px 10px 10px 10px; }
+#pub-app .pu-main { border-radius: 4px 12px 12px 12px; }
+#pub-app .pu-fecha { border-radius: 4px 4px 12px 12px; }
+#pub-app .pu-fecha.activa { box-shadow: inset 0 -4px 0 var(--pu-teal); }
+#pub-app .pu-slot, #pub-app .pu-option { border-radius: 4px 10px 10px 10px; }
+#pub-app .pu-slot.activo, #pub-app .pu-option.activa { color: var(--empresa-texto, #06231f); }
+#pub-app .pu-confirmacion .pu-icono { border-radius: 4px 18px 18px 18px; }
