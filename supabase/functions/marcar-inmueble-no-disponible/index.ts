@@ -121,7 +121,7 @@ function limpiarDireccion(direccion: string | null | undefined): string {
   if (!direccion) return '';
   return direccion
     .replace(REGEX_UNIDAD_INTERNA, ' ')
-    .replace(/[,-]{2,}/g, ',')
+    .replace(/[,-]{2,}/g, ',').replace(/\s+,/g, ',')
     .replace(/\s{2,}/g, ' ')
     .replace(/^[\s,-]+|[\s,-]+$/g, '')
     .trim();

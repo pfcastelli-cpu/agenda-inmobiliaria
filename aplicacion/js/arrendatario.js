@@ -1,5 +1,6 @@
 import { supabase, hayConfiguracionSupabase } from './cliente-supabase.js';
 import { aplicarMarcaPublica } from './marca-publica.js';
+import './teclado-publico.js';
 
 // Acuerdo de horario de una visita a un inmueble arrendado. Esta página la usan DOS personas con
 // enlaces distintos: el arrendatario (/arrendatario/<token>) y el cliente que visita
@@ -247,7 +248,7 @@ function vistaProponer() {
     ? `<div class="pu-fechas" id="ar-fechas">${fechas
         .map(
           (f) =>
-            `<div class="pu-fecha ${iso(f) === state.fechaSel ? 'activa' : ''}" data-fecha="${iso(f)}"><span>${DIAS_CORTO[f.getDay()]}</span><strong>${f.getDate()}</strong><span>${MESES[f.getMonth()].slice(0, 3)}</span></div>`,
+            `<div class="pu-fecha ${iso(f) === state.fechaSel ? 'activa' : ''}" data-fecha="${iso(f)}" role="button" tabindex="0"><span>${DIAS_CORTO[f.getDay()]}</span><strong>${f.getDate()}</strong><span>${MESES[f.getMonth()].slice(0, 3)}</span></div>`,
         )
         .join('')}</div>`
     : `<p class="pu-vacio">No hay días permitidos configurados. Actualiza primero el horario en que se puede mostrar tu vivienda.</p>`;
@@ -257,7 +258,7 @@ function vistaProponer() {
     else if (!state.horas.length) slots = `<p class="pu-vacio">No hay horarios libres ese día. Prueba con otro día.</p>`;
     else
       slots = `<div class="pu-slots" id="ar-slots">${state.horas
-        .map((h) => `<div class="pu-slot ${h.hora_inicio === state.horaSel ? 'activo' : ''}" data-hora="${h.hora_inicio}">${esc(hora12(h.hora_inicio))}</div>`)
+        .map((h) => `<div class="pu-slot ${h.hora_inicio === state.horaSel ? 'activo' : ''}" data-hora="${h.hora_inicio}" role="button" tabindex="0">${esc(hora12(h.hora_inicio))}</div>`)
         .join('')}</div>`;
   }
   return `

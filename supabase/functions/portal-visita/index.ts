@@ -62,7 +62,7 @@ const REGEX_UNIDAD_INTERNA =
   /\b(AP|APTO|APT|APARTAMENTO|CS|CASA|IN|INT|INTERIOR|PISO|T|TORRE|TO|BLOQUE|BQ|BL|OF|OFC|OFICINA|MZ|MANZANA|CONJ|CON|DP|CONS|CONSULTORIO|LC|LOCAL(ES)?|L)\s*\d+\b/gi;
 function limpiarDireccion(d: string | null | undefined): string {
   if (!d) return '';
-  return d.replace(REGEX_UNIDAD_INTERNA, ' ').replace(/[,-]{2,}/g, ',').replace(/\s{2,}/g, ' ').replace(/^[\s,-]+|[\s,-]+$/g, '').trim();
+  return d.replace(REGEX_UNIDAD_INTERNA, ' ').replace(/[,-]{2,}/g, ',').replace(/\s+,/g, ',').replace(/\s{2,}/g, ' ').replace(/^[\s,-]+|[\s,-]+$/g, '').trim();
 }
 
 // Fecha y hora actuales en Bogotá (la base guarda fecha y hora locales sin zona).
@@ -530,7 +530,7 @@ Deno.serve(async (req) => {
       // cita en su agenda y en su calendario compartido.
       const cabeceras = { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY };
       for (const f of ['enviar-correo-cita', 'enviar-correo-propietario']) {
-        fetch(`${SUPABASE_URL}/functions/v1/${f}`, { method: 'POST', headers: cabeceras, body: JSON.stringify({ cita_id: cita.id, sin_aviso_arrendatario: true }) }).catch(() => {});
+        fetch(`${SUPABASE_URL}/functions/v1/${f}`, { method: 'POST', headers: cabeceras, body: JSON.stringify({ cita_id: cita.id, sin_aviso_arrendatario: true, reagendada: true }) }).catch(() => {});
       }
       const t = await correosArrendatario(admin, cita.empresa_id, inmueble.numero_inmueble);
       const nuevaLinea = `<b>${esc(formatearFecha(p.fecha))}, ${esc(formatearHora(p.hora_inicio.slice(0, 5)))}</b>${direccion ? ` en ${esc(direccion)}` : ''}`;

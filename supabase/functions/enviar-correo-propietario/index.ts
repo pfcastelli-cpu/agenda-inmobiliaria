@@ -61,7 +61,7 @@ function limpiarDireccion(direccion: string | null | undefined): string {
   if (!direccion) return '';
   return direccion
     .replace(REGEX_UNIDAD_INTERNA, ' ')
-    .replace(/[,-]{2,}/g, ',')
+    .replace(/[,-]{2,}/g, ',').replace(/\s+,/g, ',')
     .replace(/\s{2,}/g, ' ')
     .replace(/^[\s,-]+|[\s,-]+$/g, '')
     .trim();
@@ -354,7 +354,10 @@ Deno.serve(async (req) => {
 
   const fechaTexto = formatearFecha(cita.fecha);
   const horaTexto = formatearHora(cita.hora_inicio.slice(0, 5));
-  const asunto = `Nueva visita agendada en tu inmueble Nº ${inmueble.numero_inmueble}`;
+  const reagendada = body.reagendada === true;
+  const asunto = reagendada
+    ? `Cambió la hora de una visita en tu inmueble Nº ${inmueble.numero_inmueble}`
+    : `Nueva visita agendada en tu inmueble Nº ${inmueble.numero_inmueble}`;
 
   const tieneCoordenadas =
     inmueble.latitud !== null && inmueble.latitud !== undefined && inmueble.longitud !== null && inmueble.longitud !== undefined;
@@ -416,7 +419,7 @@ Deno.serve(async (req) => {
     return construirICS({
       metodo: 'REQUEST',
       uid: uidCalendarioCita(cita.id),
-      secuencia: 0,
+      secuencia: reagendada ? Math.floor(Date.now() / 1000) : 0,
       dtStart: aFechaICSUTC(cita.fecha, cita.hora_inicio),
       dtEnd: aFechaICSUTC(cita.fecha, cita.hora_fin || cita.hora_inicio),
       resumen: `Visita de cliente en tu inmueble Nº ${inmueble.numero_inmueble}`,
@@ -445,8 +448,8 @@ Deno.serve(async (req) => {
   <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
     ${encabezadoImagen(marca, `Se agendó una visita en tu inmueble`)}
     <div style="padding:28px 26px 8px">
-      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 4px">Se agendó una visita en tu inmueble</h1>
-      <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, te informamos que un cliente interesado visitará tu inmueble:</p>
+      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 4px">${reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble'}</h1>
+      <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, ${reagendada ? 'te avisamos que una visita ya agendada cambió de hora; esta es la hora actual:' : 'te informamos que un cliente interesado visitará tu inmueble:'}</p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
         ${filasDatos}
       </table>

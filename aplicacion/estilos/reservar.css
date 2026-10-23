@@ -260,3 +260,5 @@
 #pub-app .pu-slot { min-height: 48px; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
 #pub-app .pu-fecha { font-size: 14px; min-height: 64px; }
 #pub-app .pu-option { min-height: 48px; font-size: 15px; }
+
+#pub-app .pu-fecha:focus-visible, #pub-app .pu-slot:focus-visible { outline: 3px solid var(--empresa-accion, #00a9a5); outline-offset: 2px; }

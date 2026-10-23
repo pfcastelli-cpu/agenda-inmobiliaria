@@ -52,7 +52,7 @@ const REGEX_UNIDAD_INTERNA =
   /\b(AP|APTO|APT|APARTAMENTO|CS|CASA|IN|INT|INTERIOR|PISO|T|TORRE|TO|BLOQUE|BQ|BL|OF|OFC|OFICINA|MZ|MANZANA|CONJ|CON|DP|CONS|CONSULTORIO|LC|LOCAL(ES)?|L)\s*\d+\b/gi;
 function limpiarDireccion(d: string | null | undefined): string {
   if (!d) return '';
-  return d.replace(REGEX_UNIDAD_INTERNA, ' ').replace(/[,-]{2,}/g, ',').replace(/\s{2,}/g, ' ').replace(/^[\s,-]+|[\s,-]+$/g, '').trim();
+  return d.replace(REGEX_UNIDAD_INTERNA, ' ').replace(/[,-]{2,}/g, ',').replace(/\s+,/g, ',').replace(/\s{2,}/g, ' ').replace(/^[\s,-]+|[\s,-]+$/g, '').trim();
 }
 
 async function registrarLog(
@@ -200,6 +200,7 @@ Deno.serve(async (req) => {
   const nombre = escaparHtml(arrendatario?.nombre || '');
   const enlacePortal = `${SITIO_URL}/arrendatario/${cita.token_arrendatario}`;
   const enlaceSitio = enlaceInmueble(config, inmueble.numero_inmueble);
+  const lugarTexto = [direccion, ciudad].filter(Boolean).join(', ').replace(/\.+$/, '');
   const remitenteNombre = config.correo_remitente_nombre || 'Patrimonios Inmobiliarios';
 
   const html = (destinatarioReal: string) => `<!doctype html>
@@ -216,7 +217,7 @@ Deno.serve(async (req) => {
     ${encabezadoImagen(marca, `Visita programada`)}
     <div style="padding:28px 26px 20px">
       <h1 style="color:${marca.principal};font-size:21px;margin:0 0 6px">Visita programada en tu vivienda</h1>
-      <p style="color:#526575;font-size:14px;margin:0 0 18px">Hola ${nombre}, una persona interesada quiere conocer la vivienda que ocupas${direccion ? ` en ${escaparHtml(direccion)}${ciudad ? ', ' + escaparHtml(ciudad) : ''}` : ''}. Queremos respetar tu tiempo: si la hora no te sirve, puedes proponer otra.</p>
+      <p style="color:#526575;font-size:14px;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer la vivienda que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo: si la hora no te sirve, puedes proponer otra.</p>
       <table style="width:100%;border-collapse:collapse">
         <tr><td style="padding:8px 0;color:#5b6b7d;font-size:13px">Fecha</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(fechaTexto)}</td></tr>
         <tr><td style="padding:8px 0;color:#5b6b7d;font-size:13px">Hora</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(horaTexto)}</td></tr>

@@ -69,7 +69,7 @@ function limpiarDireccion(direccion: string | null | undefined): string {
   if (!direccion) return '';
   return direccion
     .replace(REGEX_UNIDAD_INTERNA, ' ')
-    .replace(/[,-]{2,}/g, ',')
+    .replace(/[,-]{2,}/g, ',').replace(/\s+,/g, ',')
     .replace(/\s{2,}/g, ' ')
     .replace(/^[\s,-]+|[\s,-]+$/g, '')
     .trim();
@@ -342,7 +342,11 @@ Deno.serve(async (req) => {
   const horaTexto = formatearHora(cita.hora_inicio.slice(0, 5));
   const direccionCompleta = [direccion, ciudad].filter(Boolean).join(', ');
 
-  const asunto = `Confirmación de tu visita — ${fechaTexto} a las ${horaTexto}`;
+  // Si la visita se movió de hora (el cliente la reagendó o aceptó otra hora), el correo lo dice claro.
+  const reagendada = body.reagendada === true;
+  const asunto = reagendada
+    ? `Tu visita cambió de hora — ${fechaTexto} a las ${horaTexto}`
+    : `Confirmación de tu visita — ${fechaTexto} a las ${horaTexto}`;
 
   const bannerPruebas = modoPruebas
     ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
@@ -402,8 +406,8 @@ Deno.serve(async (req) => {
   <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
     ${encabezadoImagen(marca, `Tu visita quedó confirmada`)}
     <div style="padding:28px 26px 8px">
-      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 4px">¡Tu visita quedó confirmada!</h1>
-      <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, estos son los detalles de tu cita:</p>
+      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 4px">${reagendada ? '¡Tu visita cambió de hora!' : '¡Tu visita quedó confirmada!'}</h1>
+      <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, ${reagendada ? 'esta es la nueva hora de tu cita:' : 'estos son los detalles de tu cita:'}</p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
         ${filasDatos}
       </table>
@@ -480,7 +484,8 @@ Deno.serve(async (req) => {
   const icsContent = construirICS({
     metodo: 'REQUEST',
     uid: uidCalendarioCita(cita.id),
-    secuencia: 0,
+    // Con el mismo UID, el calendario solo actualiza el evento si SEQUENCE sube: al reagendar usamos la hora actual.
+    secuencia: reagendada ? Math.floor(Date.now() / 1000) : 0,
     dtStart: aFechaICSUTC(cita.fecha, cita.hora_inicio),
     dtEnd: aFechaICSUTC(cita.fecha, cita.hora_fin || cita.hora_inicio),
     resumen: `Visita inmueble${numeroInmueble ? ' Nº ' + numeroInmueble : ''}${direccion ? ' — ' + direccion : ''}`,

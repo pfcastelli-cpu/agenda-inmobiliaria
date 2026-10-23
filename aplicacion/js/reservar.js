@@ -1,5 +1,6 @@
 import { supabase, hayConfiguracionSupabase } from './cliente-supabase.js';
 import { aplicarMarcaPublica } from './marca-publica.js';
+import './teclado-publico.js';
 
 const raiz = document.getElementById('pu-main');
 
@@ -417,8 +418,8 @@ async function cambiarCita() {
     render();
     return;
   }
-  supabase.functions.invoke('enviar-correo-cita', { body: { cita_id: data } }).catch(() => {});
-  supabase.functions.invoke('enviar-correo-propietario', { body: { cita_id: data } }).catch(() => {});
+  supabase.functions.invoke('enviar-correo-cita', { body: { cita_id: data, reagendada: true } }).catch(() => {});
+  supabase.functions.invoke('enviar-correo-propietario', { body: { cita_id: data, reagendada: true } }).catch(() => {});
   state.confirmacion = {
     id: data,
     fecha: state.fechaSel,
@@ -475,7 +476,7 @@ function selectorFechas() {
       ${state.fechas
         .map((f) => {
           const activa = fechaISO(f) === fechaISO(state.fechaSel);
-          return `<div class="pu-fecha ${activa ? 'activa' : ''}" data-fecha="${fechaISO(f)}">
+          return `<div class="pu-fecha ${activa ? 'activa' : ''}" data-fecha="${fechaISO(f)}" role="button" tabindex="0" aria-pressed="${activa ? 'true' : 'false'}">
             <span>${DIAS[f.getDay()]}</span>
             <strong>${f.getDate()}</strong>
             <span>${MESES[f.getMonth()].slice(0, 3)}</span>
@@ -500,7 +501,7 @@ function selectorHorarios() {
         .map((s) => {
           const activo = state.slotSel && state.slotSel.hora_inicio === s.hora_inicio;
           const duracionMin = Math.round((new Date(`2000-01-01T${s.hora_fin}`) - new Date(`2000-01-01T${s.hora_inicio}`)) / 60000);
-          return `<div class="pu-slot ${activo ? 'activo' : ''}" data-hora="${s.hora_inicio}">${formatoHora(s.hora_inicio)}${s.tipo_slot === 'mismo_inmueble' ? `<br><small>${duracionMin} min</small>` : ''}</div>`;
+          return `<div class="pu-slot ${activo ? 'activo' : ''}" data-hora="${s.hora_inicio}" role="button" tabindex="0" aria-pressed="${activo ? 'true' : 'false'}">${formatoHora(s.hora_inicio)}${s.tipo_slot === 'mismo_inmueble' ? `<br><small>${duracionMin} min</small>` : ''}</div>`;
         })
         .join('')}
     </div>
