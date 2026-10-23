@@ -12,6 +12,7 @@
 //   cancelar         → { motivo? } solo arrendatario; avisa al cliente
 //   guardar_horario  → solo arrendatario: { dias:[1..7], desde, hasta } cuándo se muestra la vivienda
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { encabezadoImagen, marcaCorreo, type MarcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -114,7 +115,7 @@ async function configCorreo(admin: Admin, empresaId: string) {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
     )
     .eq('empresa_id', empresaId)
     .maybeSingle();
@@ -131,14 +132,18 @@ function plantillaCorreo(opts: {
   modoPruebas: boolean;
   destinatarioReal: string;
   remitente: string;
+  marca: MarcaCorreo;
 }) {
   return `<!doctype html><html><body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
 ${opts.modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">🧪 MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(opts.destinatarioReal)}</div>` : ''}
-<div style="background:#ffffff;border-radius:18px;padding:28px 26px;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
-<h1 style="color:#1A2C45;font-size:20px;margin:0 0 12px">${esc(opts.titulo)}</h1>
+<div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
+${encabezadoImagen(opts.marca, opts.titulo)}
+<div style="padding:28px 26px">
+<h1 style="color:${opts.marca.principal};font-size:20px;margin:0 0 12px">${esc(opts.titulo)}</h1>
 <div style="color:#526575;font-size:14px;line-height:1.55">${opts.cuerpo}</div>
-${opts.boton ? `<p style="margin:22px 0 0"><a href="${esc(opts.boton.url)}" style="display:inline-block;background:#1A2C45;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">${esc(opts.boton.texto)}</a></p>` : ''}
+${opts.boton ? `<p style="margin:22px 0 0"><a href="${esc(opts.boton.url)}" style="display:inline-block;background:${opts.marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">${esc(opts.boton.texto)}</a></p>` : ''}
+</div>
 </div>
 <p style="text-align:center;color:#9aa7b0;font-size:11.5px;margin-top:18px">${esc(opts.remitente)}</p>
 </div></body></html>`;
@@ -151,7 +156,7 @@ async function enviarCorreos(
   tipo: Rol,
   destinatarios: string[],
   asunto: string,
-  armar: (extra: { destinatarioReal: string; modoPruebas: boolean; remitente: string }) => string,
+  armar: (extra: { destinatarioReal: string; modoPruebas: boolean; remitente: string; marca: MarcaCorreo }) => string,
 ) {
   if (!destinatarios.length) return;
   const cfg = await configCorreo(admin, empresaId);
@@ -173,7 +178,7 @@ async function enviarCorreos(
         from: `${remitente} <${config.correo_remitente_email}>`,
         to: destino,
         subject: asunto,
-        html: armar({ destinatarioReal: correo, modoPruebas, remitente }),
+        html: armar({ destinatarioReal: correo, modoPruebas, remitente, marca: marcaCorreo(config) }),
       });
     } catch (e) {
       estado = 'fallido';

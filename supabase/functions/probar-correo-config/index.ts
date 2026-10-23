@@ -6,6 +6,7 @@
 // Solo administradores activos de la empresa pueden usarla — se verifica con el JWT
 // del que llama, igual que en gestion-accesos.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -80,10 +81,11 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_pruebas_destino',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
     )
     .eq('empresa_id', empresaId)
     .maybeSingle();
+  const marca = marcaCorreo(config);
 
   const destino = String(body.destino || '').trim() || config?.correo_pruebas_destino || quienLlama.user.email || '';
 
@@ -96,7 +98,7 @@ Deno.serve(async (req) => {
 
   const asunto = 'Correo de prueba — configuración de citas de Patrimonios';
   const html = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;padding:20px">
-    <h2 style="color:#1A2C45">✅ Tu configuración de correo funciona</h2>
+    <h2 style="color:${marca.principal}">✅ Tu configuración de correo funciona</h2>
     <p style="color:#526575">Este es un correo de prueba enviado desde el panel de administración de la agenda de citas, usando exactamente los mismos datos SMTP que se usan para los correos reales de confirmación de visitas.</p>
     <p style="color:#9aa7b0;font-size:12px">Enviado el ${new Date().toLocaleString('es-CO')}.</p>
   </body></html>`;

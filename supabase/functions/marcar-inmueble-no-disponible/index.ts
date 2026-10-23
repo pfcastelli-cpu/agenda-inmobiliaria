@@ -18,6 +18,7 @@
 //     usó enviar-correo-cita, para que el evento se borre solo del calendario
 //     del cliente.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -335,10 +336,11 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, dominio_publico, plantilla_enlace_inmueble',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, dominio_publico, plantilla_enlace_inmueble, imagen_correo_url, color_principal, color_accion',
     )
     .eq('empresa_id', inmueble.empresa_id)
     .maybeSingle();
+  const marca = marcaCorreo(config);
 
   const modoPruebas = config?.correo_modo_pruebas !== false;
   const puedeEnviar = !!(config?.correo_smtp_host && config?.correo_smtp_password_secret_id);
@@ -395,9 +397,9 @@ Deno.serve(async (req) => {
     return `
       <tr><td style="padding:10px 0;border-top:1px solid #e6eaee">
         <div style="font-size:11.5px;color:#8492a6;text-transform:uppercase;letter-spacing:.04em">#${inm.numero_inmueble} · ${escaparHtml(inm.ciudad as string)}${inm.barrio ? ' · ' + escaparHtml(inm.barrio as string) : ''}</div>
-        <div style="font-size:15px;color:#1A2C45;font-weight:700;margin:2px 0">${escaparHtml(direccionLimpia)}</div>
-        <div style="font-size:14px;color:#00A9A5;font-weight:700;margin-bottom:6px">${escaparHtml(precio)}</div>
-        <a href="${linkPublico(inm.numero_inmueble as number)}" target="_blank" style="font-size:13px;color:#1A2C45;font-weight:600;text-decoration:underline">Ver este inmueble →</a>
+        <div style="font-size:15px;color:${marca.principal};font-weight:700;margin:2px 0">${escaparHtml(direccionLimpia)}</div>
+        <div style="font-size:14px;color:${marca.accion};font-weight:700;margin-bottom:6px">${escaparHtml(precio)}</div>
+        <a href="${linkPublico(inm.numero_inmueble as number)}" target="_blank" style="font-size:13px;color:${marca.principal};font-weight:600;text-decoration:underline">Ver este inmueble →</a>
       </td></tr>`;
   }
 
@@ -475,13 +477,14 @@ Deno.serve(async (req) => {
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
   <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
+    ${encabezadoImagen(marca, 'Tu visita fue cancelada')}
     <div style="padding:28px 26px 8px">
-      <h1 style="color:#1A2C45;font-size:20px;margin:0 0 4px">Tu visita fue cancelada</h1>
+      <h1 style="color:${marca.principal};font-size:20px;margin:0 0 4px">Tu visita fue cancelada</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 14px">Hola ${escaparHtml(fila.cliente_nombre) || ''}, te escribimos porque el inmueble que ibas a visitar${citaOriginal ? ` el ${escaparHtml(formatearFecha(citaOriginal.fecha))} a las ${escaparHtml(formatearHora(citaOriginal.hora_inicio.slice(0, 5)))}` : ''} (Nº ${inmueble.numero_inmueble}, ${escaparHtml(direccionInmueble)}${ciudadTexto ? ', ' + escaparHtml(ciudadTexto) : ''}) ${escaparHtml(etiquetaMotivo)}, así que ya no está disponible para visitas.</p>
       <p style="color:#526575;font-size:14px;margin:0 0 18px">Lamentamos mucho el inconveniente y las molestias que esto te pueda ocasionar. Tu cita quedó cancelada automáticamente y también se eliminó del calendario de tu teléfono.${detalle ? ' ' + escaparHtml(detalle) : ''}</p>
       ${
         similares.length
-          ? `<div style="font-size:13px;color:#1A2C45;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">Estos inmuebles pueden interesarte</div>
+          ? `<div style="font-size:13px;color:${marca.principal};font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">Estos inmuebles pueden interesarte</div>
       <table style="width:100%;border-collapse:collapse;margin-bottom:8px">${similares.map(filaSimilar).join('')}</table>`
           : ''
       }

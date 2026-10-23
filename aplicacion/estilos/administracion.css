@@ -80,3 +80,12 @@
 .ad button, .ad input, .ad select { border-radius: 4px 12px 12px 12px; }
 .ad-avatar { border-radius: 4px 14px 14px 14px; background: var(--empresa-principal, #1a2c45); color: var(--empresa-texto-principal, #fff); }
 .ad-note { border-radius: 4px 12px 12px 12px; background: var(--tema-tinte, #e3f8f7); }
+
+/* Configuración con riel lateral (escritorio): las secciones pasan a una columna a la izquierda */
+@media (min-width: 861px) {
+  .ad .ad-body:not([hidden]) { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 36px; align-items: start; margin-top: 8px; }
+  .ad-subnav { flex-direction: column; align-items: stretch; gap: 2px; border-bottom: 0; border-right: 1px solid #dbe4e9; padding: 8px 14px 8px 0; margin: 0; position: sticky; top: 12px; }
+  .ad .ad-subnav button { width: 100%; display: flex; align-items: center; justify-content: flex-start; text-align: left; min-height: 42px; border: 0; border-radius: 4px 12px 12px 4px; padding: 8px 14px; font-weight: 500; }
+  .ad .ad-subnav button[aria-pressed=true] { background: var(--tema-tinte, #e3f8f7); color: #1a2c45; font-weight: 700; box-shadow: inset 4px 0 0 var(--empresa-accion, #00a9a5); }
+  .ad .ad-subbody h2:first-child { margin-top: 0; }
+}

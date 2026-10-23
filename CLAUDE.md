@@ -217,9 +217,11 @@ bitácora completa sesión por sesión):
   Correos: `supabase/functions/_shared/marca-correo.ts` (imagen, colores) usado por enviar-correo-cita, -propietario, -informe,
   avisar-arrendatario, enviar-encuesta-cliente, gestion-accesos y recuperar-contrasena. `sql/011-marca-correos.sql` agrega
   `agenda_configuracion.imagen_correo_url` (campo nuevo en Configuración). ORDEN: aplicar el SQL 011 primero y luego
-  desplegar esas funciones (sus SELECT piden la columna). Faltan por migrar a la marca: portal-visita,
-  marcar-inmueble-no-disponible, enviar-solicitud-propietario, probar-correo-config; y las páginas públicas (reservar,
-  opinión, propietario, arrendatario) aún no cargan la paleta de la empresa (necesitan una RPC pública de marca por host).
+  desplegar TODAS las funciones de correo (las 11 que usan `_shared/marca-correo.ts`, incluidas portal-visita,
+  marcar-inmueble-no-disponible, enviar-solicitud-propietario y probar-correo-config; sus SELECT piden la columna). Las páginas
+  públicas (reservar, opinión, propietario, arrendatario) aún no cargan la paleta de la empresa (necesitan una RPC pública de
+  marca por host). Configuración usa riel lateral de secciones en escritorio. Para ver el panel de administrador sin sesión se
+  puede montar en el navegador de desarrollo con `iniciarAdministracion({membresia:{rol:'administrador',empresa:{...}}})`.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 
