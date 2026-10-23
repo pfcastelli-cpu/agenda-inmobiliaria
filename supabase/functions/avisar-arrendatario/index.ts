@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
   if (!interno && usuario) {
     const { data: miembro } = await admin
       .from('agenda_miembros')
-      .select('id')
+      .select('usuario_id')
       .eq('empresa_id', cita.empresa_id)
       .eq('usuario_id', usuario.id)
       .eq('activo', true)

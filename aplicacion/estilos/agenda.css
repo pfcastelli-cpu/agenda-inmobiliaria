@@ -452,3 +452,10 @@
 @media (min-width: 861px) {
   #visita-app .v-header .v-row { flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; }
 }
+
+/* Acciones de la cita: icono y texto alineados; en los paneles de confirmación, botones con forma de botón */
+#visita-app .v-actions button { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+#visita-app .v-cancelbox .v-actions { border-top: 0; padding-top: 0; }
+#visita-app .v-cancelbox .v-actions button { padding: 8px 16px; min-height: 40px; border-radius: 10px; border: 1px solid var(--v-line); font-weight: 600; }
+#visita-app .v-cancelbox .v-actions button.v-primary { background: var(--empresa-accion, #00a9a5); border-color: transparent; color: var(--empresa-texto, #111); font-weight: 700; }
+#visita-app .v-cancelbox .v-actions button.v-danger { border-color: currentColor; }
