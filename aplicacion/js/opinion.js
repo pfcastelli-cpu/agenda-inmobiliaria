@@ -1,4 +1,5 @@
 import { supabase, hayConfiguracionSupabase } from './cliente-supabase.js';
+import { aplicarMarcaPublica } from './marca-publica.js';
 
 const raiz = document.getElementById('pu-main');
 
@@ -271,4 +272,5 @@ function cablear() {
   if (enviar) enviar.addEventListener('click', enviarOpinion);
 }
 
+aplicarMarcaPublica();
 cargarEncuesta();

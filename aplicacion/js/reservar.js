@@ -1,4 +1,5 @@
 import { supabase, hayConfiguracionSupabase } from './cliente-supabase.js';
+import { aplicarMarcaPublica } from './marca-publica.js';
 
 const raiz = document.getElementById('pu-main');
 
@@ -690,6 +691,7 @@ function cablear() {
   if (reenviarBtn) reenviarBtn.addEventListener('click', enviarCodigoVerificacion);
 }
 
+aplicarMarcaPublica();
 const codigoInicial = numeroDesdeUrl();
 if (codigoInicial) {
   buscarInmueble(codigoInicial);

@@ -1,4 +1,5 @@
 import { supabase, hayConfiguracionSupabase } from './cliente-supabase.js';
+import { aplicarMarcaPublica } from './marca-publica.js';
 
 // Acuerdo de horario de una visita a un inmueble arrendado. Esta página la usan DOS personas con
 // enlaces distintos: el arrendatario (/arrendatario/<token>) y el cliente que visita
@@ -462,4 +463,5 @@ function cablear() {
   });
 }
 
+aplicarMarcaPublica();
 cargar();

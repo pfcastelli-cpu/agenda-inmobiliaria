@@ -219,8 +219,10 @@ bitácora completa sesión por sesión):
   `agenda_configuracion.imagen_correo_url` (campo nuevo en Configuración). (Ya hecho; orden de referencia: SQL 011 primero y luego
   desplegar TODAS las funciones de correo (las 11 que usan `_shared/marca-correo.ts`, incluidas portal-visita,
   marcar-inmueble-no-disponible, enviar-solicitud-propietario y probar-correo-config; sus SELECT piden la columna; el `_shared/` se empaqueta pasando el archivo como `../_shared/marca-correo.ts` en el deploy). No se probó un envío real con el diseño nuevo. Las páginas
-  públicas (reservar, opinión, propietario, arrendatario) aún no cargan la paleta de la empresa (necesitan una RPC pública de
-  marca por host). Configuración usa riel lateral de secciones en escritorio. Para ver el panel de administrador sin sesión se
+  públicas (reservar, opinión, propietario, arrendatario) cargan logo grande + paleta de la empresa con `js/marca-publica.js`, que llama a la RPC pública
+  `agenda_marca_publica(p_empresa_slug, p_host)` (`sql/012-marca-publica.sql`, SOLO LECTURA: nombre, logo y colores). OJO: el SQL 012 está escrito pero NO aplicado
+  en Supabase hasta que Felipe lo autorice; sin él las páginas públicas quedan como antes (no se rompe nada). El logo (`logo_url`) se ve grande, sobre
+  placa blanca, en la barra del panel, el menú lateral y las páginas públicas. Configuración usa riel lateral de secciones en escritorio. Para ver el panel de administrador sin sesión se
   puede montar en el navegador de desarrollo con `iniciarAdministracion({membresia:{rol:'administrador',empresa:{...}}})`.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".

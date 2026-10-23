@@ -249,3 +249,8 @@
 #pub-app .pu-slot, #pub-app .pu-option { border-radius: 4px 10px 10px 10px; }
 #pub-app .pu-slot.activo, #pub-app .pu-option.activa { color: var(--empresa-texto, #06231f); }
 #pub-app .pu-confirmacion .pu-icono { border-radius: 4px 18px 18px 18px; }
+
+/* Logo de la empresa en el encabezado de las páginas públicas: grande, sobre placa blanca para que se lea con cualquier color */
+#pub-app .pu-head > div { display: flex; align-items: center; min-width: 0; }
+#pub-app .pu-logo { display: block; height: 64px; width: auto; max-width: min(300px, 62vw); object-fit: contain; background: #fff; padding: 8px 14px; border-radius: 4px 14px 14px 14px; }
+@media (max-width: 560px) { #pub-app .pu-logo { height: 52px; } }
