@@ -443,3 +443,7 @@
 
 #visita-app .v-header .v-logo.v-logo-img img { max-height: 76px; }
 @media (max-width: 860px) { #visita-app .v-header .v-logo.v-logo-img img { max-height: 48px; } }
+
+/* Aviso de modo de pruebas (correo): franja fija arriba */
+#visita-app #v-aviso-pruebas { position: fixed; z-index: 60; top: 0; left: 0; right: 0; padding: 6px 14px; background: #fef3c7; color: #7c4a03; font-size: 13px; font-weight: 600; text-align: center; border-bottom: 1px solid #f2c46a; }
+#visita-app.v-con-pruebas { padding-top: 32px; }

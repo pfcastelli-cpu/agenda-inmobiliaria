@@ -242,6 +242,7 @@ bitácora completa sesión por sesión):
   duplicados (<2 min) y con tiempo límite. PENDIENTE DE DECIDIR (no implementado): aviso de privacidad con casilla obligatoria en Reservar (Ley 1581), botón para que el cliente cambie/cancele su visita,
   aviso al asesor cuando el arrendatario propone/acepta/cancela, recordatorio por correo 24 h antes, banner visible de "modo de pruebas", comentario obligatorio al marcar realizada, y CTAs de captación
   de otro inmueble en correos informativos (nunca en acceso/recuperar contraseña/cancelaciones).
+- Banner fijo "Modo de pruebas" en la agenda interna (`aplicarAvisoModoPruebas` en agenda-real.js, lee `correo_modo_pruebas`/`correo_pruebas_destino`; se ve mientras el modo siga activo). Publicado el 23-oct; NO verificado con sesión.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 

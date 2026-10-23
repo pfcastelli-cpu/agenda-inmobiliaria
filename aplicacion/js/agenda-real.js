@@ -245,7 +245,34 @@ async function cargarDominioPublico() {
   };
   aplicarVisibilidadEquipo();
   aplicarLogoEncabezado();
+  aplicarAvisoModoPruebas();
   return configPublicaCache;
+}
+
+// Franja fija y visible mientras el correo está en modo de pruebas: nadie debe creer que el cliente o el
+// propietario reciben los correos cuando en realidad todos llegan a un solo buzón de pruebas.
+// Se pide aparte (y con try/catch) para que, si esas columnas no se pueden leer, la agenda siga igual.
+async function aplicarAvisoModoPruebas() {
+  const app = root();
+  if (!app || !contexto) return;
+  app.querySelector('#v-aviso-pruebas')?.remove();
+  app.classList.remove('v-con-pruebas');
+  try {
+    const { data } = await supabase
+      .from('agenda_configuracion')
+      .select('correo_modo_pruebas, correo_pruebas_destino')
+      .eq('empresa_id', contexto.empresaId)
+      .maybeSingle();
+    if (!data || data.correo_modo_pruebas === false) return;
+    const aviso = document.createElement('div');
+    aviso.id = 'v-aviso-pruebas';
+    aviso.setAttribute('role', 'status');
+    aviso.textContent = `Modo de pruebas: los correos NO llegan a clientes ni propietarios; todos van a ${data.correo_pruebas_destino || 'el correo de pruebas'}.`;
+    app.prepend(aviso);
+    app.classList.add('v-con-pruebas');
+  } catch {
+    // sin aviso
+  }
 }
 
 function aplicarLogoEncabezado() {
