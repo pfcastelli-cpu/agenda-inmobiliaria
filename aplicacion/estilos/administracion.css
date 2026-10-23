@@ -89,3 +89,18 @@
   .ad .ad-subnav button[aria-pressed=true] { background: var(--tema-tinte, #e3f8f7); color: #1a2c45; font-weight: 700; box-shadow: inset 4px 0 0 var(--empresa-accion, #00a9a5); }
   .ad .ad-subbody h2:first-child { margin-top: 0; }
 }
+
+/* Interruptor (p. ej. modo de pruebas de correo): las reglas del acceso (#pat-access label/input) pesan más que
+   las de .ad y lo desarmaban; se reafirman aquí con el mismo peso. */
+#pat-access .ad .ad-toggle { display: flex; flex-direction: row; align-items: center; gap: 12px; margin: 0; position: relative; cursor: pointer; }
+#pat-access .ad .ad-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; min-height: 0; padding: 0; border: 0; }
+#pat-access .ad .ad-toggle-track { display: block; position: relative; flex: 0 0 46px; width: 46px; height: 26px; border-radius: 20px; }
+#pat-access .ad .ad-toggle-thumb { display: block; }
+#pat-access .ad .ad-toggle input:focus-visible + .ad-toggle-track { outline: 3px solid var(--empresa-accion, #00a9a5); outline-offset: 2px; }
+
+/* Casillas y botones de opción normales dentro del panel: tamaño natural y en fila con su texto
+   (el estilo de inputs del acceso las estiraba al ancho completo). */
+#pat-access .ad label:has(> input[type=checkbox]:not([name=correo_modo_pruebas])),
+#pat-access .ad label:has(> input[type=radio]) { display: flex; flex-direction: row; align-items: center; gap: 10px; margin: 0; cursor: pointer; }
+#pat-access .ad input[type=checkbox]:not([name=correo_modo_pruebas]),
+#pat-access .ad input[type=radio] { width: 20px; height: 20px; min-width: 20px; min-height: 0; flex: 0 0 20px; padding: 0; margin: 0; accent-color: var(--empresa-accion, #00a9a5); }
