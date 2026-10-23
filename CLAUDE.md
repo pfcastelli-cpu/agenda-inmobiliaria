@@ -208,7 +208,7 @@ bitácora completa sesión por sesión):
   mismo correo; acción `vincular_asesor` para accesos/fichas que ya existían. Accesos muestra
   "✓ Es asesor" o el botón "Activar también como asesor" (vale para administrador y coordinador);
   Equipo muestra "Vincular con ese acceso" cuando hay un acceso con el mismo correo sin vincular.
-- Rediseño y marca por empresa (23-oct-2026; SQL 011 APLICADO y las 11 funciones de correo DESPLEGADAS el 23-oct; el front end aún sin push): tipografía Bricolage Grotesque (títulos) + Hanken
+- Rediseño y marca por empresa (23-oct-2026; TODO APLICADO, DESPLEGADO Y PUBLICADO: SQL 011-014, las 11 funciones de correo y el front end): tipografía Bricolage Grotesque (títulos) + Hanken
   Grotesk (texto) en lugar de Poppins; distribución nueva de la agenda (final de `estilos/agenda.css`): menú lateral de color de
   marca en escritorio, barra inferior fija en celular (<=860px), citas como línea de tiempo y cifras del día sin caja; mismo lenguaje en Inmuebles/Equipo (fichas con esquina recta y filo de color), Configuración (pestañas subrayadas), acceso en dos paneles (marca | formulario, vía `:has()` en acceso.css) y páginas públicas (franja delgada, tarjetas con filo de acento); todos los CSS leen la marca de variables (`--empresa-principal/-accion/-texto*`,
   `--tema-fondo/-tinte/-claro`) que aplica `aplicacion/js/paletas.js`. Administración → Configuración tiene 7 paletas
@@ -220,21 +220,23 @@ bitácora completa sesión por sesión):
   desplegar TODAS las funciones de correo (las 11 que usan `_shared/marca-correo.ts`, incluidas portal-visita,
   marcar-inmueble-no-disponible, enviar-solicitud-propietario y probar-correo-config; sus SELECT piden la columna; el `_shared/` se empaqueta pasando el archivo como `../_shared/marca-correo.ts` en el deploy). No se probó un envío real con el diseño nuevo. Las páginas
   públicas (reservar, opinión, propietario, arrendatario) cargan logo grande + paleta de la empresa con `js/marca-publica.js`, que llama a la RPC pública
-  `agenda_marca_publica(p_empresa_slug, p_host)` (`sql/012-marca-publica.sql`, SOLO LECTURA: nombre, logo y colores). OJO: el SQL 012 está escrito pero NO aplicado
-  en Supabase hasta que Felipe lo autorice; sin él las páginas públicas quedan como antes (no se rompe nada). El logo (`logo_url`) se ve grande, sobre
+  `agenda_marca_publica(p_empresa_slug, p_host)` (`sql/012-marca-publica.sql`, SOLO LECTURA: nombre, logo y colores). SQL 012 YA APLICADO. El logo (`logo_url`, ahora `https://citas.patrimonios.co/logo-patrimonios.png`, recortado sin márgenes, vive en
+  `aplicacion/public/`; el original anterior era `https://adminpaxzu.patrimonios.co/uploads/images/LogoGoProR.png`, 1920x1080 con la marca diminuta) se ve grande, sobre
   placa blanca, en la barra del panel, el menú lateral y las páginas públicas. Configuración usa riel lateral de secciones en escritorio. Para ver el panel de administrador sin sesión se
   puede montar en el navegador de desarrollo con `iniciarAdministracion({membresia:{rol:'administrador',empresa:{...}}})`.
-- 23-oct-2026 (tarde), SIN publicar del todo: (1) Rentando ofrece por defecto TODO el horario de la empresa (`sql/013`, YA aplicado en Supabase: se quitó el
+- 23-oct-2026 (tarde), YA PUBLICADO: (1) Rentando ofrece por defecto TODO el horario de la empresa (`sql/013`, YA aplicado en Supabase: se quitó el
   bloque "sin horario especial => nada" de `agenda_sugerir_horarios`; el horario especial sigue siendo opcional y se respeta si existe). (2) Alerta de ubicación
-  dudosa (`sql/014`, funciones `agenda_ubicaciones_dudosas` / `_calc` / `agenda_ols_plano`, aplicadas en su versión inicial; el AJUSTE del archivo —sin diagonales,
-  umbral 3,5 km en Bogotá— quedó escrito en el .sql pero NO aplicado en Supabase porque el sistema bloqueó esa migración): ajusta por ciudad un plano
+  dudosa (`sql/014`, funciones `agenda_ubicaciones_dudosas` / `_calc` / `agenda_ols_plano`, versión final YA APLICADA: sin diagonales, umbral 3,5 km en Bogotá y 20 km en otras ciudades, exige >=4 calles y carreras distintas; hoy marca 71, 73, 350, 399, 448, 391 y, por distancia a la ciudad, 420): ajusta por ciudad un plano
   latitud/longitud = f(calle, carrera) con los inmuebles ya cargados y marca los que quedan lejos de donde su dirección dice; sale en Inmuebles (aviso ámbar) y en
   Administración → Ciudades → Calidad de geolocalización. (3) Pendientes ya no pisa la pestaña actual: `render()` pinta cada vista en un contenedor nuevo. (4) Al agendar
   una visita en un inmueble Rentando, `enviar-correo-cita` llama a `avisar-arrendatario` (llamada interna con service role, sin sesión) para avisar al arrendatario solo;
   en modo de pruebas, si no hay correo de arrendatario se manda igual al correo de pruebas. El portal de acuerdo de horario manda `sin_aviso_arrendatario` para no
   duplicar. (5) Correos al propietario y al arrendatario llevan botón "Ver el inmueble en nuestro sitio" (`plantilla_enlace_inmueble`). (6) `correo_pruebas_destino` =
-  pf.castelli@patrimonios.co (modo de pruebas sigue activo). Las funciones `avisar-arrendatario`, `enviar-correo-cita`, `enviar-correo-propietario` y `portal-visita`
-  con estos cambios están en el repo; verificar si se desplegaron antes de dar por hecho el aviso al arrendatario.
+  pf.castelli@patrimonios.co (modo de pruebas sigue activo). PROBADO EN PRODUCCIÓN el 23-oct con correo en modo pruebas (llegan a pf.castelli@patrimonios.co): reserva pública en el inmueble 127 (Rentando sin horario: ofrece
+  8:00-4:00 p. m.), correos al cliente/propietario/arrendatario, propuesta de otra hora, aceptación, correos de "cambió de hora" (parámetro `reagendada`,
+  SEQUENCE del .ics sube) y cancelación por el arrendatario, y el formulario "Pedir una asesoría" del informe del propietario. Citas de prueba que quedaron
+  CANCELADAS (no borradas): «Prueba Claude (Rentando 127)» y «Prueba Claude 2 (Rentando 127)». NO probado: la agenda interna (exige sesión) ni la encuesta.
+  Netlify: si el sitio no se actualiza tras un push, revisar créditos (se agotaron el 23-oct; Felipe los renovó).
 - 23-oct-2026, revisión con 5 expertos (diseño/textos, marketing, jurídico, personas reales, ingeniería) y correcciones ya hechas en el repo: contraste de textos en correos, `lang="es"` + viewport en todas las plantillas,
   botones de Waze/Maps/WhatsApp con mejor contraste, textos más cálidos al arrendatario, mensajes de error unificados y botones táctiles de 44-48 px en las páginas públicas, aviso al arrendatario sin
   duplicados (<2 min) y con tiempo límite. PENDIENTE DE DECIDIR (no implementado): aviso de privacidad con casilla obligatoria en Reservar (Ley 1581), botón para que el cliente cambie/cancele su visita,
