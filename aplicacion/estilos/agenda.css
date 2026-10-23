@@ -447,3 +447,8 @@
 /* Aviso de modo de pruebas (correo): franja fija arriba */
 #visita-app #v-aviso-pruebas { position: fixed; z-index: 60; top: 0; left: 0; right: 0; padding: 6px 14px; background: #fef3c7; color: #7c4a03; font-size: 13px; font-weight: 600; text-align: center; border-bottom: 1px solid #f2c46a; }
 #visita-app.v-con-pruebas { padding-top: 32px; }
+
+/* Menú lateral (escritorio): logo arriba y nombre debajo, para que el texto no se monte sobre el contenido */
+@media (min-width: 861px) {
+  #visita-app .v-header .v-row { flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; }
+}

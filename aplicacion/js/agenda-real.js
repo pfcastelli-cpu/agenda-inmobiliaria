@@ -1551,6 +1551,12 @@ function adjuntarEventos(rootEl) {
   });
 
   rootEl.addEventListener('click', async (e) => {
+    // El menú lateral debe responder desde cualquier vista (también desde Pendientes, que maneja sus propios botones).
+    const botonMenu = e.target.closest('button[data-view]');
+    if (botonMenu && !botonMenu.disabled && rootEl.contains(botonMenu)) {
+      setView(botonMenu.dataset.view);
+      return;
+    }
     if (state.view !== 'agenda' && state.view !== 'interna' && state.view !== 'properties' && state.view !== 'team' && state.view !== 'informes' && state.view !== 'bitacora' && state.view !== 'reserva' && state.view !== 'exito') return;
     const b = e.target.closest('button');
     if (!b || b.disabled || !rootEl.contains(b)) return;
