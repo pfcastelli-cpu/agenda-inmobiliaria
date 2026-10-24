@@ -365,7 +365,7 @@ async function confirmarProponer() {
     if (cambioDirecto()) {
       await llamar('reagendar', { fecha: state.fechaSel, hora: state.horaSel });
       await recargar();
-      state.mensaje = `Listo: tu visita quedó para el ${fechaLarga(state.cita.fecha)} a las ${hora12(state.cita.hora_inicio)}. Te enviamos la confirmación por correo.`;
+      state.mensaje = `Listo: tu visita quedó para el ${fechaLarga(state.cita.fecha)} a las ${hora12(state.cita.hora_inicio).replace(/\.$/, '')}. Te enviamos la confirmación por correo.`;
       state.ocupado = false;
       state.vista = 'resumen';
       render();
