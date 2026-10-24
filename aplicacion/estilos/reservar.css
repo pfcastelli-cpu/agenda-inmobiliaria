@@ -266,3 +266,7 @@
 /* Logo más grande (la imagen ya viene recortada, sin márgenes vacíos) */
 #pub-app .pu-logo { height: 84px; max-width: min(340px, 64vw); }
 @media (max-width: 560px) { #pub-app .pu-logo { height: 58px; } }
+
+@media (max-width: 560px) {
+  #pub-app h2 { font-size: 24px; overflow-wrap: anywhere; }
+}

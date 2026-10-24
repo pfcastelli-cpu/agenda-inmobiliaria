@@ -267,6 +267,11 @@ bitácora completa sesión por sesión):
   disponibles), tope opcional, confirmación, avance y botón Detener; llama de a 2 a la Edge Function ya existente `enviar-informe-propietario`; omite inmuebles sin correo de propietario
   (`agenda_propietarios`); en modo de pruebas todo va a `correo_pruebas_destino`. (3) CSS para celular (<=860px, final de `agenda.css`): las tarjetas de Inmuebles se apilan, el texto
   largo se parte en líneas y nada se sale de la pantalla (antes se cortaban a la derecha en iPhone).
+- 24-oct-2026 (sesión 3, revisión móvil), COMMITEADO, sin push: barrido de todo el sitio en 320/390/768/820/1024 px con un Supabase simulado (fuera del repo) y un detector de desbordes.
+  Cambios: tablas anchas de Informes/Bitácora/Administración se ven como tarjetas hasta 860 px (`js/tablas-moviles.js` pone `data-label` en cada celda; tablas con clase
+  `v-tabla-res` o `ad-tabla`; CSS al final de `agenda.css`); filtros de Bitácora en 2 columnas; barra inferior con los 6 botones sin deslizar; hora de la cita sin partirse;
+  campos a 16 px en pantallas táctiles (`pointer: coarse`) para que iPhone/iPad no hagan zoom al tocarlos; `code` largo parte línea. Convención: tabla nueva = clase `v-tabla-res`
+  (con `<thead>`) para que salga bien en celular. No probado en un iPhone/iPad real.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 

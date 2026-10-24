@@ -1358,7 +1358,7 @@ async function renderInformes() {
     ${
       conAtencion.length === 0
         ? `<div class="v-empty" style="margin-top:12px">${icon('check')}<h3>Todo al día</h3><p style="margin-top:8px">Ningún inmueble disponible supera el umbral configurado sin citas.</p></div>`
-        : `<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;min-width:640px">
+        : `<div style="overflow-x:auto;margin-top:12px"><table class="v-tabla-res" style="width:100%;border-collapse:collapse;min-width:640px">
             <thead><tr style="text-align:left;border-bottom:1px solid var(--v-line)"><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">#</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Inmueble</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Oferta</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Citas</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Última cita</th><th></th></tr></thead>
             <tbody>${conAtencion.slice(0, LIMITE_ATENCION).map(filaAtencion).join('')}</tbody>
           </table></div>
@@ -1380,7 +1380,7 @@ async function renderInformes() {
     ${
       tablaInmuebles.length === 0
         ? `<p class="v-muted">Todavía no hay citas de cliente registradas.</p>`
-        : `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:560px">
+        : `<div style="overflow-x:auto"><table class="v-tabla-res" style="width:100%;border-collapse:collapse;min-width:560px">
             <thead><tr style="text-align:left;border-bottom:1px solid var(--v-line)"><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">#</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Inmueble</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Oferta</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted);text-align:center">Citas</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted);text-align:center">Interesados (aprox.)</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Última cita</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)"></th></tr></thead>
             <tbody>${tablaInmuebles.slice(0, LIMITE_TABLA).map(filaTablaInmueble).join('')}</tbody>
           </table></div>
@@ -1588,11 +1588,11 @@ async function renderBitacora() {
     ${state.bitacoraFilas.length === 0
       ? `<div class="v-empty" style="margin-top:16px">${icon('clipboard-list')}<h3>Sin resultados</h3><p style="margin-top:8px">No hay registros para estos filtros.</p></div>`
       : state.bitacoraSub === 'citas'
-        ? `<div style="overflow-x:auto;margin-top:16px"><table style="width:100%;border-collapse:collapse;min-width:720px">
+        ? `<div style="overflow-x:auto;margin-top:16px"><table class="v-tabla-res" style="width:100%;border-collapse:collapse;min-width:720px">
             <thead><tr style="text-align:left;border-bottom:1px solid var(--v-line)"><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Cuándo</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Acción</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Inmueble / cita</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Asesor</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Quién lo hizo</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Detalle</th></tr></thead>
             <tbody>${state.bitacoraFilas.map(filaCitaBitacora).join('')}</tbody>
           </table></div>`
-        : `<div style="overflow-x:auto;margin-top:16px"><table style="width:100%;border-collapse:collapse;min-width:820px">
+        : `<div style="overflow-x:auto;margin-top:16px"><table class="v-tabla-res" style="width:100%;border-collapse:collapse;min-width:820px">
             <thead><tr style="text-align:left;border-bottom:1px solid var(--v-line)"><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Cuándo</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Inmueble</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Asesor</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Cliente</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted);text-align:center">Calificación</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Impresión / intención / motivo</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Comentario</th><th style="padding:8px 10px;font-size:12.5px;color:var(--v-muted)">Estado</th></tr></thead>
             <tbody>${state.bitacoraFilas.map(filaEncuestaBitacora).join('')}</tbody>
           </table></div>`

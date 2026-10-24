@@ -9,6 +9,7 @@ import {
 } from './sesion.js';
 import { esEnlaceDeInvitacionORecuperacion } from './cliente-supabase.js';
 import { detenerAgendaReal, iniciarAgendaReal } from './agenda-real.js';
+import './tablas-moviles.js';
 
 const raiz = document.getElementById('pat-access');
 const login = document.getElementById('pa-login');
