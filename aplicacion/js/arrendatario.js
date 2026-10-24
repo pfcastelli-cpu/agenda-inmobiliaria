@@ -18,6 +18,8 @@ const state = {
   vista: 'resumen', // resumen | proponer | cancelar | cancelada
   token: null,
   rol: 'arrendatario',
+  rentando: true,
+  tipo: 'inmueble',
   errorMsg: '',
   hoy: '',
   cita: null,
@@ -70,6 +72,8 @@ function hora12(h) {
 }
 
 const esArrendatario = () => state.rol === 'arrendatario';
+// El cliente cambia la hora directo (sin acuerdo) cuando en el inmueble no vive un arrendatario.
+const cambioDirecto = () => !esArrendatario() && !state.rentando;
 
 async function llamar(accion, extra = {}) {
   const { data, error } = await supabase.functions.invoke('portal-visita', { body: { token: state.token, accion, ...extra } });
@@ -90,6 +94,8 @@ async function llamar(accion, extra = {}) {
 
 function aplicarDatos(d) {
   state.rol = d.rol;
+  state.rentando = d.rentando !== false;
+  state.tipo = d.tipo || 'inmueble';
   state.hoy = d.hoy;
   state.cita = d.cita;
   state.inmueble = d.inmueble;
@@ -132,7 +138,7 @@ function tarjetaVisita() {
   const i = state.inmueble;
   return `
     <div class="pu-card">
-      <h2 style="margin-top:0">${esArrendatario() ? 'Visita programada en tu vivienda' : 'Tu visita al inmueble'}</h2>
+      <h2 style="margin-top:0">${esArrendatario() ? `Visita programada en tu ${esc(state.tipo)}` : 'Tu visita al inmueble'}</h2>
       <p style="font-size:13px">${i.direccion ? esc(i.direccion) : 'Inmueble ' + esc(i.numero)}${i.zona ? ' · ' + esc(i.zona) : ''}</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px">
         <span class="pu-badge">📅 ${esc(fechaLarga(c.fecha))}</span>
@@ -173,7 +179,7 @@ function bloquePropuesta() {
       <p style="margin-bottom:0">${
         esArrendatario()
           ? 'Si aceptas, la visita pasa a esta hora y queda en firme.'
-          : 'El inmueble está arrendado y habitado, y el arrendatario no puede recibirte en la hora acordada. La visita solo cambia si aceptas.'
+          : 'El inmueble está arrendado y ocupado, y el arrendatario no puede recibirte en la hora acordada. La visita solo cambia si aceptas.'
       }</p>
       ${proximaHora}
       ${errorBloque()}
@@ -185,11 +191,22 @@ function bloquePropuesta() {
 
 function bloqueAcciones() {
   if (!state.cita.vigente) {
-    return `<div class="pu-card"><p style="margin:0">Esta visita ya pasó, así que no se puede cambiar.${esArrendatario() ? ' Abajo puedes seguir ajustando el horario en que se muestra tu vivienda.' : ''}</p></div>`;
+    return `<div class="pu-card"><p style="margin:0">Esta visita ya pasó, así que no se puede cambiar.${esArrendatario() ? ' Abajo puedes seguir ajustando el horario en que se muestra tu ${state.tipo}.' : ''}</p></div>`;
   }
   if (state.propuesta) return bloquePropuesta();
   if (!esArrendatario()) {
-    return `<div class="pu-card"><p style="margin:0">El inmueble está arrendado y habitado. Si el arrendatario necesita otra hora, te escribiremos con una propuesta y la visita solo cambiará si tú aceptas.</p></div>`;
+    // El cliente puede cambiar o cancelar su visita. Con arrendatario adentro, el cambio de hora es un acuerdo.
+    return `
+    <div class="pu-card">
+      <h3 style="margin-top:0">¿Necesitas cambiar tu visita?</h3>
+      <p>${
+        state.rentando
+          ? 'El inmueble está arrendado y ocupado: si propones otra hora, el arrendatario debe aceptarla y la visita no cambia hasta entonces. Si el arrendatario necesita otra hora, te escribiremos con una propuesta y solo cambia si tú aceptas.'
+          : 'Elige otra hora disponible (ya tiene en cuenta la agenda del asesor). El cambio queda en firme al instante y te enviamos la confirmación por correo.'
+      }</p>
+      <button class="pu-main" type="button" id="ar-ir-proponer">${state.rentando ? 'Proponer otra hora' : 'Cambiar la hora'}</button>
+      <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario}">Cancelar mi visita</button>
+    </div>`;
   }
   return `
     <div class="pu-card">
@@ -207,7 +224,7 @@ function bloqueHorarioPermitido() {
     .join('');
   return `
     <div class="pu-card">
-      <h3 style="margin-top:0">Cuándo se puede mostrar tu vivienda</h3>
+      <h3 style="margin-top:0">Cuándo se puede mostrar tu ${esc(state.tipo)}</h3>
       <p>Estos días y horas se usan para <strong>todas las visitas futuras</strong>. El sistema los combina con la jornada de los asesores, así que solo se ofrecen horarios en los que hay un asesor libre.</p>
       <h3 class="pu-question">Días</h3>
       <div class="pu-options" id="ar-dias">${dias}</div>
@@ -251,7 +268,7 @@ function vistaProponer() {
             `<div class="pu-fecha ${iso(f) === state.fechaSel ? 'activa' : ''}" data-fecha="${iso(f)}" role="button" tabindex="0"><span>${DIAS_CORTO[f.getDay()]}</span><strong>${f.getDate()}</strong><span>${MESES[f.getMonth()].slice(0, 3)}</span></div>`,
         )
         .join('')}</div>`
-    : `<p class="pu-vacio">No hay días permitidos configurados. Actualiza primero el horario en que se puede mostrar tu vivienda.</p>`;
+    : `<p class="pu-vacio">No hay días permitidos configurados. Actualiza primero el horario en que se puede mostrar tu ${esc(state.tipo)}.</p>`;
   let slots = '';
   if (state.fechaSel) {
     if (state.horas === null) slots = `<div class="pu-spinner">Buscando horarios…</div>`;
@@ -264,12 +281,12 @@ function vistaProponer() {
   return `
     ${tarjetaVisita()}
     <div class="pu-card">
-      <h3 style="margin-top:0">Elige la hora que propones</h3>
-      <p>Solo aparecen horas en las que un asesor puede atender${esArrendatario() ? ' y que están dentro del horario permitido de tu vivienda' : ''}. ${esArrendatario() ? 'La persona interesada' : 'El arrendatario'} deberá aceptarla; la visita no cambia hasta entonces.</p>
+      <h3 style="margin-top:0">${cambioDirecto() ? 'Elige la nueva hora de tu visita' : 'Elige la hora que propones'}</h3>
+      <p>Solo aparecen horas en las que un asesor puede atender${esArrendatario() ? ` y que están dentro del horario permitido de tu ${esc(state.tipo)}` : ''}. ${cambioDirecto() ? 'Al confirmar, tu visita pasa a esa hora y te enviamos la confirmación por correo.' : `${esArrendatario() ? 'La persona interesada' : 'El arrendatario'} deberá aceptarla; la visita no cambia hasta entonces.`}</p>
       ${strip}
       ${slots}
       ${errorBloque()}
-      <button class="pu-main" type="button" id="ar-confirmar-proponer" ${!state.horaSel || state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Enviando…' : state.horaSel ? `Proponer ${esc(fechaLarga(state.fechaSel))}, ${esc(hora12(state.horaSel))}` : 'Elige un horario'}</button>
+      <button class="pu-main" type="button" id="ar-confirmar-proponer" ${!state.horaSel || state.ocupado ? 'disabled' : ''}>${state.ocupado ? (cambioDirecto() ? 'Cambiando…' : 'Enviando…') : state.horaSel ? `${cambioDirecto() ? 'Cambiar a' : 'Proponer'} ${esc(fechaLarga(state.fechaSel))}, ${esc(hora12(state.horaSel))}` : 'Elige un horario'}</button>
       <button class="pu-main" type="button" id="ar-volver" style="${estiloSecundario}">Volver</button>
     </div>`;
 }
@@ -278,12 +295,16 @@ function vistaCancelar() {
   return `
     ${tarjetaVisita()}
     <div class="pu-card">
-      <h3 style="margin-top:0">¿Cancelar esta visita?</h3>
-      <p>Avisaremos a la persona interesada para que busque otro horario. Si solo necesitas otra hora, mejor usa "Proponer otra hora".</p>
+      <h3 style="margin-top:0">${esArrendatario() ? '¿Cancelar esta visita?' : '¿Cancelar tu visita?'}</h3>
+      <p>${
+        esArrendatario()
+          ? 'Avisaremos a la persona interesada para que busque otro horario. Si solo necesitas otra hora, mejor usa "Proponer otra hora".'
+          : `Avisaremos al propietario${state.rentando ? ' y al arrendatario' : ''} y la visita se quitará del calendario de tu teléfono. Si solo necesitas otra hora, mejor cámbiala.`
+      }</p>
       <label for="ar-motivo">Motivo (opcional)</label>
-      <textarea id="ar-motivo" rows="3" maxlength="300" placeholder="Ej: ese día no estaremos en casa">${esc(state.motivo)}</textarea>
+      <textarea id="ar-motivo" rows="3" maxlength="300" placeholder="${esArrendatario() ? 'Ej: ese día no estaremos en casa' : 'Ej: ya encontré otro inmueble'}">${esc(state.motivo)}</textarea>
       ${errorBloque()}
-      <button class="pu-main" type="button" id="ar-confirmar-cancelar" style="background:#b3261e;color:#fff" ${state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Cancelando…' : 'Sí, cancelar la visita'}</button>
+      <button class="pu-main" type="button" id="ar-confirmar-cancelar" style="background:#b3261e;color:#fff" ${state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Cancelando…' : esArrendatario() ? 'Sí, cancelar la visita' : 'Sí, cancelar mi visita'}</button>
       <button class="pu-main" type="button" id="ar-volver" style="${estiloSecundario}">No, volver</button>
     </div>`;
 }
@@ -293,7 +314,12 @@ function vistaCancelada() {
     <div class="pu-confirmacion">
       <div class="pu-icono">✓</div>
       <h2>${state.recienCancelada ? 'Visita cancelada' : 'Esta visita está cancelada'}</h2>
-      <p>${state.recienCancelada ? 'Ya avisamos a la persona interesada.' : 'Ya no hay nada que hacer con este enlace para esta visita.'}</p>
+      <p>${
+        state.recienCancelada
+          ? esArrendatario() ? 'Ya avisamos a la persona interesada.' : 'Te enviamos un correo de constancia. Cuando quieras, puedes agendar otra visita.'
+          : 'Ya no hay nada que hacer con este enlace para esta visita.'
+      }</p>
+      ${!esArrendatario() && state.inmueble?.numero ? `<p><a class="pu-main" href="/inmuebles/${esc(state.inmueble.numero)}" style="display:block;text-align:center;text-decoration:none">Agendar otro horario</a></p>` : ''}
     </div>
     ${exito()}${bloqueHorarioPermitido()}`;
 }
@@ -336,6 +362,16 @@ async function confirmarProponer() {
   state.errorForm = '';
   render();
   try {
+    if (cambioDirecto()) {
+      await llamar('reagendar', { fecha: state.fechaSel, hora: state.horaSel });
+      await recargar();
+      state.mensaje = `Listo: tu visita quedó para el ${fechaLarga(state.cita.fecha)} a las ${hora12(state.cita.hora_inicio)}. Te enviamos la confirmación por correo.`;
+      state.ocupado = false;
+      state.vista = 'resumen';
+      render();
+      window.scrollTo({ top: 0 });
+      return;
+    }
     await llamar('proponer', { fecha: state.fechaSel, hora: state.horaSel });
     await recargar();
     state.mensaje = `Enviamos tu propuesta (${fechaLarga(state.propuesta?.fecha || state.fechaSel)}, ${hora12(state.propuesta?.hora_inicio || state.horaSel)}). La visita solo cambia cuando ${esArrendatario() ? 'la persona interesada' : 'el arrendatario'} la acepte.`;

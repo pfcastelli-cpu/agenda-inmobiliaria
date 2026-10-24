@@ -451,9 +451,13 @@ function root() {
 function main() {
   return root().querySelector('#v-main');
 }
+let toastTimer = null;
 function toast(texto) {
   const t = root().querySelector('#v-toast');
   if (t) t.textContent = texto || '';
+  // El aviso se borra solo (antes se quedaba pegado hasta cambiar de pestaña).
+  clearTimeout(toastTimer);
+  if (texto) toastTimer = setTimeout(() => { const el = root()?.querySelector('#v-toast'); if (el) el.textContent = ''; }, 9000);
 }
 function refreshIcons() {
   createIcons({ icons, attrs: { 'stroke-width': 1.8 } });
@@ -521,6 +525,22 @@ function citaCard(c) {
     ${state.cancelId === c.id ? `<div class="v-cancelbox">${esCaptacion ? 'Esta es una cita de captación con prioridad total. ' : ''}¿Cancelar esta ${esInterna ? 'actividad' : 'visita'} y liberar el horario?<div class="v-actions"><button class="v-danger" data-confirmarcancelar="${c.id}">Sí, cancelar</button><button data-mantener="${c.id}">Conservar</button></div></div>` : ''}
     ${state.completarId === c.id ? `<div class="v-cancelbox"><label class="v-field">¿Qué dijo el cliente? (para el informe al propietario)<textarea id="v-feedback-texto" class="v-input" rows="3" placeholder="Ej: le gustó mucho, va a decidir con su familia…"></textarea></label><div class="v-actions"><button class="v-primary" data-guardarrealizada="${c.id}">Guardar y marcar como realizada</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
   </div></article>`;
+}
+
+// Avisa por correo al cliente, al propietario y (si el inmueble está rentando) al arrendatario de que la visita
+// se movió o se canceló desde la agenda. Devuelve el texto para el aviso en pantalla; nunca lanza error: la
+// cita ya cambió, y si el correo falla el asesor lo ve y puede avisar a mano.
+async function avisarCambioCita(citaId, accion) {
+  try {
+    const { data, error } = await supabase.functions.invoke('notificar-cambio-cita', { body: { cita_id: citaId, accion, origen: 'asesor' } });
+    if (error || !data?.ok) return 'No se pudo avisar por correo; avisa al cliente directamente.';
+    const n = data.notificados || {};
+    const quienes = [n.cliente ? 'al cliente' : '', n.propietario ? 'al propietario' : '', n.arrendatario ? 'al arrendatario' : ''].filter(Boolean);
+    if (!quienes.length) return data.motivo || 'No había a quién avisar por correo.';
+    return 'Se avisó por correo ' + quienes.join(', ').replace(/, ([^,]*)$/, ' y $1') + '.';
+  } catch {
+    return 'No se pudo avisar por correo; avisa al cliente directamente.';
+  }
 }
 
 function citaChip(c) {
@@ -1887,15 +1907,18 @@ function adjuntarEventos(rootEl) {
       }
       state.moveId = null;
       state.moveError = '';
-      toast('Cita movida al nuevo horario.');
+      toast('Cita movida. Avisando por correo…');
       render();
+      toast('Cita movida al nuevo horario. ' + (await avisarCambioCita(b.dataset.confirmarmover, 'movida')));
       return;
     }
     if (b.dataset.confirmarcancelar) {
+      b.disabled = true;
       const { error } = await supabase.rpc('agenda_cancelar_cita', { p_cita_id: b.dataset.confirmarcancelar, p_solicitante_asesor_id: null, p_motivo: '' });
       state.cancelId = null;
-      toast(error ? 'No se pudo cancelar: ' + error.message : 'Cancelada. El horario vuelve a estar disponible.');
+      toast(error ? 'No se pudo cancelar: ' + error.message : 'Cancelada. Avisando por correo…');
       render();
+      if (!error) toast('Cancelada. El horario vuelve a estar disponible. ' + (await avisarCambioCita(b.dataset.confirmarcancelar, 'cancelada')));
       return;
     }
     if (b.hasAttribute('data-iragenda')) {

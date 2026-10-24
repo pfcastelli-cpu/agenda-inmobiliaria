@@ -37,6 +37,28 @@ function escaparHtml(valor: string | null | undefined): string {
     .replace(/'/g, '&#39;');
 }
 
+// Cómo llamar al inmueble según su tipo: una oficina o un local no son una "vivienda".
+function sustantivo(tipo: string | null | undefined): { n: string; el: string } {
+  switch (String(tipo || '').trim().toUpperCase()) {
+    case 'APARTAMENTO':
+    case 'CASA':
+    case 'APARTAESTUDIO':
+      return { n: 'vivienda', el: 'la vivienda' };
+    case 'OFICINA':
+      return { n: 'oficina', el: 'la oficina' };
+    case 'LOCAL':
+      return { n: 'local', el: 'el local' };
+    case 'CONSULTORIO':
+      return { n: 'consultorio', el: 'el consultorio' };
+    case 'BODEGA':
+      return { n: 'bodega', el: 'la bodega' };
+    case 'LOTE':
+      return { n: 'lote', el: 'el lote' };
+    default:
+      return { n: 'inmueble', el: 'el inmueble' };
+  }
+}
+
 function formatearFecha(fecha: string) {
   const [a, m, d] = fecha.split('-').map(Number);
   return new Date(a, m - 1, d).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -129,7 +151,7 @@ Deno.serve(async (req) => {
 
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('numero_inmueble, direccion, barrio, ciudad, estado_crm')
+    .select('numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
   if (!inmueble || String(inmueble.estado_crm || '').trim().toLowerCase() !== 'rentando') {
@@ -193,10 +215,11 @@ Deno.serve(async (req) => {
   }
 
   const direccion = limpiarDireccion(inmueble.direccion);
+  const sust = sustantivo(inmueble.tipo_inmueble);
   const ciudad = [inmueble.barrio, inmueble.ciudad].filter(Boolean).join(', ');
   const fechaTexto = formatearFecha(cita.fecha);
   const horaTexto = formatearHora(cita.hora_inicio.slice(0, 5));
-  const asunto = `Visita programada en tu vivienda · ${fechaTexto}`;
+  const asunto = `Visita programada en tu ${sust.n} · ${fechaTexto}`;
   const nombre = escaparHtml(arrendatario?.nombre || '');
   const enlacePortal = `${SITIO_URL}/arrendatario/${cita.token_arrendatario}`;
   const enlaceSitio = enlaceInmueble(config, inmueble.numero_inmueble);
@@ -216,14 +239,14 @@ Deno.serve(async (req) => {
   <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
     ${encabezadoImagen(marca, `Visita programada`)}
     <div style="padding:28px 26px 20px">
-      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 6px">Visita programada en tu vivienda</h1>
-      <p style="color:#526575;font-size:14px;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer la vivienda que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo: si la hora no te sirve, puedes proponer otra.</p>
+      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 6px">Visita programada en tu ${sust.n}</h1>
+      <p style="color:#526575;font-size:14px;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer ${sust.el} que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo: si la hora no te sirve, puedes proponer otra.</p>
       <table style="width:100%;border-collapse:collapse">
         <tr><td style="padding:8px 0;color:#5b6b7d;font-size:13px">Fecha</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(fechaTexto)}</td></tr>
         <tr><td style="padding:8px 0;color:#5b6b7d;font-size:13px">Hora</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(horaTexto)}</td></tr>
         ${asesorNombre ? `<tr><td style="padding:8px 0;color:#5b6b7d;font-size:13px">Asesor a cargo</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
       </table>
-      <p style="color:#526575;font-size:14px;margin:18px 0 0">¿No puedes recibir la visita a esa hora? Con el botón de abajo propones otra hora disponible; la visita solo cambia cuando la persona interesada la acepte. Si no respondes, la visita se mantiene a la hora indicada. También puedes cancelarla o cambiar los días y horas en que se muestra tu vivienda. Gracias por tu colaboración.</p>
+      <p style="color:#526575;font-size:14px;margin:18px 0 0">¿No puedes recibir la visita a esa hora? Con el botón de abajo propones otra hora disponible; la visita solo cambia cuando la persona interesada la acepte. Si no respondes, la visita se mantiene a la hora indicada. También puedes cancelarla o cambiar los días y horas en que se muestra tu ${sust.n}. Gracias por tu colaboración.</p>
       <p style="margin:18px 0 6px"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:12px">Ver la visita o proponer otra hora</a></p>
       <p style="margin:10px 0 6px"><a href="${enlaceSitio}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:12px;border:2px solid ${marca.principal}">Ver el inmueble en nuestro sitio</a></p>
       <p style="color:#66758a;font-size:12px;margin:10px 0 0">Este enlace es solo para ti, no lo compartas. ¿Prefieres hablar? Llama o escríbele a tu asesor.</p>

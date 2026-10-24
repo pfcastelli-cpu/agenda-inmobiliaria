@@ -7,10 +7,13 @@
 // Acciones (POST JSON { token, accion, ... }):
 //   obtener          → cita, inmueble, asesor, propuesta pendiente
 //   horarios         → { fecha } horas libres reales (mismo motor que la reserva pública)
-//   proponer         → { fecha, hora } propone otra hora (reemplaza la propuesta pendiente)
-//   responder        → { aceptar } la OTRA parte acepta (la cita pasa a la nueva hora) o rechaza
-//   cancelar         → { motivo? } solo arrendatario; avisa al cliente
-//   guardar_horario  → solo arrendatario: { dias:[1..7], desde, hasta } cuándo se muestra la vivienda
+//   proponer         → { fecha, hora } propone otra hora (reemplaza la propuesta pendiente) [inmueble Rentando]
+//   responder        → { aceptar } la OTRA parte acepta (la cita pasa a la nueva hora) o rechaza [Rentando]
+//   cancelar         → { motivo? } arrendatario (avisa al cliente) o CLIENTE (avisa por notificar-cambio-cita)
+//   reagendar        → solo CLIENTE, inmueble que NO está Rentando: { fecha, hora } mueve la visita directo
+//   guardar_horario  → solo arrendatario: { dias:[1..7], desde, hasta } cuándo se muestra el inmueble
+// El cliente puede cancelar o cambiar su visita desde su correo en cualquier inmueble; con arrendatario
+// adentro (Rentando) el cambio de hora sigue siendo un acuerdo (proponer/responder).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, marcaCorreo, type MarcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
@@ -57,6 +60,28 @@ function formatearHora(hora: string) {
 }
 const DIAS = ['', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 
+// Cómo llamar al inmueble según su tipo: una oficina o un local no son una "vivienda".
+function sustantivo(tipo: string | null | undefined): string {
+  switch (String(tipo || '').trim().toUpperCase()) {
+    case 'APARTAMENTO':
+    case 'CASA':
+    case 'APARTAESTUDIO':
+      return 'vivienda';
+    case 'OFICINA':
+      return 'oficina';
+    case 'LOCAL':
+      return 'local';
+    case 'CONSULTORIO':
+      return 'consultorio';
+    case 'BODEGA':
+      return 'bodega';
+    case 'LOTE':
+      return 'lote';
+    default:
+      return 'inmueble';
+  }
+}
+
 // Mismo recorte de dirección que los demás correos: sin torre/apto/oficina.
 const REGEX_UNIDAD_INTERNA =
   /\b(AP|APTO|APT|APARTAMENTO|CS|CASA|IN|INT|INTERIOR|PISO|T|TORRE|TO|BLOQUE|BQ|BL|OF|OFC|OFICINA|MZ|MANZANA|CONJ|CON|DP|CONS|CONSULTORIO|LC|LOCAL(ES)?|L)\s*\d+\b/gi;
@@ -98,7 +123,7 @@ async function cargarContexto(admin: Admin, token: string) {
   const rol: Rol = cita.token_arrendatario === token ? 'arrendatario' : 'cliente';
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('id, numero_inmueble, direccion, barrio, ciudad, estado_crm, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos')
+    .select('id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
   if (!inmueble) return null;
@@ -327,7 +352,11 @@ Deno.serve(async (req) => {
   const ctx = await cargarContexto(admin, token);
   if (!ctx) return falla('Este enlace no es válido o ya no está activo.', 404);
   const { cita, inmueble, asesor, rol } = ctx;
-  if (String(inmueble.estado_crm || '').trim().toLowerCase() !== 'rentando') {
+  const rentando = String(inmueble.estado_crm || '').trim().toLowerCase() === 'rentando';
+  const nombreInm = sustantivo(inmueble.tipo_inmueble);
+  // El cliente puede ver, cancelar y (si no hay arrendatario adentro) reagendar su visita en cualquier inmueble;
+  // todo lo demás (acuerdo de horario, horario permitido) solo existe mientras el inmueble está Rentando.
+  if (!rentando && !(rol === 'cliente' && ['obtener', 'horarios', 'cancelar', 'reagendar'].includes(accion))) {
     return falla('Este inmueble ya no figura como arrendado. Comunícate con tu asesor.', 409);
   }
 
@@ -369,6 +398,8 @@ Deno.serve(async (req) => {
       return json({
         ok: true,
         rol,
+        rentando,
+        tipo: nombreInm,
         hoy: ahora.fecha,
         cita: { fecha: cita.fecha, hora_inicio: horaCita, hora_fin: cita.hora_fin.slice(0, 5), estado: cita.estado, vigente: citaVigente },
         inmueble: {
@@ -450,7 +481,7 @@ Deno.serve(async (req) => {
           'cliente',
           `Propuesta de nuevo horario para tu visita · Inmueble ${inmueble.numero_inmueble}`,
           'Te proponen otra hora para tu visita',
-          `<p style="margin:0 0 10px">El inmueble que vas a visitar${direccion ? ` (${esc(direccion)})` : ''} está actualmente arrendado y habitado, y el arrendatario no puede recibirte en el horario acordado.</p>
+          `<p style="margin:0 0 10px">El inmueble que vas a visitar${direccion ? ` (${esc(direccion)})` : ''} está actualmente arrendado y ocupado, y el arrendatario no puede recibirte en el horario acordado.</p>
 <p style="margin:0 0 10px">Tu visita sigue para ${lineaVisita}, pero propone esta otra hora:</p>
 <p style="margin:0 0 10px;font-size:16px">${nuevaLinea}</p>
 <p style="margin:0">Tu visita solo cambia si tú aceptas. Si no te sirve, puedes dejarla como está o proponer otra hora. La propuesta vence en ${HORAS_VIGENCIA_PROPUESTA} horas.</p>`,
@@ -461,7 +492,7 @@ Deno.serve(async (req) => {
           'arrendatario',
           `El interesado propone otra hora · Inmueble ${inmueble.numero_inmueble}`,
           'Te propusieron otra hora para la visita',
-          `<p style="margin:0 0 10px">En respuesta a tu propuesta, la persona interesada en tu vivienda sugiere esta hora:</p>
+          `<p style="margin:0 0 10px">En respuesta a tu propuesta, la persona interesada en tu ${nombreInm} sugiere esta hora:</p>
 <p style="margin:0 0 10px;font-size:16px">${nuevaLinea}</p>
 <p style="margin:0">La visita sigue para ${lineaVisita} y solo cambia si tú aceptas. Puedes aceptar, o proponer otra hora. Vence en ${HORAS_VIGENCIA_PROPUESTA} horas.</p>`,
           'Ver la propuesta',
@@ -551,14 +582,13 @@ Deno.serve(async (req) => {
 
     // --------------------------------------------------------------- cancelar
     if (accion === 'cancelar') {
-      if (rol !== 'arrendatario') return falla('Esta acción no está disponible desde este enlace.', 403);
       if (!citaVigente) return falla('Esta visita ya no se puede cancelar (ya pasó o ya estaba cancelada).', 409);
       const motivo = String(body.motivo || '').trim().slice(0, 300);
       const { data: cancelada, error: errCancelar } = await admin
         .from('agenda_citas')
         .update({
           estado: 'cancelada',
-          motivo_cancelacion: `Cancelada por el arrendatario${motivo ? ': ' + motivo : ''}`,
+          motivo_cancelacion: `Cancelada por ${rol === 'cliente' ? 'el cliente' : 'el arrendatario'}${motivo ? ': ' + motivo : ''}`,
           cancelado_por: null,
           actualizado_en: new Date().toISOString(),
         })
@@ -572,18 +602,76 @@ Deno.serve(async (req) => {
         .update({ estado: 'expirada', respondido_en: new Date().toISOString() })
         .eq('cita_id', cita.id)
         .eq('estado', 'pendiente');
+      if (rol === 'cliente') {
+        // El cliente canceló: se avisa al propietario y (si está Rentando) al arrendatario, y el cliente recibe su
+        // constancia con la cancelación en el calendario de su teléfono.
+        await fetch(`${SUPABASE_URL}/functions/v1/notificar-cambio-cita`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY },
+          body: JSON.stringify({ cita_id: cita.id, accion: 'cancelada', origen: 'cliente' }),
+        }).catch(() => {});
+        return json({ ok: true, cita: { fecha: cita.fecha, hora_inicio: horaCita, hora_fin: cita.hora_fin.slice(0, 5), estado: 'cancelada', vigente: false } });
+      }
       await registrarAccion(admin, ctx, 'cita_cancelada', { fecha: cita.fecha, hora: horaCita, motivo });
 
       await enviarCorreos(admin, cita.empresa_id, cita.id, 'cliente', correosDe(cita.cliente_email).slice(0, 1), `Tu visita del ${formatearFecha(cita.fecha)} fue cancelada`, (extra) =>
         plantillaCorreo({
           titulo: 'Tu visita fue cancelada',
-          cuerpo: `<p style="margin:0 0 10px">Hola ${esc(cita.cliente_nombre)}, lamentamos informarte que la visita del <b>${esc(formatearFecha(cita.fecha))}, ${esc(formatearHora(horaCita))}</b>${direccion ? ` al inmueble en ${esc(direccion)}` : ''} no se podrá realizar: el inmueble está arrendado y habitado, y en ese horario no es posible recibirte.</p>
+          cuerpo: `<p style="margin:0 0 10px">Hola ${esc(cita.cliente_nombre)}, lamentamos informarte que la visita del <b>${esc(formatearFecha(cita.fecha))}, ${esc(formatearHora(horaCita))}</b>${direccion ? ` al inmueble en ${esc(direccion)}` : ''} no se podrá realizar: el inmueble está arrendado y ocupado, y en ese horario no es posible recibirte.</p>
 <p style="margin:0">Puedes elegir otro horario cuando quieras${asesor?.nombre ? ` o escribirle a tu asesor, ${esc(asesor.nombre)}` : ''}.</p>`,
           boton: { texto: 'Agendar otro horario', url: `${SITIO_URL}/inmuebles/${inmueble.numero_inmueble}` },
           ...extra,
         }),
       );
       return json({ ok: true, cita: { fecha: cita.fecha, hora_inicio: horaCita, hora_fin: cita.hora_fin.slice(0, 5), estado: 'cancelada', vigente: false } });
+    }
+
+    // -------------------------------------------------------------- reagendar
+    // El cliente elige él mismo otra hora cuando NO hay arrendatario adentro (si lo hay, hay que acordar: proponer).
+    if (accion === 'reagendar') {
+      if (rol !== 'cliente') return falla('Esta acción no está disponible desde este enlace.', 403);
+      if (rentando) return falla('En este inmueble vive un arrendatario: propón una hora y él deberá aceptarla.', 409);
+      if (!citaVigente) return falla('Esta visita ya no se puede cambiar (ya pasó o fue cancelada).', 409);
+      const fecha = String(body.fecha || '');
+      const hora = String(body.hora || '').slice(0, 5);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !/^\d{2}:\d{2}$/.test(hora)) return falla('Fecha u hora inválida.');
+      if (fecha < ahora.fecha || fecha > sumarDias(ahora.fecha, 60)) return falla('Elige una fecha dentro de los próximos 60 días.');
+      if (fecha === cita.fecha && hora === horaCita) return falla('Esa ya es la hora de tu visita.');
+
+      const elegido = await slotValido(admin, cita, fecha, hora);
+      if (!elegido) return falla('Ese horario ya no está disponible. Elige otro.', 409);
+      // Condición en el UPDATE: si alguien más cambió/canceló la cita entre tanto, no se pisa.
+      const { data: movida, error: errMover } = await admin
+        .from('agenda_citas')
+        .update({
+          fecha,
+          hora_inicio: elegido.hora_inicio,
+          hora_fin: elegido.hora_fin,
+          asesor_id: elegido.asesor_id,
+          actualizado_en: new Date().toISOString(),
+        })
+        .eq('id', cita.id)
+        .eq('estado', 'confirmada')
+        .eq('fecha', cita.fecha)
+        .eq('hora_inicio', cita.hora_inicio)
+        .select('id')
+        .maybeSingle();
+      if (errMover || !movida) return falla('No se pudo cambiar la visita. Actualiza la página e inténtalo de nuevo.', 409);
+      await admin
+        .from('agenda_cita_propuestas')
+        .update({ estado: 'expirada', respondido_en: new Date().toISOString() })
+        .eq('cita_id', cita.id)
+        .eq('estado', 'pendiente');
+      // Cliente (confirmación con la hora nueva) y propietario por los correos de siempre.
+      await fetch(`${SUPABASE_URL}/functions/v1/notificar-cambio-cita`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY },
+        body: JSON.stringify({ cita_id: cita.id, accion: 'movida', origen: 'cliente' }),
+      }).catch(() => {});
+      return json({
+        ok: true,
+        cita: { fecha, hora_inicio: elegido.hora_inicio.slice(0, 5), hora_fin: elegido.hora_fin.slice(0, 5), estado: 'confirmada', vigente: true },
+      });
     }
 
     // -------------------------------------------------------- guardar_horario

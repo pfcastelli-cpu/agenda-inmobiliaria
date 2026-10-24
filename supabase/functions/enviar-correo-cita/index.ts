@@ -78,11 +78,11 @@ function limpiarDireccion(direccion: string | null | undefined): string {
 // Genera un botón de ancho completo con estilos en línea (compatible con
 // Gmail, Apple Mail, Outlook.com y clientes móviles) envuelto en una tabla
 // para que también se vea bien en Outlook de escritorio.
-function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: string, texto: string): string {
+function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: string, texto: string, borde?: string): string {
   return `
       <tr><td style="padding:7px 0">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td align="center" bgcolor="${colorFondo}" style="border-radius:12px">
+          <td align="center" bgcolor="${colorFondo}" style="border-radius:12px${borde ? `;border:2px solid ${borde}` : ''}">
             <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${colorTexto};text-decoration:none;border-radius:12px">
               ${icono}&nbsp;&nbsp;${texto}
             </a>
@@ -246,7 +246,7 @@ Deno.serve(async (req) => {
   const { data: cita, error: errorCita } = await admin
     .from('agenda_citas')
     .select(
-      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, cliente_nombre, cliente_email, cliente_telefono, tipo_cita, direccion_libre, ciudad_libre',
+      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, cliente_nombre, cliente_email, cliente_telefono, tipo_cita, direccion_libre, ciudad_libre, token_cliente',
     )
     .eq('id', citaId)
     .maybeSingle();
@@ -383,6 +383,8 @@ Deno.serve(async (req) => {
       `Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp`,
     );
   if (llamarUrl) filasBotones += filaBoton(llamarUrl, marca.principal, '#ffffff', '📞', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`);
+  // El cliente puede cambiar la hora o cancelar su visita él mismo, sin llamar a nadie.
+  if (cita.token_cliente) filasBotones += filaBoton(`https://citas.patrimonios.co/visita/${cita.token_cliente}`, '#ffffff', marca.principal, '🗓️', 'Cambiar o cancelar mi visita', marca.principal);
 
   let filasDatos = filaDato('📅', 'Fecha', escaparHtml(fechaTexto));
   filasDatos += filaDato('🕐', 'Hora', escaparHtml(horaTexto));
@@ -424,10 +426,10 @@ Deno.serve(async (req) => {
     <div style="background:#f4f6f8;padding:16px 26px;border-top:1px solid #e6eaee">
       ${
         inmuebleOcupado
-          ? `<p style="color:#526575;font-size:12.5px;margin:0 0 10px"><strong>Importante:</strong> este inmueble está arrendado y habitado actualmente. Si el arrendatario no puede recibirte a esa hora, podría proponerte otra: te escribiremos y tu visita solo cambia si tú aceptas el nuevo horario.</p>`
+          ? `<p style="color:#526575;font-size:12.5px;margin:0 0 10px"><strong>Importante:</strong> este inmueble está arrendado y ocupado actualmente. Si el arrendatario no puede recibirte a esa hora, podría proponerte otra: te escribiremos y tu visita solo cambia si tú aceptas el nuevo horario.</p>`
           : ''
       }
-      <p style="color:#5b6b7d;font-size:12px;margin:0">Si necesitas cambiar o cancelar tu visita, comunícate directamente con tu asesor usando los botones de arriba. También te dejamos la cita guardada en el archivo adjunto para que quede en el calendario de tu teléfono, con recordatorios 24, 2 y 1 hora antes.</p>
+      <p style="color:#5b6b7d;font-size:12px;margin:0">Si necesitas cambiar la hora o cancelar tu visita, usa el botón «Cambiar o cancelar mi visita» de arriba; si prefieres, comunícate directamente con tu asesor. También te dejamos la cita guardada en el archivo adjunto para que quede en el calendario de tu teléfono, con recordatorios 24, 2 y 1 hora antes.</p>
     </div>
   </div>
   <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
