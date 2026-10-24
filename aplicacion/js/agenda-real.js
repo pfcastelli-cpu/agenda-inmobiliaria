@@ -15,6 +15,7 @@ import {
   Clock3,
   createIcons,
   ExternalLink,
+  Eye,
   History,
   House,
   ListChecks,
@@ -22,6 +23,7 @@ import {
   MapPinOff,
   Plus,
   Search,
+  Send,
   Star,
   Store,
   Upload,
@@ -43,6 +45,7 @@ const icons = {
   ClipboardList,
   Clock3,
   ExternalLink,
+  Eye,
   History,
   House,
   ListChecks,
@@ -50,6 +53,7 @@ const icons = {
   MapPinOff,
   Plus,
   Search,
+  Send,
   Star,
   Store,
   Upload,
@@ -224,7 +228,7 @@ async function cargarDominioPublico() {
   if (configPublicaCache !== null) return configPublicaCache;
   const { data } = await supabase
     .from('agenda_configuracion')
-    .select('dominio_publico, plantilla_enlace_inmueble, formato_hora, equipo_visible_roles, dias_alerta_sin_citas_arriendo, dias_alerta_sin_citas_venta, logo_url')
+    .select('dominio_publico, plantilla_enlace_inmueble, formato_hora, equipo_visible_roles, dias_alerta_sin_citas_arriendo, dias_alerta_sin_citas_venta, logo_url, correo_modo_pruebas, correo_pruebas_destino')
     .eq('empresa_id', contexto.empresaId)
     .maybeSingle();
   configPublicaCache = {
@@ -232,6 +236,8 @@ async function cargarDominioPublico() {
     plantillaEnlaceInmueble: data?.plantilla_enlace_inmueble || '',
     formatoHora: data?.formato_hora === '24h' ? '24h' : '12h',
     logoUrl: data?.logo_url || '',
+    modoPruebas: data?.correo_modo_pruebas !== false,
+    destinoPruebas: data?.correo_pruebas_destino || '',
     // Umbral (en días sin citas de cliente) que el panel de Informes usa para marcar
     // un inmueble como "requiere atención". Mientras no se configure, 30 días para
     // arriendo y 45 para venta son un punto de partida razonable, no una regla fija.
@@ -321,6 +327,17 @@ function linkPublico(numeroInmueble) {
   }
   const dominio = configPublicaCache?.dominioPublico || 'citas.patrimonios.co';
   return `https://${dominio}/inmuebles/${numeroInmueble}`;
+}
+
+// Lo que ve el propietario: la misma página pública que le llega por correo (/propietario/<token>).
+function linkInformePropietario(inm) {
+  if (!inm?.token_informe_propietario) return '';
+  const dominio = configPublicaCache?.dominioPublico || 'citas.patrimonios.co';
+  return `https://${dominio}/propietario/${inm.token_informe_propietario}`;
+}
+function enlaceVerInforme(inm, clase = 'v-link') {
+  const url = linkInformePropietario(inm);
+  return url ? `<a class="${clase}" href="${url}" target="_blank" rel="noopener" title="Ver el informe tal como lo ve el propietario">${icon('eye')}Ver informe</a>` : '';
 }
 
 function esMensajeTecnico(msg) {
@@ -690,6 +707,7 @@ function inmuebleCard(inm) {
     <div class="v-prow-asesor" title="${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor asignado en Sedi'}">${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor en Sedi'}</div>
     <div class="v-prow-actions">
       <a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha</a>
+      ${contexto.rol === 'administrador' || contexto.rol === 'coordinador' ? enlaceVerInforme(inm) : ''}
       ${contexto.rol === 'administrador' || contexto.rol === 'coordinador' ? `<button type="button" class="v-link" data-nodisponible="${inm.id}" style="color:#B3261E">${icon('ban')}No disponible</button>` : ''}
       <button class="v-btn v-primary" data-reservar="${inm.id}">Ver horarios ${icon('arrow-up-right')}</button>
     </div>
@@ -1028,7 +1046,7 @@ function filaAtencion(x) {
     <td style="padding:9px 10px;font-size:14px;white-space:nowrap">${escape(inm.tipo_oferta)}</td>
     <td style="padding:9px 10px;font-size:14px;white-space:nowrap">${x.citas}</td>
     <td style="padding:9px 10px;font-size:13.5px;color:#B3261E">${ultima}</td>
-    <td style="padding:9px 10px;white-space:nowrap"><a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver</a> <button type="button" class="v-link" data-enviar-informe="${inm.id}" style="display:inline">${icon('send')}Enviar informe</button></td>
+    <td style="padding:9px 10px;white-space:nowrap"><a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver</a> ${enlaceVerInforme(inm)} <button type="button" class="v-link" data-enviar-informe="${inm.id}" style="display:inline">${icon('send')}Enviar informe</button></td>
   </tr>`;
 }
 
@@ -1041,8 +1059,121 @@ function filaTablaInmueble(x) {
     <td style="padding:8px 10px;font-size:13.5px;text-align:center">${x.citas}</td>
     <td style="padding:8px 10px;font-size:13.5px;text-align:center">${x.citas}</td>
     <td style="padding:8px 10px;font-size:13px;white-space:nowrap">${x.ultimaFecha ? dateLabel(x.ultimaFecha) : '—'}</td>
-    <td style="padding:8px 10px;white-space:nowrap"><button type="button" class="v-link" data-enviar-informe="${inm.id}" style="display:inline">${icon('send')}Enviar informe</button></td>
+    <td style="padding:8px 10px;white-space:nowrap">${enlaceVerInforme(inm)} <button type="button" class="v-link" data-enviar-informe="${inm.id}" style="display:inline">${icon('send')}Enviar informe</button></td>
   </tr>`;
+}
+
+// ---- Envío masivo de informes a propietarios --------------------------------------------------------------
+// Corre en el navegador, de a dos inmuebles a la vez, llamando a la misma función que el botón "Enviar informe"
+// de cada fila (enviar-informe-propietario, que valida el permiso y manda un correo por propietario). El
+// avance vive en `masivo` (no en el HTML) para que no se pierda si la pantalla se vuelve a pintar.
+const masivo = {
+  fase: 'config', // config | confirmar | enviando | fin
+  alcance: 'atencion', // atencion | conCitas | todos
+  limite: '',
+  grupos: null, // { atencion, conCitas, todos: [inmueble], conCorreo: Set<numero> | null }
+  cola: [],
+  total: 0,
+  hechos: 0,
+  propietariosAvisados: 0,
+  sinCorreo: 0,
+  fallidos: [],
+  detener: false,
+};
+
+function inmueblesDelAlcance() {
+  const g = masivo.grupos;
+  if (!g) return { lista: [], sinCorreo: 0 };
+  let lista = g[masivo.alcance] || [];
+  let sinCorreo = 0;
+  if (g.conCorreo) {
+    const antes = lista.length;
+    lista = lista.filter((i) => g.conCorreo.has(i.numero_inmueble));
+    sinCorreo = antes - lista.length;
+  }
+  const tope = parseInt(masivo.limite, 10);
+  if (Number.isInteger(tope) && tope > 0) lista = lista.slice(0, tope);
+  return { lista, sinCorreo };
+}
+
+function pintarMasivo() {
+  const el = document.getElementById('v-masivo');
+  if (!el || !masivo.grupos) return;
+  const g = masivo.grupos;
+  const { lista, sinCorreo } = inmueblesDelAlcance();
+  const destinoPruebas = configPublicaCache?.destinoPruebas;
+  const avisoPruebas = configPublicaCache?.modoPruebas
+    ? `<p class="v-masivo-aviso">${icon('mail')}<span><strong>Modo de pruebas:</strong> los informes NO llegan a los propietarios; todos van a ${escape(destinoPruebas || 'el correo de pruebas')} (un correo por cada propietario de cada inmueble).</span></p>`
+    : '';
+  let cuerpo = '';
+  if (masivo.fase === 'config') {
+    cuerpo = `<div class="v-masivo-campos">
+        <label class="v-field">¿A cuáles inmuebles?
+          <select class="v-input" id="v-masivo-alcance">
+            <option value="atencion" ${masivo.alcance === 'atencion' ? 'selected' : ''}>Los que requieren atención (${g.atencion.length})</option>
+            <option value="conCitas" ${masivo.alcance === 'conCitas' ? 'selected' : ''}>Los que ya tuvieron visitas (${g.conCitas.length})</option>
+            <option value="todos" ${masivo.alcance === 'todos' ? 'selected' : ''}>Todos los disponibles (${g.todos.length})</option>
+          </select></label>
+        <label class="v-field">Enviar solo a los primeros (opcional)
+          <input class="v-input" id="v-masivo-limite" type="number" min="1" step="1" inputmode="numeric" placeholder="Todos" value="${escape(masivo.limite)}"></label>
+      </div>
+      <p class="v-muted" style="margin:10px 0 0;font-size:13.5px">Se enviarán informes de <strong>${lista.length}</strong> inmueble${lista.length === 1 ? '' : 's'}${sinCorreo ? ` (otros ${sinCorreo} se omiten porque no tienen correo de propietario)` : ''}. Cada propietario recibe el enlace a su informe en vivo, con las visitas y las opiniones de los clientes.</p>
+      <div class="v-masivo-botones"><button type="button" class="v-btn v-primary" data-masivo-revisar ${lista.length ? '' : 'disabled'}>${icon('send')}Revisar y enviar…</button></div>`;
+  } else if (masivo.fase === 'confirmar') {
+    cuerpo = `<p style="margin:0 0 8px"><strong>Vas a enviar los informes de ${lista.length} inmueble${lista.length === 1 ? '' : 's'}.</strong> Esto no se puede deshacer, pero puedes detenerlo mientras avanza.</p>
+      ${avisoPruebas}
+      <div class="v-masivo-botones"><button type="button" class="v-btn v-primary" data-masivo-enviar>${icon('send')}Sí, enviar ${lista.length}</button><button type="button" class="v-btn v-quiet" data-masivo-volver>Volver</button></div>`;
+  } else if (masivo.fase === 'enviando') {
+    const pct = masivo.total ? Math.round((masivo.hechos / masivo.total) * 100) : 0;
+    cuerpo = `<p style="margin:0 0 8px"><strong>Enviando… ${masivo.hechos} de ${masivo.total}</strong> <span class="v-muted">(deja esta pestaña abierta)</span></p>
+      <div class="v-masivo-barra" role="progressbar" aria-valuemin="0" aria-valuemax="${masivo.total}" aria-valuenow="${masivo.hechos}"><span style="width:${pct}%"></span></div>
+      <p class="v-muted" style="margin:8px 0 0;font-size:13px">${masivo.propietariosAvisados} correo${masivo.propietariosAvisados === 1 ? '' : 's'} enviado${masivo.propietariosAvisados === 1 ? '' : 's'} · ${masivo.sinCorreo} sin correo de propietario · ${masivo.fallidos.length} con problema</p>
+      <div class="v-masivo-botones"><button type="button" class="v-btn v-quiet" data-masivo-detener ${masivo.detener ? 'disabled' : ''}>${masivo.detener ? 'Deteniendo…' : 'Detener'}</button></div>`;
+  } else {
+    cuerpo = `<p style="margin:0 0 6px"><strong>${masivo.detener ? 'Envío detenido' : 'Envío terminado'}.</strong> Se revisaron ${masivo.hechos} de ${masivo.total} inmuebles.</p>
+      <ul class="v-masivo-resumen"><li>✅ ${masivo.propietariosAvisados} correo${masivo.propietariosAvisados === 1 ? '' : 's'} a propietarios</li><li>⏭️ ${masivo.sinCorreo} inmueble${masivo.sinCorreo === 1 ? '' : 's'} sin correo de propietario</li><li>❌ ${masivo.fallidos.length} con problema</li></ul>
+      ${masivo.fallidos.length ? `<details style="margin-top:6px"><summary>Ver los que fallaron</summary><ul style="margin:6px 0 0;padding-left:18px">${masivo.fallidos.map((f) => `<li>#${escape(f.numero)}: ${escape(f.motivo)}</li>`).join('')}</ul></details>` : ''}
+      ${avisoPruebas}
+      <div class="v-masivo-botones"><button type="button" class="v-btn v-quiet" data-masivo-cerrar>Cerrar</button></div>`;
+  }
+  el.innerHTML = `<h3 style="margin:0 0 4px">Enviar informes a los propietarios</h3>
+    <p class="v-muted" style="margin:0 0 12px;font-size:13.5px">Manda a varios propietarios, de una vez, el enlace a su informe en vivo. Para ver cómo lo recibe uno solo, usa «Ver informe» en cualquier inmueble.</p>
+    ${cuerpo}`;
+  refreshIcons();
+}
+
+async function enviarInformesMasivo() {
+  const { lista } = inmueblesDelAlcance();
+  masivo.cola = lista.slice();
+  masivo.total = lista.length;
+  masivo.hechos = 0;
+  masivo.propietariosAvisados = 0;
+  masivo.sinCorreo = 0;
+  masivo.fallidos = [];
+  masivo.detener = false;
+  masivo.fase = 'enviando';
+  pintarMasivo();
+  const trabajar = async () => {
+    while (!masivo.detener) {
+      const inm = masivo.cola.shift();
+      if (!inm) return;
+      try {
+        const { data, error } = await supabase.functions.invoke('enviar-informe-propietario', { body: { inmueble_id: inm.id } });
+        if (error || !data?.ok) throw new Error(data?.error || 'no se pudo enviar');
+        if (!data.total_propietarios && data.motivo && !/propietarios con correo/.test(data.motivo)) masivo.fallidos.push({ numero: inm.numero_inmueble, motivo: data.motivo });
+        else if (!data.total_propietarios) masivo.sinCorreo += 1;
+        else if (data.enviados > 0) masivo.propietariosAvisados += data.enviados;
+        else masivo.fallidos.push({ numero: inm.numero_inmueble, motivo: data.motivo || 'no salió ningún correo (revisa la bitácora de correos)' });
+      } catch (e) {
+        masivo.fallidos.push({ numero: inm.numero_inmueble, motivo: e?.message || 'error desconocido' });
+      }
+      masivo.hechos += 1;
+      pintarMasivo();
+    }
+  };
+  await Promise.all([trabajar(), trabajar()]);
+  masivo.fase = 'fin';
+  pintarMasivo();
 }
 
 async function renderInformes() {
@@ -1052,7 +1183,7 @@ async function renderInformes() {
   const [citasR, correosR, propietariosR, inmuebles, asesores] = await Promise.all([
     supabase.from('agenda_citas').select('estado, motivo_cancelacion, tipo_cita, inmueble_id, fecha').eq('empresa_id', contexto.empresaId),
     supabase.from('agenda_correos_log').select('destinatario_tipo, estado').eq('empresa_id', contexto.empresaId),
-    supabase.from('agenda_propietarios').select('id', { count: 'exact', head: true }).eq('empresa_id', contexto.empresaId),
+    supabase.from('agenda_propietarios').select('numero_inmueble, email', { count: 'exact' }).eq('empresa_id', contexto.empresaId).limit(5000),
     cargarTodosInmuebles(),
     cargarAsesores(),
   ]);
@@ -1061,6 +1192,10 @@ async function renderInformes() {
   const citas = citasR.data || [];
   const correos = correosR.data || [];
   const totalPropietarios = propietariosR.count || 0;
+  // Números de inmueble que tienen al menos un correo de propietario válido (null = no se pudo saber).
+  const conCorreoPropietario = propietariosR.error
+    ? null
+    : new Set((propietariosR.data || []).filter((p) => /\S+@\S+\.\S+/.test(p.email || '')).map((p) => p.numero_inmueble));
 
   const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
 
@@ -1162,6 +1297,14 @@ async function renderInformes() {
     .sort((a, b) => b.citas - a.citas);
   const LIMITE_TABLA = 50;
 
+  masivo.grupos = {
+    atencion: conAtencion.map((x) => x.inmueble),
+    conCitas: inmueblesActivos.filter((i) => porInmueble.get(i.id)?.total > 0),
+    todos: inmueblesActivos,
+    conCorreo: conCorreoPropietario,
+  };
+  if (masivo.fase === 'enviando' && !masivo.cola.length && masivo.hechos >= masivo.total) masivo.fase = 'fin';
+
   const graficoEstados = graficoBarras(
     [
       { etiqueta: 'Confirmadas', valor: citasPorEstado.confirmada || 0, color: 'var(--v-blue)' },
@@ -1203,6 +1346,8 @@ async function renderInformes() {
 
   main().innerHTML = `<div class="v-top"><div><div class="v-eyebrow">Monitoreo operativo</div><h2>Informes</h2></div></div>
     <p class="v-note">Estado actual de los datos capturados por Agenda de citas. Con el volumen de hoy esto es monitoreo operativo — todavía no hay suficiente historia para tendencias o comparativos sólidos por asesor o por zona.</p>
+
+    <section class="v-masivo" id="v-masivo" aria-live="polite"></section>
 
     <h3 style="margin-top:8px">Inconsistencias con Sedi</h3>
     <p class="v-muted" style="font-size:13.5px">Inmuebles marcados manualmente como no disponibles mientras Sedi los sigue mostrando disponibles. Pasa si alguien los marcó por error o de prueba, o si la novedad real (arrendado, vendido, papeles en trámite) todavía no se actualiza en Sedi.</p>
@@ -1262,6 +1407,7 @@ async function renderInformes() {
     <h3 style="margin-top:28px">Equipo y propietarios</h3>
     <div class="v-statbar"><div class="v-stat"><strong>${asesoresActivos}</strong><span>Asesores activos (${asesoresPlanta} planta, ${asesoresFreelance} freelance)</span></div><div class="v-stat"><strong>${totalPropietarios}</strong><span>Propietarios registrados</span></div></div>
     `;
+  pintarMasivo();
 }
 
 const ETIQUETAS_ACCION_BITACORA = {
@@ -1496,6 +1642,16 @@ function adjuntarEventos(rootEl) {
   });
 
   rootEl.addEventListener('change', async (e) => {
+    if (e.target.id === 'v-masivo-alcance') {
+      masivo.alcance = e.target.value;
+      pintarMasivo();
+      return;
+    }
+    if (e.target.id === 'v-masivo-limite') {
+      masivo.limite = e.target.value;
+      pintarMasivo();
+      return;
+    }
     if (e.target.id === 'v-asesor') {
       state.asesorFiltro = e.target.value;
       render();
@@ -1736,6 +1892,11 @@ function adjuntarEventos(rootEl) {
       renderInformes();
       return;
     }
+    if (b.hasAttribute('data-masivo-revisar')) { masivo.fase = 'confirmar'; pintarMasivo(); return; }
+    if (b.hasAttribute('data-masivo-volver')) { masivo.fase = 'config'; pintarMasivo(); return; }
+    if (b.hasAttribute('data-masivo-enviar')) { enviarInformesMasivo(); return; }
+    if (b.hasAttribute('data-masivo-detener')) { masivo.detener = true; pintarMasivo(); return; }
+    if (b.hasAttribute('data-masivo-cerrar')) { masivo.fase = 'config'; pintarMasivo(); return; }
     if (b.dataset.enviarInforme) {
       const inmuebleId = b.dataset.enviarInforme;
       b.disabled = true;

@@ -262,6 +262,11 @@ bitácora completa sesión por sesión):
   Hallazgos sin resolver: el correo de la encuesta no lleva el encabezado de marca ni los 4 botones de preselección que describe este archivo (solo un botón);
   `marcar-inmueble-no-disponible` manda su cancelación con SEQUENCE 1 (si la cita se reagendó antes, el calendario del cliente puede ignorarla; usar la hora actual como en `notificar-cambio-cita`);
   nodemailer adjunta además un `invite.ics` duplicado junto a `cancelacion.ics`.
+- 24-oct-2026 (sesión 3), COMMITEADO, sin push ni probar con sesión: (1) enlace «Ver informe» (abre `/propietario/<token_informe_propietario>`, lo mismo que ve el propietario) en cada inmueble de
+  Inmuebles y en las tablas de Informes, solo admin/coordinador. (2) Informes → panel «Enviar informes a los propietarios» (envío masivo): alcance (requieren atención / con visitas / todos los
+  disponibles), tope opcional, confirmación, avance y botón Detener; llama de a 2 a la Edge Function ya existente `enviar-informe-propietario`; omite inmuebles sin correo de propietario
+  (`agenda_propietarios`); en modo de pruebas todo va a `correo_pruebas_destino`. (3) CSS para celular (<=860px, final de `agenda.css`): las tarjetas de Inmuebles se apilan, el texto
+  largo se parte en líneas y nada se sale de la pantalla (antes se cortaban a la derecha en iPhone).
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 

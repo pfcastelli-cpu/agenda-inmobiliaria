@@ -459,3 +459,33 @@
 #visita-app .v-cancelbox .v-actions button { padding: 8px 16px; min-height: 40px; border-radius: 10px; border: 1px solid var(--v-line); font-weight: 600; }
 #visita-app .v-cancelbox .v-actions button.v-primary { background: var(--empresa-accion, #00a9a5); border-color: transparent; color: var(--empresa-texto, #111); font-weight: 700; }
 #visita-app .v-cancelbox .v-actions button.v-danger { border-color: currentColor; }
+
+/* ===== Informes: envío masivo a propietarios ===== */
+#visita-app .v-masivo { margin: 14px 0 22px; padding: 16px 18px; background: var(--v-surface, #fff); border: 1px solid var(--v-line); border-left: 4px solid var(--empresa-accion, #00a9a5); border-radius: 4px 14px 14px 4px; }
+#visita-app .v-masivo-campos { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; }
+#visita-app .v-masivo-botones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+#visita-app .v-masivo-botones .v-btn { min-height: 44px; }
+#visita-app .v-masivo-aviso { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0 0; padding: 10px 12px; background: #fff4d6; color: #5c4300; border-radius: 8px; font-size: 13.5px; }
+#visita-app .v-masivo-aviso svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+#visita-app .v-masivo-barra { height: 10px; background: var(--v-line); border-radius: 6px; overflow: hidden; }
+#visita-app .v-masivo-barra span { display: block; height: 100%; background: var(--empresa-accion, #00a9a5); transition: width .2s; }
+#visita-app .v-masivo-resumen { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+
+/* ===== Celular: que Inmuebles (y cualquier página) no se salga de la pantalla ===== */
+@media (max-width: 860px) {
+  #visita-app .v-content { min-width: 0; overflow-x: hidden; }
+  #visita-app .v-filters { grid-template-columns: minmax(0, 1fr); }
+  #visita-app .v-filters select, #visita-app .v-filters .v-input { min-width: 0; max-width: 100%; }
+  #visita-app .v-masivo-campos { grid-template-columns: minmax(0, 1fr); }
+  #visita-app .v-proplist .v-prow { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 8px; padding: 12px 14px; }
+  #visita-app .v-prow-icon { display: none; }
+  #visita-app .v-prow-info { flex: 0 0 auto; }
+  #visita-app .v-prow-top, #visita-app .v-prow-sub { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+  #visita-app .v-prow-top { font-size: 14.5px; line-height: 1.35; }
+  #visita-app .v-prow-sub { font-size: 13px; }
+  #visita-app .v-prow-horario { white-space: normal; flex-wrap: wrap; }
+  #visita-app .v-prow-asesor { flex: 0 0 auto; white-space: normal; }
+  #visita-app .v-prow-actions { flex-wrap: wrap; margin-left: 0; gap: 8px 16px; }
+  #visita-app .v-prow-actions .v-link { min-height: 40px; display: inline-flex; align-items: center; }
+  #visita-app .v-prow-actions .v-btn { width: 100%; min-height: 46px; justify-content: center; }
+}
