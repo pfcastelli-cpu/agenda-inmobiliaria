@@ -6,7 +6,7 @@
 // se envía por el SMTP de la empresa (el del correo de citas), no por el correo integrado de
 // Supabase (límite ~2 por hora y solo a miembros del equipo de Supabase).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
+import { encabezadoImagen, marcaCorreo, pieContacto } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -136,6 +136,7 @@ Deno.serve(async (req) => {
     </div>
   </div>
   <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(remitente)}</p>
+  ${pieContacto()}
 </div>
 </body>
 </html>`;

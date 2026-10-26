@@ -15,7 +15,7 @@
 // El cliente puede cancelar o cambiar su visita desde su correo en cualquier inmueble; con arrendatario
 // adentro (Rentando) el cambio de hora sigue siendo un acuerdo (proponer/responder).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo, type MarcaCorreo, emojiTitulo } from '../_shared/marca-correo.ts';
+import { encabezadoImagen, marcaCorreo, type MarcaCorreo, emojiTitulo, pieContacto } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -171,6 +171,7 @@ ${opts.boton ? `<p style="margin:22px 0 0;text-align:center"><a href="${esc(opts
 </div>
 </div>
 <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${esc(opts.remitente)}</p>
+  ${pieContacto()}
 </div></body></html>`;
 }
 

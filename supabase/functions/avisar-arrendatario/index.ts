@@ -7,7 +7,7 @@
 // También la llama enviar-correo-cita al agendar una visita en un inmueble Rentando (llamada interna con la
 // service role: el aviso al arrendatario sale solo, sin que el asesor tenga que acordarse del botón).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, enlaceInmueble, marcaCorreo } from '../_shared/marca-correo.ts';
+import { encabezadoImagen, enlaceInmueble, marcaCorreo, pieContacto } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -253,6 +253,7 @@ Deno.serve(async (req) => {
     </div>
   </div>
   <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(remitenteNombre)}</p>
+  ${pieContacto()}
 </div>
 </body>
 </html>`;

@@ -13,7 +13,7 @@
 // cita — así la función de cancelación (marcar-inmueble-no-disponible) puede
 // mandar un METHOD:CANCEL con el mismo UID sin tener que guardar nada extra.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
+import { encabezadoImagen, marcaCorreo, pieContacto } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -434,6 +434,7 @@ Deno.serve(async (req) => {
     </div>
   </div>
   <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
+  ${pieContacto()}
 </div>
 </body>
 </html>`;

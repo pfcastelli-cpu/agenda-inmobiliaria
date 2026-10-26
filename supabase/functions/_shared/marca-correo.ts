@@ -97,7 +97,7 @@ export function bloqueCaptacion(marca: MarcaCorreo): string {
 // Pie legal para correos con publicidad: responsable, NIT, dirección, política y baja.
 export function pieLegal(): string {
   const baja = encodeURIComponent('Baja de comunicaciones comerciales');
-  return `<p style="text-align:center;color:#6b6b6b;font-size:12px;line-height:1.6;margin:18px 8px 0">${LEGAL.razon} · NIT ${LEGAL.nit}<br>${LEGAL.direccion}<br>Tratamos tus datos conforme a la <a href="${LEGAL.politica}" style="color:#6b665c;text-decoration:underline">Política de Tratamiento de Datos</a> (Ley 1581 de 2012). Si no quieres recibir publicidad nuestra, <a href="mailto:${LEGAL.correo}?subject=${baja}" style="color:#6b665c;text-decoration:underline">escríbenos para darte de baja</a>; seguirás recibiendo los avisos de tus inmuebles.</p>`;
+  return `<p style="text-align:center;color:#6b6b6b;font-size:12px;line-height:1.6;margin:18px 8px 0">${LEGAL.razon} · NIT ${LEGAL.nit}<br>${LEGAL.direccion}<br>📞 Bogotá (601) 917 9987 · Barranquilla (605) 319 8833 · Medellín (604) 590 4545<br>Tratamos tus datos conforme a la <a href="${LEGAL.politica}" style="color:#6b665c;text-decoration:underline">Política de Tratamiento de Datos</a> (Ley 1581 de 2012). Si no quieres recibir publicidad nuestra, <a href="mailto:${LEGAL.correo}?subject=${baja}" style="color:#6b665c;text-decoration:underline">escríbenos para darte de baja</a>; seguirás recibiendo los avisos de tus inmuebles.</p>`;
 }
 
 // Emoji que acompaña al título del correo cuando el título llega como variable.
@@ -112,4 +112,9 @@ export function emojiTitulo(titulo: string): string {
   if (/confirm|acept|list/.test(t)) return '🎉';
   if (/visita/.test(t)) return '🏡';
   return '✨';
+}
+
+// Datos de contacto para el pie de todos los correos: teléfonos fijos de las tres ciudades, correo y sitio web.
+export function pieContacto(): string {
+  return `<p style="text-align:center;color:#6b6b6b;font-size:13px;line-height:1.8;margin:6px 8px 0">📞 Bogotá <strong style="color:#1a2c45">(601) 917 9987</strong> · Barranquilla <strong style="color:#1a2c45">(605) 319 8833</strong> · Medellín <strong style="color:#1a2c45">(604) 590 4545</strong><br>✉️ <a href="mailto:${LEGAL.correo}" style="color:#6b6b6b;text-decoration:underline">${LEGAL.correo}</a> · 🌐 <a href="https://www.patrimonios.co" style="color:#6b6b6b;text-decoration:underline">www.patrimonios.co</a></p>`;
 }
