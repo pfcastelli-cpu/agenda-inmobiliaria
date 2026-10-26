@@ -5,6 +5,7 @@
 // sale sin imagen de encabezado en lugar de mostrar la de otra empresa.
 export interface MarcaCorreo {
   imagen: string | null;
+  logo: string | null;
   principal: string;
   accion: string;
   textoAccion: string;
