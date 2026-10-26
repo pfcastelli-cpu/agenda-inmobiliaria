@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boceto (a) · Avalúo sin costo</title>
+<style>
+body{margin:0;background:#dfe3e8;font-family:Arial,Helvetica,sans-serif;color:#4D4D4D}
+h1{font:600 22px Arial;text-align:center;margin:28px 16px 4px;color:#1A2C45}
+p.s{text-align:center;margin:0 16px 22px;font-size:14px}
+.row{display:flex;gap:34px;justify-content:center;align-items:flex-start;flex-wrap:wrap;padding:0 16px 50px}
+.col{text-align:center}.col b{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;color:#1A2C45}
+iframe{border:0;background:#F4F4F4;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.12);display:block}
+</style></head><body>
+<h1>Boceto (a) · Invitación a pedir un avalúo sin costo</h1>
+<p class="s">Escritorio (600 px) y celular (390 px). Los textos entre [CORCHETES] son datos que faltan.</p>
+<div class="row">
+  <div class="col"><b>Escritorio · 600 px</b><iframe id="d" width="600" height="1180"></iframe></div>
+  <div class="col"><b>Celular · 390 px</b><iframe id="m" width="390" height="1340"></iframe></div>
+</div>
+
+<template id="email">
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Conoce cuánto vale tu inmueble</title>
+<style>
+@media only screen and (max-width:620px){
+ .w{width:100%!important}.pad{padding-left:22px!important;padding-right:22px!important}
+ .h1{font-size:30px!important}.logo{width:220px!important}.foto{height:auto!important}
+}
+</style></head>
+<body style="margin:0;padding:0;background:#F4F4F4;font-family:Poppins,Arial,Helvetica,sans-serif">
+<!-- Texto de vista previa (lo que se ve en la bandeja de entrada) -->
+<div style="display:none;max-height:0;overflow:hidden;color:#F4F4F4">Solicita tu avalúo sin costo y conoce el valor real de tu inmueble.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4F4F4"><tr><td align="center" style="padding:24px 12px">
+
+<table role="presentation" class="w" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px">
+
+  <!-- 1. LOGO (sobre blanco, 240 px, con la ®) -->
+  <tr><td align="center" bgcolor="#ffffff" style="background:#ffffff;border-radius:24px 24px 0 0;padding:36px 24px 30px">
+    <img class="logo" src="https://citas.patrimonios.co/logo-patrimonios.png" alt="Patrimonios Inmobiliarios®" width="240" style="width:240px;height:auto;display:block;border:0">
+  </td></tr>
+
+  <!-- 2. TITULAR (máx. 8 palabras) -->
+  <tr><td class="pad" bgcolor="#ffffff" style="background:#ffffff;padding:6px 44px 8px" align="center">
+    <div style="width:32px;height:3px;background:#D43228;margin:0 auto 22px;line-height:3px;font-size:0">&nbsp;</div>
+    <h1 class="h1" style="margin:0;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:36px;line-height:1.15;letter-spacing:-.01em;color:#1A2C45">Conoce cuánto vale<br>tu inmueble</h1>
+  </td></tr>
+
+  <!-- 3. IMAGEN editorial -->
+  <tr><td class="pad" bgcolor="#ffffff" style="background:#ffffff;padding:26px 28px 0">
+    <img class="foto" src="https://adminpaxzu.patrimonios.co/uploads/images/Cita.jpg" alt="Una mujer sonríe al recibir una buena noticia en su teléfono" width="544" style="width:100%;max-width:544px;height:300px;object-fit:cover;display:block;border:0;border-radius:24px">
+  </td></tr>
+
+  <!-- 4. LÍNEA DE APOYO + 5. BOTÓN ÚNICO -->
+  <tr><td class="pad" bgcolor="#ffffff" align="center" style="background:#ffffff;padding:30px 44px 40px">
+    <p style="margin:0 0 6px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#4D4D4D">Hola, [Nombre].</p>
+    <p style="margin:0 0 28px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#4D4D4D">Solicita un avalúo sin costo y toma decisiones con información clara sobre tu patrimonio.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>
+      <td align="center" bgcolor="#1A2C45" style="background:#1A2C45;border-radius:999px">
+        <a href="[ENLACE-PENDIENTE-AVALUO]" target="_blank" style="display:inline-block;padding:16px 38px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:16px;font-weight:600;line-height:20px;color:#ffffff;text-decoration:none;border-radius:999px">Pedir mi avalúo sin costo</a>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- 6. BLOQUE DE CONFIANZA (tarjeta aqua) -->
+  <tr><td class="pad" bgcolor="#ffffff" style="background:#ffffff;padding:0 28px 28px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td bgcolor="#E3F8F7" style="background:#E3F8F7;border-radius:24px;padding:26px 28px" align="center">
+        <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#00807D;margin-bottom:8px">Tranquilidad que hace crecer tu patrimonio</div>
+        <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#4D4D4D">Administramos, arrendamos, vendemos y valoramos inmuebles en Bogotá, Barranquilla y Medellín. [PENDIENTE: dato de respaldo real, por ejemplo años de trayectoria o certificación del perito].</div>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- 7. PIE (petróleo) -->
+  <tr><td class="pad" bgcolor="#1A2C45" align="center" style="background:#1A2C45;border-radius:0 0 24px 24px;padding:34px 36px 32px">
+    <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;color:#ffffff"><strong style="font-weight:600">Patrimonios Inmobiliarios S.A.S.</strong><br>Carrera 67 #167-61, Of. 203, Bogotá</div>
+    <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-size:14px;line-height:1.8;color:#cfe3e8;margin-top:12px">Bogotá (601) 917 9987<br>Barranquilla (605) 319 8833<br>Medellín (604) 590 4545</div>
+    <div style="height:1px;background:#33465f;margin:22px 0 18px;line-height:1px;font-size:0">&nbsp;</div>
+    <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.7;color:#b9c8d3">Tratamos tus datos personales conforme a la Ley 1581 de 2012. Recibes este correo porque eres propietario o cliente de Patrimonios Inmobiliarios.</div>
+    <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.7;margin-top:10px"><a href="[ENLACE-PENDIENTE-BAJA]" style="color:#ffffff;text-decoration:underline">Darme de baja</a></div>
+  </td></tr>
+
+</table>
+</td></tr></table>
+</body></html>
+</template>
+
+<script>
+const h=document.getElementById('email').innerHTML;
+d.srcdoc=h;m.srcdoc=h;
+</script>
+</body></html>
