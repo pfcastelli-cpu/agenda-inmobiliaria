@@ -8,7 +8,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const CRON_SECRETO = Deno.env.get('CRON_ENCUESTAS_SECRETO') || '';
-const MAX_POR_CORRIDA = 25;
+const MAX_POR_CORRIDA = 12; // cada corrida dura unos 2-4 s por correo; el cron corre cada 10 minutos
 
 function json(cuerpo: unknown, status = 200) {
   return new Response(JSON.stringify(cuerpo), { status, headers: { 'Content-Type': 'application/json' } });
@@ -65,18 +65,13 @@ Deno.serve(async (req) => {
     });
     if (!vencidas.length) continue;
 
-    // Las que ya recibieron su encuesta no se vuelven a procesar; las que fallaron 3 veces tampoco (se ven en la bitácora de correos).
-    const { data: intentos } = await admin
-      .from('agenda_correos_log')
-      .select('cita_id, estado')
-      .eq('destinatario_tipo', 'encuesta_cliente')
-      .in('cita_id', vencidas.map((c) => c.id));
-    const hechas = new Set<string>();
+    // Las que ya recibieron su encuesta (marca `enviada_en`) no se vuelven a procesar; las que fallaron 3 veces tampoco (se ven en la bitácora de correos).
+    const ids = vencidas.map((c) => c.id);
+    const { data: marcadas } = await admin.from('agenda_encuestas_cliente').select('cita_id').in('cita_id', ids).not('enviada_en', 'is', null);
+    const hechas = new Set<string>((marcadas || []).map((e) => e.cita_id));
+    const { data: intentos } = await admin.from('agenda_correos_log').select('cita_id').eq('destinatario_tipo', 'encuesta_cliente').neq('estado', 'enviado').in('cita_id', ids);
     const fallos = new Map<string, number>();
-    for (const l of intentos || []) {
-      if (l.estado === 'enviado') hechas.add(l.cita_id);
-      else fallos.set(l.cita_id, (fallos.get(l.cita_id) || 0) + 1);
-    }
+    for (const l of intentos || []) fallos.set(l.cita_id, (fallos.get(l.cita_id) || 0) + 1);
 
     for (const c of vencidas) {
       if (restantes <= 0) break;

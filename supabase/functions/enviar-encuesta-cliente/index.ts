@@ -87,15 +87,11 @@ Deno.serve(async (req) => {
     return json({ ok: true, enviado: false, motivo: 'La cita no tiene correo de cliente guardado.' });
   }
 
-  // Una sola encuesta enviada por visita (el envío automático corre cada pocos minutos). `forzar: true` permite reenviar.
+  // Una sola encuesta enviada por visita (el envío automático corre cada pocos minutos): la marca `enviada_en` de la
+  // encuesta es la fuente de verdad. `forzar: true` permite reenviar.
   if (body.forzar !== true) {
-    const { count: yaEnviadas } = await admin
-      .from('agenda_correos_log')
-      .select('id', { count: 'exact', head: true })
-      .eq('cita_id', cita.id)
-      .eq('destinatario_tipo', 'encuesta_cliente')
-      .eq('estado', 'enviado');
-    if ((yaEnviadas || 0) > 0) return json({ ok: true, enviado: false, motivo: 'La encuesta de esta visita ya se envió.' });
+    const { data: previa } = await admin.from('agenda_encuestas_cliente').select('enviada_en').eq('cita_id', cita.id).maybeSingle();
+    if (previa?.enviada_en) return json({ ok: true, enviado: false, motivo: 'La encuesta de esta visita ya se envió.' });
   }
 
   const { data: config } = await admin
@@ -234,6 +230,7 @@ Deno.serve(async (req) => {
       subject: asunto,
       html,
     });
+    await admin.from('agenda_encuestas_cliente').update({ enviada_en: new Date().toISOString() }).eq('cita_id', cita.id);
     await registrarLog(admin, {
       empresa_id: cita.empresa_id,
       cita_id: cita.id,
