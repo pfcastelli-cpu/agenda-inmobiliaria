@@ -207,6 +207,15 @@ Deno.serve(async (req) => {
         </a>
       </td>
     </tr></table>
+    <p style="color:#6b6b6b;font-size:13px;margin:22px 0 10px">O cuéntanos rápido cómo te pareció el inmueble:</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      ${[
+        ['me_gusto_mucho', '😍', 'Me gustó mucho'],
+        ['me_gusto', '🙂', 'Me gustó'],
+        ['no_seguro', '😐', 'No estoy seguro'],
+        ['no_me_gusto', '🙁', 'No me gustó'],
+      ].map(([valor, emoji, texto]) => `<tr><td style="padding:5px 0"><table role="presentation" width="100%" align="center" cellpadding="0" cellspacing="0" border="0" style="max-width:380px;margin:0 auto"><tr><td align="center" bgcolor="#ffffff" style="border-radius:999px;border:1px solid ${marca.principal}"><a href="${linkOpinion}?impresion=${valor}" target="_blank" style="display:block;padding:12px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:14px;font-weight:600;color:${marca.principal};text-decoration:none;border-radius:999px">${emoji}&nbsp;&nbsp;${texto}</a></td></tr></table></td></tr>`).join('')}
+    </table>
     </div>
   </div>
   <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas')}</p>
