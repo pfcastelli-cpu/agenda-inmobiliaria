@@ -519,7 +519,8 @@ Deno.serve(async (req) => {
         ? construirICS({
             metodo: 'CANCEL',
             uid: uidCalendarioCita(citaId),
-            secuencia: 1,
+            // Hora actual: tiene que ser mayor que la SEQUENCE de cualquier invitación anterior (p. ej. una cita reagendada).
+            secuencia: Math.floor(Date.now() / 1000),
             dtStart: aFechaICSUTC(citaOriginal.fecha, citaOriginal.hora_inicio),
             dtEnd: aFechaICSUTC(citaOriginal.fecha, citaOriginal.hora_fin || citaOriginal.hora_inicio),
             resumen: `Visita inmueble Nº ${inmueble.numero_inmueble} — CANCELADA`,
