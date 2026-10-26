@@ -15,24 +15,25 @@ dirección, política de datos, correo de baja), para que los correos de cualqui
 - Captación solo con datos legales completos; fotos con logo de Patrimonios solo para el slug exacto `patrimonios`.
 
 ## Migraciones y despliegues (remoto vs. local)
-- SQL 001–015: aplicadas. **SQL 016 (`sql/016-contacto-empresa.sql`): PREPARADA, NO aplicada.** Lectura previa de producción (solo SELECT,
-  26-oct): hay una única empresa, slug `patrimonios`, y la columna `contacto_empresa` aún no existe; la guarda de 016 pasaría.
-- Edge Functions en Supabase: siguen desplegadas con la versión ANTERIOR (fijos escritos en el código, desplegada el 26-oct). El código nuevo está
-  en el repo pero NO desplegado. **No desplegar las 12 funciones antes de aplicar 016**: sus consultas piden la columna nueva y fallarían.
-- Front end: el editor nuevo llega a producción solo con un push que no lleve `[skip netlify]`; hasta aplicar 016 el editor se oculta y
-  muestra un aviso (la UI detecta que la columna no existe).
-- `correo_modo_pruebas` sigue ACTIVO; no se tocó SMTP, JWT, RLS ni credenciales.
+- SQL 001–016: APLICADAS en Supabase (016 el 26-oct). La 016 del commit bfbb3d0 tenía un error de sintaxis plpgsql (un `CASE ... THEN`
+  dentro de un `IF`); se corrigió en `sql/016-contacto-empresa.sql` (variable `m`) y esa versión corregida es la que se aplicó. **La corrección está
+  solo local, sin commitear.** Verificado en producción: una empresa (`patrimonios`) con 3 sedes, NIT, `correo_contacto = info@patrimonios.co`,
+  constraint presente, validador rechaza teléfonos inválidos y http, modo de pruebas sigue en `true`.
+- Edge Functions: las 12 con contacto por empresa DESPLEGADAS el 26-oct (CLI `--use-api`). Contactos que usan: `agenda_configuracion.contacto_empresa`.
+- Front end (editor Administración > Empresa): en `origin/main` pero NO publicado (commit con `[skip netlify]`); hasta publicarlo, la
+  configuración de sedes solo se puede cambiar por SQL.
+- Respaldo previo a 016: `respaldos/agenda_configuracion-antes-016-2026-10-26.json` (carpeta fuera de git).
 
 ## Pruebas
-- Ejecutadas: `node --test tests/contacto-empresa.test.mjs` 12/12 (aislamiento A/B, escape, enlaces, teléfonos/extensiones, captación, datos de Patrimonios, análisis de las 12 funciones);
-  `git diff --check` limpio; revisión de código y de 016 por Claude (sin ejecutar el SQL). Codex además: build con salida temporal y vista previa sintética en Chrome (320–1280 px).
-- Pendientes: ejecutar y verificar 016 en PostgreSQL; guardado/lectura con sesión y RLS reales; envío y recepción de las 12 funciones; Outlook y celular físicos.
+- Ejecutadas: 12/12 en `tests/contacto-empresa.test.mjs` (no ejecutan SQL; por eso no detectaron el error de 016). Correos reales en modo de pruebas a
+  pf.castelli@patrimonios.co tras el despliegue: confirmación al cliente (2 citas), aviso al propietario y encuesta; los cuatro traen las tres sedes
+  con teléfonos fijos clicables, info@ y la web.
+- Sin ver: arrendatario (la cita de prueba es de un Rentando ya cancelado; no llegó aviso), recuperar contraseña, accesos, cambio/cancelación,
+  informe del propietario, portal y probar-correo (exigen sesión o cambian estado). Pendientes: Outlook y celular físicos; guardado desde el editor con sesión y RLS.
 
 ## Siguiente paso
-Con autorización explícita de Felipe, en este orden: (1) aplicar 016 y leer los datos por empresa; (2) desplegar las 12 funciones con la CLI
-(comando y lista de públicas en `CLAUDE.md`); (3) push del front end sin `[skip netlify]` si aún no está publicado; (4) mandar un correo de prueba
-de cada tipo en modo de pruebas y revisarlos. Después, lo pendiente de producto: ver «Pendiente / próximos pasos» en
-`docs/historico/CLAUDE-completo-2026-10-26.md`.
+(1) Commit de la corrección de `sql/016` y de este archivo (pedir autorización). (2) Publicar el front end (push sin `[skip netlify]`) y probar el editor con sesión.
+(3) Probar con sesión los correos que faltan. Después, pendientes de producto en `docs/historico/CLAUDE-completo-2026-10-26.md`.
 
 ## Respaldo y reversión
 El historial de git (GitHub) es el respaldo del código y permite volver a cualquier commit. Los datos de Supabase se respaldan con

@@ -5,12 +5,13 @@ begin;
 
 create or replace function public.agenda_contacto_empresa_valido(p jsonb)
 returns boolean language plpgsql immutable set search_path = '' as $$
-declare k text; s jsonb; t jsonb; n text;
+declare k text; s jsonb; t jsonb; n text; m int;
 begin
   if jsonb_typeof(p) is distinct from 'object' or octet_length(p::text) > 65536 then return false; end if;
   foreach k in array array['sitio_web','razon_social','nit','direccion','politica_datos_url','correo_baja'] loop
     if p ? k and jsonb_typeof(p->k) is distinct from 'string' then return false; end if;
-    if length(coalesce(p->>k,'')) > case k when 'razon_social' then 180 when 'nit' then 40 when 'direccion' then 400 when 'correo_baja' then 254 else 1000 end then return false; end if;
+    m := case k when 'razon_social' then 180 when 'nit' then 40 when 'direccion' then 400 when 'correo_baja' then 254 else 1000 end;
+    if length(coalesce(p->>k,'')) > m then return false; end if;
   end loop;
   foreach k in array array['sitio_web','politica_datos_url'] loop
     n := coalesce(p->>k,'');
