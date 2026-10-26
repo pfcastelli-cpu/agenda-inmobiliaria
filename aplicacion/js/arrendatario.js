@@ -15,7 +15,17 @@ const DIAS_A_MOSTRAR = 21;
 
 const state = {
   paso: 'cargando', // cargando | error | principal
-  vista: 'resumen', // resumen | proponer | cancelar | cancelada
+  vista: 'resumen', // resumen | proponer | cancelar | cancelada | inmueble
+  modo: 'cita', // cita (enlace de una visita) | inmueble (enlace único del arrendatario con todas sus visitas)
+  reubicacion: false, // el cliente debe elegir otro turno porque el arrendatario limitó ese día
+  inmuebleToken: null,
+  // modo inmueble
+  citasInm: [],
+  franjas: [],
+  maxFranjas: 3,
+  franjaFecha: null,
+  franjaTipo: 'disponible',
+  franjaRangos: [],
   token: null,
   rol: 'arrendatario',
   rentando: true,
@@ -73,7 +83,7 @@ function hora12(h) {
 
 const esArrendatario = () => state.rol === 'arrendatario';
 // El cliente cambia la hora directo (sin acuerdo) cuando en el inmueble no vive un arrendatario.
-const cambioDirecto = () => !esArrendatario() && !state.rentando;
+const cambioDirecto = () => !esArrendatario() && (!state.rentando || state.reubicacion);
 
 async function llamar(accion, extra = {}) {
   const { data, error } = await supabase.functions.invoke('portal-visita', { body: { token: state.token, accion, ...extra } });
@@ -93,6 +103,20 @@ async function llamar(accion, extra = {}) {
 }
 
 function aplicarDatos(d) {
+  if (d.modo === 'inmueble') {
+    state.modo = 'inmueble';
+    state.rol = 'arrendatario';
+    state.tipo = d.tipo || 'inmueble';
+    state.hoy = d.hoy;
+    state.inmueble = d.inmueble;
+    state.citasInm = d.citas || [];
+    state.franjas = d.franjas || [];
+    state.maxFranjas = d.max_franjas || 3;
+    return;
+  }
+  state.modo = 'cita';
+  state.reubicacion = !!d.reubicacion;
+  state.inmuebleToken = d.inmueble_token || null;
   state.rol = d.rol;
   state.rentando = d.rentando !== false;
   state.tipo = d.tipo || 'inmueble';
@@ -110,6 +134,10 @@ function aplicarDatos(d) {
 
 async function recargar() {
   aplicarDatos(await llamar('obtener'));
+  if (state.modo === 'inmueble') {
+    state.vista = 'inmueble';
+    return;
+  }
   state.vista = state.cita.estado === 'cancelada' ? 'cancelada' : 'resumen';
 }
 
@@ -196,6 +224,15 @@ function bloqueAcciones() {
   if (state.propuesta) return bloquePropuesta();
   if (!esArrendatario()) {
     // El cliente puede cambiar o cancelar su visita. Con arrendatario adentro, el cambio de hora es un acuerdo.
+    if (state.reubicacion) {
+      return `
+    <div class="pu-card" style="border-color:var(--pu-teal)">
+      <h3 style="margin-top:0">Elige una nueva hora para tu visita</h3>
+      <p>Quien habita el inmueble no podrá recibirte a esa hora. Escoge un horario disponible (ya tiene en cuenta la agenda del asesor): el cambio queda en firme al instante y te enviamos la confirmación por correo. Mientras no elijas, tu visita sigue en la hora original.</p>
+      <button class="pu-main" type="button" id="ar-ir-proponer">Elegir nueva hora</button>
+      <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario}">Cancelar mi visita</button>
+    </div>`;
+    }
     return `
     <div class="pu-card">
       <h3 style="margin-top:0">¿Necesitas cambiar tu visita?</h3>
@@ -242,8 +279,86 @@ function bloqueHorarioPermitido() {
     </div>`;
 }
 
+function enlaceTodas() {
+  if (!esArrendatario() || !state.inmuebleToken) return '';
+  return `<div class="pu-card"><p style="margin:0"><a href="/arrendatario/${esc(state.inmuebleToken)}"><strong>Ver todas mis visitas y organizar mis horarios</strong></a><br>Si tienes varias visitas, ahí marcas los días y franjas en que sí (o no) puedes, de una sola vez.</p></div>`;
+}
+
 function vistaResumen() {
-  return `${tarjetaVisita()}${exito()}${bloqueAcciones()}${bloqueHorarioPermitido()}`;
+  return `${tarjetaVisita()}${exito()}${enlaceTodas()}${bloqueAcciones()}${bloqueHorarioPermitido()}`;
+}
+
+// ---- Vista del inmueble (arrendatario): todas sus visitas y sus franjas --------------------
+function textoFranjaDia(fecha) {
+  const del = state.franjas.filter((f) => f.fecha === fecha);
+  if (!del.length) return '';
+  const tipo = del[0].tipo === 'disponible' ? 'Solo puedes' : 'No puedes';
+  return `${tipo}: ${del.map((f) => `${hora12(f.desde)} a ${hora12(f.hasta)}`).join(', ')}`;
+}
+
+function vistaInmueble() {
+  const i = state.inmueble;
+  const lista = state.citasInm.length
+    ? state.citasInm
+        .map(
+          (c) =>
+            `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0"><span class="pu-badge">📅 ${esc(fechaLarga(c.fecha))}</span><span class="pu-badge">🕒 ${esc(hora12(c.hora_inicio))} a ${esc(hora12(c.hora_fin))}</span>${c.por_reubicar ? '<span class="pu-badge">Por reubicar</span>' : ''}<a href="/arrendatario/${esc(c.token)}">Ver o cambiar esta visita</a></div>`,
+        )
+        .join('')
+    : `<p class="pu-vacio" style="margin:0">No tienes visitas programadas por ahora.</p>`;
+
+  const fechas = [];
+  for (let n = 0; n < DIAS_A_MOSTRAR; n++) {
+    const f = fechaDe(state.hoy);
+    f.setDate(f.getDate() + n);
+    fechas.push(f);
+  }
+  const strip = `<div class="pu-fechas" id="ar-fechas-franja">${fechas
+    .map((f) => {
+      const tiene = state.franjas.some((x) => x.fecha === iso(f));
+      const hay = state.citasInm.some((x) => x.fecha === iso(f));
+      return `<div class="pu-fecha ${iso(f) === state.franjaFecha ? 'activa' : ''}" data-fecha="${iso(f)}" role="button" tabindex="0"><span>${DIAS_CORTO[f.getDay()]}</span><strong>${f.getDate()}</strong><span>${MESES[f.getMonth()].slice(0, 3)}${tiene ? ' ●' : hay ? ' ·' : ''}</span></div>`;
+    })
+    .join('')}</div>
+    <p class="pu-vacio" style="margin:6px 0 0;font-size:12px">● ya tiene franjas · · tiene visitas</p>`;
+
+  let editor = '';
+  if (state.franjaFecha) {
+    const disponible = state.franjaTipo === 'disponible';
+    const rangos = state.franjaRangos
+      .map(
+        (r, k) =>
+          `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:8px 0"><div style="flex:1;min-width:120px"><label>Desde</label><input type="time" min="06:00" max="21:00" step="900" data-rango="${k}" data-lado="desde" value="${esc(r.desde)}"></div><div style="flex:1;min-width:120px"><label>Hasta</label><input type="time" min="06:00" max="21:00" step="900" data-rango="${k}" data-lado="hasta" value="${esc(r.hasta)}"></div>${state.franjaRangos.length > 1 ? `<button type="button" class="pu-main" data-quitar-rango="${k}" style="${estiloSecundario.replace('margin-top:10px', 'margin-top:0')};width:auto">Quitar</button>` : ''}</div>`,
+      )
+      .join('');
+    editor = `
+      <h3 class="pu-question">${esc(fechaLarga(state.franjaFecha))}</h3>
+      ${textoFranjaDia(state.franjaFecha) ? `<p style="margin:0 0 8px"><strong>Hoy tienes guardado:</strong> ${esc(textoFranjaDia(state.franjaFecha))}</p>` : ''}
+      <div class="pu-options" id="ar-tipo-franja">
+        <button type="button" class="pu-option ${disponible ? 'activa' : ''}" data-tipo="disponible">Solo puedo en estas franjas</button>
+        <button type="button" class="pu-option ${!disponible ? 'activa' : ''}" data-tipo="bloqueo">No puedo en estas franjas</button>
+      </div>
+      <p style="margin:8px 0 0;font-size:13px">${disponible ? `Ese día solo se ofrecerán visitas dentro de ${state.maxFranjas === 1 ? 'la franja' : `hasta ${state.maxFranjas} franjas`} (por ejemplo, de 2 horas). Dentro de cada franja pueden atenderse varias personas, una tras otra.` : 'En esas franjas no se ofrecerá ninguna visita.'}</p>
+      ${rangos}
+      ${state.franjaRangos.length < state.maxFranjas ? `<button type="button" class="pu-main" id="ar-mas-rango" style="${estiloSecundario}">Agregar otra franja</button>` : ''}
+      ${errorBloque()}
+      <button class="pu-main" type="button" id="ar-guardar-franjas" ${state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Guardando…' : 'Guardar franjas de este día'}</button>
+      ${state.franjas.some((f) => f.fecha === state.franjaFecha) ? `<button class="pu-main" type="button" id="ar-borrar-franjas" style="${estiloSecundario}" ${state.ocupado ? 'disabled' : ''}>Quitar las franjas de este día</button>` : ''}`;
+  }
+
+  return `
+    <div class="pu-card">
+      <h2 style="margin-top:0">Tus visitas en tu ${esc(state.tipo)}</h2>
+      <p style="font-size:13px">${i.direccion ? esc(i.direccion) : 'Inmueble ' + esc(i.numero)}${i.zona ? ' · ' + esc(i.zona) : ''}</p>
+      ${lista}
+    </div>
+    ${exito()}
+    <div class="pu-card">
+      <h3 style="margin-top:0">¿Algún día no puedes? Dinos cuándo sí</h3>
+      <p>Elige el día y marca las franjas en las que <strong>sí</strong> (o <strong>no</strong>) puedes recibir. Le pedimos a cada persona con visita ese día que elija un nuevo turno dentro de tus franjas; así no tienes que responder visita por visita.</p>
+      ${strip}
+      ${editor}
+    </div>`;
 }
 
 function fechasCandidatas() {
@@ -335,6 +450,7 @@ function render() {
   else if (state.vista === 'proponer') html = vistaProponer();
   else if (state.vista === 'cancelar') html = vistaCancelar();
   else if (state.vista === 'cancelada') html = vistaCancelada();
+  else if (state.vista === 'inmueble') html = vistaInmueble();
   else html = vistaResumen();
   raiz.innerHTML = html;
   cablear();
@@ -452,6 +568,65 @@ async function guardarHorario() {
   if (state.mensaje) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function elegirFechaFranja(fecha) {
+  state.franjaFecha = fecha;
+  state.errorForm = '';
+  state.mensaje = '';
+  const del = state.franjas.filter((f) => f.fecha === fecha);
+  if (del.length) {
+    state.franjaTipo = del[0].tipo;
+    state.franjaRangos = del.map((f) => ({ desde: f.desde, hasta: f.hasta }));
+  } else {
+    state.franjaTipo = 'disponible';
+    state.franjaRangos = [{ desde: '08:00', hasta: '10:00' }];
+  }
+  render();
+}
+
+async function guardarFranjas() {
+  state.errorForm = '';
+  state.mensaje = '';
+  for (const r of state.franjaRangos) {
+    if (!r.desde || !r.hasta || r.desde >= r.hasta) {
+      state.errorForm = 'En cada franja, la hora "desde" debe ser anterior a "hasta".';
+      return render();
+    }
+  }
+  state.ocupado = true;
+  render();
+  try {
+    const d = await llamar('ventanas_guardar', { fecha: state.franjaFecha, tipo: state.franjaTipo, ventanas: state.franjaRangos });
+    const fecha = state.franjaFecha;
+    await recargar();
+    state.franjaFecha = fecha;
+    elegirFechaFranja(fecha);
+    state.mensaje = `Guardamos tus franjas del ${fechaLarga(fecha)}.${d.afectadas ? ` Hay ${d.afectadas === 1 ? 'una visita' : `${d.afectadas} visitas`} fuera de ellas: ya le pedimos a ${d.afectadas === 1 ? 'esa persona' : 'esas personas'} que elija${d.afectadas === 1 ? '' : 'n'} otro turno dentro de tus franjas.` : ' Ninguna visita tuya queda fuera de ellas.'}`;
+  } catch (e) {
+    state.errorForm = e.message;
+  }
+  state.ocupado = false;
+  render();
+  if (state.mensaje) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function borrarFranjas() {
+  state.errorForm = '';
+  state.ocupado = true;
+  render();
+  try {
+    const fecha = state.franjaFecha;
+    await llamar('ventanas_borrar', { fecha });
+    await recargar();
+    elegirFechaFranja(fecha);
+    state.mensaje = `Quitamos las franjas del ${fechaLarga(fecha)}.`;
+  } catch (e) {
+    state.errorForm = e.message;
+  }
+  state.ocupado = false;
+  render();
+  if (state.mensaje) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function irA(vista) {
   state.vista = vista;
   state.errorForm = '';
@@ -473,6 +648,32 @@ function cablear() {
   por('ar-aceptar')?.addEventListener('click', () => responder(true));
   por('ar-rechazar')?.addEventListener('click', () => responder(false));
   por('ar-guardar-horario')?.addEventListener('click', guardarHorario);
+  por('ar-guardar-franjas')?.addEventListener('click', guardarFranjas);
+  por('ar-borrar-franjas')?.addEventListener('click', borrarFranjas);
+  por('ar-mas-rango')?.addEventListener('click', () => {
+    state.franjaRangos = [...state.franjaRangos, { desde: '14:00', hasta: '16:00' }];
+    render();
+  });
+  document.querySelectorAll('[data-quitar-rango]').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.franjaRangos = state.franjaRangos.filter((_, k) => k !== Number(b.dataset.quitarRango));
+      render();
+    });
+  });
+  document.querySelectorAll('input[data-rango]').forEach((inp) => {
+    inp.addEventListener('change', () => {
+      state.franjaRangos[Number(inp.dataset.rango)][inp.dataset.lado] = inp.value;
+    });
+  });
+  document.querySelectorAll('#ar-tipo-franja .pu-option').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.franjaTipo = b.dataset.tipo;
+      render();
+    });
+  });
+  document.querySelectorAll('#ar-fechas-franja .pu-fecha').forEach((el) => {
+    el.addEventListener('click', () => elegirFechaFranja(el.dataset.fecha));
+  });
   por('ar-motivo')?.addEventListener('input', (e) => { state.motivo = e.target.value; });
   por('ar-desde')?.addEventListener('change', (e) => { state.desde = e.target.value; });
   por('ar-hasta')?.addEventListener('change', (e) => { state.hasta = e.target.value; });

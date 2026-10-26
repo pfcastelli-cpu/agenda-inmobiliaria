@@ -534,6 +534,7 @@ function citaCard(c) {
     ${esCaptacion ? `<span class="v-tag v-tag-captacion" style="margin-top:6px">${icon('key-round')}CAPTACIÓN · PRIORIDAD TOTAL</span>` : esInterna ? `<span class="v-tag v-tag-neutral" style="margin-top:6px">${escape(etiquetaTipo)}</span>` : ''}
     <h3 style="margin-top:6px">${escape(esInterna && c.titulo ? c.titulo : direccion)}</h3>
     <div class="v-apptmeta"><span>${esInterna ? escape(direccion) : escape(c.cliente_nombre)}</span></div>
+    ${c.reubicacion_pendiente_desde && c.estado !== 'cancelada' ? `<p class="v-note" style="margin:6px 0 0">⚠️ Reubicación pendiente: el arrendatario limitó ese día y el cliente aún no elige otro turno. Sigue en esta hora hasta que elija.</p>` : ''}
     <div class="v-row"><span class="v-avatar">${asesor ? escape(asesor.nombre.slice(0, 1)) : '?'}</span><span class="v-advisorname">${asesor ? escape(asesor.nombre) : 'Sin asesor'}${asesor && asesor.tipo_vinculacion === 'freelance' ? ' · freelance' : ''}</span></div>
     ${inmueble ? `<a class="v-link" href="${linkPublico(inmueble.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver inmueble</a>` : ''}
     ${c.estado === 'completada' ? (c.feedback_cliente ? `<p class="v-muted" style="margin-top:8px;font-size:12.5px">Comentario del cliente: ${escape(c.feedback_cliente)}</p>` : '') : `<div class="v-actions"><button data-completar="${c.id}">Realizada</button><button data-mover="${c.id}">Mover</button><button class="v-danger" data-cancelar="${c.id}">Cancelar</button></div>`}
@@ -2034,8 +2035,12 @@ function adjuntarEventos(rootEl) {
       state.completarId = null;
       toast(error ? 'No se pudo guardar: ' + error.message : 'Marcada como realizada. El comentario queda guardado para el informe al propietario.');
       if (!error) {
-        // Encuesta al cliente (no bloquea la confirmación visual, igual que enviar-correo-cita/enviar-correo-propietario).
-        supabase.functions.invoke('enviar-encuesta-cliente', { body: { cita_id: citaIdRealizada } }).catch(() => {});
+        // La encuesta sale sola N minutos después de la visita (Configuración). Solo se manda aquí, al marcar «Realizada»,
+        // si la empresa la desactivó o si el envío automático aún no está habilitado en la base de datos.
+        const { data: cfgEncuesta, error: errCfgEncuesta } = await supabase.from('agenda_configuracion').select('encuesta_automatica').eq('empresa_id', contexto.empresaId).maybeSingle();
+        if (errCfgEncuesta || cfgEncuesta?.encuesta_automatica === false) {
+          supabase.functions.invoke('enviar-encuesta-cliente', { body: { cita_id: citaIdRealizada } }).catch(() => {});
+        }
       }
       render();
       return;

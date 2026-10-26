@@ -359,7 +359,8 @@ Deno.serve(async (req) => {
   const saludoArr = arr?.nombre ? `Hola ${esc(arr.nombre)}, ` : 'Hola, ';
 
   if (accion === 'movida') {
-    if (rentando && correosArr.length) {
+    // sin_aviso_arrendatario: el cliente eligió dentro de las franjas que el propio arrendatario abrió (ya lo sabe).
+    if (rentando && correosArr.length && body.sin_aviso_arrendatario !== true) {
       await enviar({
         tipo: 'arrendatario',
         correos: correosArr,

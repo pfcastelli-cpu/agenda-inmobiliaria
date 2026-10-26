@@ -136,10 +136,18 @@ function selectorEstrellas() {
   return out;
 }
 
+// El motivo solo se pregunta si el inmueble no convenció del todo.
+const IMPRESIONES_QUE_PREGUNTAN_MOTIVO = ['no_me_gusto', 'no_seguro'];
+const preguntarMotivo = () => IMPRESIONES_QUE_PREGUNTAN_MOTIVO.includes(state.impresionSel);
+
 function vistaFormulario() {
+  const motivo = preguntarMotivo()
+    ? `<h3 class="pu-question">3. ¿Cuál fue el motivo principal? <span style="font-weight:400">(opcional)</span></h3>
+      ${selectorOpciones('motivo', MOTIVO_OPCIONES.filter((o) => o.valor !== 'no_aplica'), state.motivoSel)}`
+    : '';
   return `
     <div class="pu-card">
-      <h2>¿Qué te pareció la visita?</h2>
+      <h2>¿Cómo te pareció el inmueble?</h2>
       ${encabezadoInmueble()}
       <p>Tu opinión le llega directo al propietario de este inmueble.</p>
 
@@ -149,10 +157,9 @@ function vistaFormulario() {
       <h3 class="pu-question">2. ¿Cuál sería tu siguiente paso?</h3>
       ${selectorOpciones('intencion', INTENCION_OPCIONES, state.intencionSel)}
 
-      <h3 class="pu-question">3. Si no te convenció del todo, ¿cuál fue el motivo principal? <span style="font-weight:400">(opcional)</span></h3>
-      ${selectorOpciones('motivo', MOTIVO_OPCIONES, state.motivoSel)}
+      ${motivo}
 
-      <h3 class="pu-question">4. ¿Cómo calificas la atención del asesor?</h3>
+      <h3 class="pu-question">${preguntarMotivo() ? '4' : '3'}. ¿Cómo calificas la atención del asesor?</h3>
       ${selectorEstrellas()}
 
       <label for="pu-comentario" style="margin-top:18px">Cuéntanos más (opcional)</label>
@@ -230,7 +237,7 @@ async function enviarOpinion() {
     p_comentario: state.comentario.trim() || null,
     p_impresion: state.impresionSel,
     p_intencion: state.intencionSel,
-    p_motivo: state.motivoSel,
+    p_motivo: preguntarMotivo() ? state.motivoSel : 'no_aplica',
   });
   state.enviando = false;
   if (error) {
@@ -238,6 +245,8 @@ async function enviarOpinion() {
     render();
     return;
   }
+  // Avisa por correo al asesor (si el cliente quiere avanzar) y a la administración. No bloquea ni afecta la pantalla del cliente.
+  supabase.functions.invoke('avisar-encuesta-respondida', { body: { token: state.token } }).catch(() => {});
   state.paso = 'enviado';
   render();
 }
@@ -248,7 +257,10 @@ function cablear() {
       boton.addEventListener('click', () => {
         const campo = boton.dataset.campo;
         const valor = boton.dataset.valor;
-        if (campo === 'impresion') state.impresionSel = valor;
+        if (campo === 'impresion') {
+          state.impresionSel = valor;
+          if (!preguntarMotivo()) state.motivoSel = null;
+        }
         else if (campo === 'intencion') state.intencionSel = valor;
         else if (campo === 'motivo') state.motivoSel = valor;
         state.errorForm = '';

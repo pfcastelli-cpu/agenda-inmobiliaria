@@ -87,6 +87,17 @@ Deno.serve(async (req) => {
     return json({ ok: true, enviado: false, motivo: 'La cita no tiene correo de cliente guardado.' });
   }
 
+  // Una sola encuesta enviada por visita (el envío automático corre cada pocos minutos). `forzar: true` permite reenviar.
+  if (body.forzar !== true) {
+    const { count: yaEnviadas } = await admin
+      .from('agenda_correos_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('cita_id', cita.id)
+      .eq('destinatario_tipo', 'encuesta_cliente')
+      .eq('estado', 'enviado');
+    if ((yaEnviadas || 0) > 0) return json({ ok: true, enviado: false, motivo: 'La encuesta de esta visita ya se envió.' });
+  }
+
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
@@ -97,7 +108,7 @@ Deno.serve(async (req) => {
   const marca = marcaCorreo(config);
 
   const modoPruebas = config?.correo_modo_pruebas !== false;
-  const asunto = '¿Qué te pareció la visita?';
+  const asunto = '¿Cómo te pareció el inmueble?';
 
   if (!config?.correo_smtp_host || !config?.correo_smtp_password_secret_id) {
     await registrarLog(admin, {
@@ -198,16 +209,8 @@ Deno.serve(async (req) => {
   <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, 'Tu opinión sobre la visita', 'opinion')}
     <div style="padding:28px 26px;text-align:center">
-    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 10px">¿Qué te pareció la visita? ⭐</h1>
-    <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 22px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, gracias por visitar el inmueble. Tu opinión nos ayuda a mejorar y le llega directo al propietario.</p>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td align="center" bgcolor="${marca.principal}" style="border-radius:999px">
-        <a href="${linkOpinion}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px">
-          ⭐ Dejar mi opinión (1 minuto)
-        </a>
-      </td>
-    </tr></table>
-    <p style="color:#6b6b6b;font-size:13px;margin:22px 0 10px">O cuéntanos rápido cómo te pareció el inmueble:</p>
+    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 10px">¿Cómo te pareció el inmueble? 🏡</h1>
+    <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 22px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, gracias por visitar el inmueble. Toca la opción que mejor describa lo que sentiste y te llevamos a un formulario cortico con tu respuesta ya marcada. Tu opinión le llega directo al propietario.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
       ${[
         ['me_gusto_mucho', '😍', 'Me gustó mucho'],

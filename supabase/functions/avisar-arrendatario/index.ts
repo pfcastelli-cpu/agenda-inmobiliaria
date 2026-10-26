@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
 
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble')
+    .select('numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, token_arrendatario')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
   if (!inmueble || String(inmueble.estado_crm || '').trim().toLowerCase() !== 'rentando') {
@@ -219,9 +219,24 @@ Deno.serve(async (req) => {
   const ciudad = [inmueble.barrio, inmueble.ciudad].filter(Boolean).join(', ');
   const fechaTexto = formatearFecha(cita.fecha);
   const horaTexto = formatearHora(cita.hora_inicio.slice(0, 5));
-  const asunto = `Visita programada en tu ${sust.n} · ${fechaTexto}`;
+  // Un solo enlace por inmueble y el mismo asunto en todos los avisos (el correo los agrupa en una conversación):
+  // cada aviso lista TODAS las visitas próximas, para no obligar al arrendatario a negociar una por una.
+  const hoyBogota = new Date().toLocaleString('sv-SE', { timeZone: 'America/Bogota' }).slice(0, 10);
+  const { data: proximasRaw } = await admin
+    .from('agenda_citas')
+    .select('id, fecha, hora_inicio')
+    .eq('inmueble_id', cita.inmueble_id)
+    .eq('tipo_cita', 'visita_cliente')
+    .neq('estado', 'cancelada')
+    .gte('fecha', hoyBogota)
+    .order('fecha', { ascending: true })
+    .order('hora_inicio', { ascending: true });
+  const proximas = (proximasRaw || []).slice(0, 12);
+  if (!proximas.some((c) => c.id === cita.id)) proximas.push({ id: cita.id, fecha: cita.fecha, hora_inicio: cita.hora_inicio });
+  const varias = proximas.length > 1;
+  const asunto = `Visitas programadas en tu ${sust.n} · Inmueble ${inmueble.numero_inmueble}`;
   const nombre = escaparHtml(arrendatario?.nombre || '');
-  const enlacePortal = `${SITIO_URL}/arrendatario/${cita.token_arrendatario}`;
+  const enlacePortal = `${SITIO_URL}/arrendatario/${inmueble.token_arrendatario || cita.token_arrendatario}`;
   const enlaceSitio = enlaceInmueble(config, inmueble.numero_inmueble);
   const lugarTexto = [direccion, ciudad].filter(Boolean).join(', ').replace(/\.+$/, '');
   const remitenteNombre = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
@@ -239,15 +254,19 @@ Deno.serve(async (req) => {
   <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, `Visita programada`, 'hogar')}
     <div style="padding:28px 26px 20px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 6px">Visita programada en tu ${sust.n} 🏠</h1>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer ${sust.el} que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo: si la hora no te sirve, puedes proponer otra.</p>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 6px">${varias ? `Tienes ${proximas.length} visitas programadas en tu ${sust.n}` : `Visita programada en tu ${sust.n}`} 🏠</h1>
+      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer ${sust.el} que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo: si algún día u hora no te sirve, tú nos dices cuándo sí puedes.</p>
       <table style="width:100%;border-collapse:collapse">
-        <tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">📅 Fecha</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(fechaTexto)}</td></tr>
-        <tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">🕐 Hora</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(horaTexto)}</td></tr>
+        ${proximas
+          .map(
+            (c) =>
+              `<tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">📅 ${c.id === cita.id && varias ? 'Nueva' : 'Visita'}</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(formatearFecha(c.fecha))} · ${escaparHtml(formatearHora(c.hora_inicio.slice(0, 5)))}</td></tr>`,
+          )
+          .join('')}
         ${asesorNombre ? `<tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">👤 Asesor a cargo</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
       </table>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:18px 0 0">¿No puedes recibir la visita a esa hora? Con el botón de abajo propones otra hora disponible; la visita solo cambia cuando la persona interesada la acepte. Si no respondes, la visita se mantiene a la hora indicada. También puedes cancelarla o cambiar los días y horas en que se muestra tu ${sust.n}. Gracias por tu colaboración.</p>
-      <p style="margin:18px 0 6px;text-align:center"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:999px">👀 Ver la visita o proponer otra hora</a></p>
+      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:18px 0 0">¿Algún día u hora no te sirve? Con el botón de abajo ves todas tus visitas y marcas, para el día que quieras, las franjas en las que <b>sí puedes</b> recibir (hasta ${3}, por ejemplo de 2 horas) o en las que <b>no puedes</b>. Nosotros pedimos a cada persona que elija un nuevo turno dentro de esas franjas, así no tienes que responder visita por visita. Si no haces nada, las visitas se mantienen a la hora indicada. Gracias por tu colaboración.</p>
+      <p style="margin:18px 0 6px;text-align:center"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:999px">👀 Ver mis visitas y mis horarios</a></p>
       <p style="margin:10px 0 6px;text-align:center"><a href="${enlaceSitio}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:999px;border:2px solid ${marca.principal}">🏠 Ver el inmueble en nuestro sitio</a></p>
       <p style="color:#6b6b6b;font-size:12px;margin:10px 0 0">Este enlace es solo para ti, no lo compartas. ¿Prefieres hablar? Llama o escríbele a tu asesor.</p>
     </div>

@@ -115,3 +115,6 @@
 
 /* Contacto por empresa: editor independiente de sedes y teléfonos. */
 .ad [data-contacto-empresa]{margin:28px 0}.ad [data-contacto-empresa] h3{margin-top:20px}.ad-contacto-telefono{display:grid;grid-template-columns:1fr 1.5fr .7fr auto;gap:12px;align-items:end;margin:16px 0}.ad [data-sede]{min-width:0;margin:16px 0}.ad-contacto-telefono>*{min-width:0}@media(max-width:800px){.ad-contacto-telefono{grid-template-columns:1fr 1fr}}@media(max-width:480px){.ad-contacto-telefono{grid-template-columns:1fr}}
+
+/* Aviso flotante de guardado/errores en Administración (visible aunque el formulario sea largo). */
+.ad-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:1000;max-width:min(92vw,520px);padding:14px 20px;border-radius:12px;background:#14532d;color:#fff;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,.28)}.ad-toast.error{background:#7f1d1d}.ad-toast[hidden]{display:none}@media(max-width:860px){.ad-toast{bottom:84px}}

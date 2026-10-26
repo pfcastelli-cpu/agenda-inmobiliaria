@@ -12,6 +12,11 @@
 //   cancelar         → { motivo? } arrendatario (avisa al cliente) o CLIENTE (avisa por notificar-cambio-cita)
 //   reagendar        → solo CLIENTE, inmueble que NO está Rentando: { fecha, hora } mueve la visita directo
 //   guardar_horario  → solo arrendatario: { dias:[1..7], desde, hasta } cuándo se muestra el inmueble
+// Con el token del INMUEBLE (agenda_inmuebles.token_arrendatario, un solo enlace para todas sus visitas):
+//   obtener          → visitas próximas y franjas por fecha
+//   ventanas_guardar → { fecha, tipo:'bloqueo'|'disponible', ventanas:[{desde,hasta}] } franjas de ese día; las visitas
+//                      que quedan fuera se marcan para reubicar y el cliente elige otro turno dentro de las franjas
+//   ventanas_borrar  → { fecha } quita las franjas de ese día
 // El cliente puede cancelar o cambiar su visita desde su correo en cualquier inmueble; con arrendatario
 // adentro (Rentando) el cambio de hora sigue siendo un acuerdo (proponer/responder).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -21,7 +26,8 @@ import nodemailer from 'npm:nodemailer@6.9.16';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SITIO_URL = 'https://citas.patrimonios.co';
-const MAX_PROPUESTAS = 6; // por cita, entre las dos partes
+const MAX_PROPUESTAS = 3; // por cita, entre las dos partes; al llegar al tope se avisa al asesor
+const MAX_FRANJAS_POR_DIA = 3;
 const HORAS_VIGENCIA_PROPUESTA = 48;
 
 const CORS_HEADERS = {
@@ -103,6 +109,7 @@ function sumarDias(fecha: string, dias: number) {
 
 type Admin = ReturnType<typeof createClient>;
 type Rol = 'arrendatario' | 'cliente';
+type TipoDestino = Rol | 'interno';
 
 function correosDe(texto: string | null | undefined): string[] {
   return String(texto || '')
@@ -115,7 +122,7 @@ async function cargarContexto(admin: Admin, token: string) {
   const { data: cita } = await admin
     .from('agenda_citas')
     .select(
-      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente',
+      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente, reubicacion_pendiente_desde',
     )
     .or(`token_arrendatario.eq.${token},token_cliente.eq.${token}`)
     .maybeSingle();
@@ -123,7 +130,7 @@ async function cargarContexto(admin: Admin, token: string) {
   const rol: Rol = cita.token_arrendatario === token ? 'arrendatario' : 'cliente';
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos')
+    .select('id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos, token_arrendatario')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
   if (!inmueble) return null;
@@ -179,7 +186,7 @@ async function enviarCorreos(
   admin: Admin,
   empresaId: string,
   citaId: string,
-  tipo: Rol,
+  tipo: TipoDestino,
   destinatarios: string[],
   asunto: string,
   armar: (extra: { destinatarioReal: string; modoPruebas: boolean; remitente: string; marca: MarcaCorreo }) => string,
@@ -239,8 +246,8 @@ async function correosArrendatario(admin: Admin, empresaId: string, numeroInmueb
 
 async function registrarAccion(
   admin: Admin,
-  c: { cita: { id: string; empresa_id: string }; inmueble: { id: string } },
-  accion: 'horario_actualizado' | 'cita_cancelada' | 'propuesta_creada' | 'propuesta_aceptada' | 'propuesta_rechazada',
+  c: { cita: { id: string | null; empresa_id: string }; inmueble: { id: string } },
+  accion: 'horario_actualizado' | 'cita_cancelada' | 'propuesta_creada' | 'propuesta_aceptada' | 'propuesta_rechazada' | 'ventanas_guardadas' | 'ventanas_borradas' | 'cita_reubicada',
   detalle: Record<string, unknown>,
 ) {
   try {
@@ -331,6 +338,188 @@ async function propuestaPendiente(
   return p;
 }
 
+// ---- Portal por INMUEBLE (un solo enlace para todas las visitas del arrendatario) -----------
+async function cargarInmueblePorToken(admin: Admin, token: string) {
+  const { data } = await admin
+    .from('agenda_inmuebles')
+    .select('id, empresa_id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos, token_arrendatario')
+    .eq('token_arrendatario', token)
+    .maybeSingle();
+  return data;
+}
+
+// Aviso interno al asesor (nunca con datos del arrendatario). cuerpo: HTML ya escapado.
+async function avisarAsesor(admin: Admin, empresaId: string, citaId: string | null, asesorId: string | null, asunto: string, titulo: string, cuerpo: string) {
+  if (!asesorId) return;
+  const { data: a } = await admin.from('agenda_asesores').select('nombre, correo').eq('id', asesorId).maybeSingle();
+  const correos = correosDe(a?.correo).slice(0, 1);
+  await enviarCorreos(admin, empresaId, citaId as string, 'interno', correos, asunto, (extra) =>
+    plantillaCorreo({ titulo, cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(a?.nombre || '')},</p>${cuerpo}`, ...extra }),
+  );
+}
+
+// Marca como "por reubicar" las visitas de esa fecha que quedaron fuera de las franjas del arrendatario, avisa a sus
+// clientes (cada uno elige un turno dentro de las franjas, sin pedir permiso otra vez) y al asesor. Quita la marca a las
+// que ya caben. Devuelve cuántas quedaron por reubicar.
+async function reubicarAfectadas(
+  admin: Admin,
+  inm: { id: string; empresa_id: string; numero_inmueble: number; direccion: string | null },
+  fecha: string,
+  ahora: { fecha: string; hora: string },
+) {
+  const { data: franjas } = await admin.from('agenda_inmueble_ventanas').select('tipo, desde, hasta').eq('inmueble_id', inm.id).eq('fecha', fecha);
+  const hm = (t: string) => t.slice(0, 5);
+  const bloqueos = (franjas || []).filter((f) => f.tipo === 'bloqueo');
+  const disponibles = (franjas || []).filter((f) => f.tipo === 'disponible');
+  const { data: citas } = await admin
+    .from('agenda_citas')
+    .select('id, empresa_id, asesor_id, hora_inicio, hora_fin, cliente_nombre, cliente_email, token_cliente, reubicacion_pendiente_desde')
+    .eq('inmueble_id', inm.id)
+    .eq('fecha', fecha)
+    .eq('tipo_cita', 'visita_cliente')
+    .neq('estado', 'cancelada');
+  const direccion = limpiarDireccion(inm.direccion);
+  const aviso: Array<{ id: string; asesor_id: string | null; hora: string; cliente: string }> = [];
+  let afectadasTotal = 0;
+  for (const c of citas || []) {
+    const ini = hm(c.hora_inicio);
+    const fin = hm(c.hora_fin);
+    if (fecha === ahora.fecha && ini <= ahora.hora) continue; // ya empezó o pasó
+    const choca = bloqueos.some((b) => hm(b.desde) < fin && hm(b.hasta) > ini);
+    const fuera = disponibles.length > 0 && !disponibles.some((d) => hm(d.desde) <= ini && hm(d.hasta) >= fin);
+    const afectada = choca || fuera;
+    if (afectada) afectadasTotal++;
+    if (afectada && !c.reubicacion_pendiente_desde) {
+      await admin.from('agenda_citas').update({ reubicacion_pendiente_desde: new Date().toISOString() }).eq('id', c.id).is('reubicacion_pendiente_desde', null);
+      aviso.push({ id: c.id, asesor_id: c.asesor_id, hora: ini, cliente: c.cliente_nombre });
+      await enviarCorreos(admin, c.empresa_id, c.id, 'cliente', correosDe(c.cliente_email).slice(0, 1), `Necesitamos cambiar la hora de tu visita · Inmueble ${inm.numero_inmueble}`, (extra) =>
+        plantillaCorreo({
+          titulo: 'Elige una nueva hora para tu visita',
+          cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(c.cliente_nombre)}, el inmueble que vas a visitar${direccion ? ` (${esc(direccion)})` : ''} está ocupado y quien lo habita no podrá recibirte el <b>${esc(formatearFecha(fecha))}, ${esc(formatearHora(ini))}</b>.</p>
+<p style="margin:0 0 10px;text-align:justify">Tu visita sigue en esa hora hasta que elijas otra. Entra y escoge un horario disponible (ya tiene en cuenta la agenda del asesor): el cambio queda en firme al instante. Si prefieres no cambiar, también puedes cancelarla desde ahí.</p>`,
+          boton: { texto: 'Elegir nueva hora', url: `${SITIO_URL}/visita/${c.token_cliente}` },
+          ...extra,
+        }),
+      );
+    } else if (!afectada && c.reubicacion_pendiente_desde) {
+      await admin.from('agenda_citas').update({ reubicacion_pendiente_desde: null }).eq('id', c.id);
+    }
+  }
+  // Un solo correo por asesor con la lista de visitas que hay que reubicar.
+  const porAsesor = new Map<string, typeof aviso>();
+  for (const a of aviso) if (a.asesor_id) porAsesor.set(a.asesor_id, [...(porAsesor.get(a.asesor_id) || []), a]);
+  for (const [asesorId, lista] of porAsesor) {
+    await avisarAsesor(
+      admin, inm.empresa_id, lista[0].id, asesorId,
+      `Visitas por reubicar · Inmueble ${inm.numero_inmueble} · ${formatearFecha(fecha)}`,
+      'Visitas por reubicar',
+      `<p style="margin:0 0 10px;text-align:justify">El arrendatario del inmueble Nº ${esc(String(inm.numero_inmueble))} limitó los horarios del <b>${esc(formatearFecha(fecha))}</b>. Estas visitas tuyas quedaron fuera y ya se le pidió a cada cliente que elija otro turno dentro de las franjas disponibles:</p>
+<ul style="margin:0 0 10px;padding-left:20px">${lista.map((a) => `<li>${esc(formatearHora(a.hora))} · ${esc(a.cliente)}</li>`).join('')}</ul>
+<p style="margin:0;text-align:justify">Hasta que elijan, cada visita sigue en su hora original. En la agenda aparecen marcadas «Reubicación pendiente».</p>`,
+    );
+  }
+  return afectadasTotal;
+}
+
+async function manejarInmueble(admin: Admin, inm: NonNullable<Awaited<ReturnType<typeof cargarInmueblePorToken>>>, accion: string, body: Record<string, unknown>) {
+  const rentando = String(inm.estado_crm || '').trim().toLowerCase() === 'rentando';
+  if (!rentando) return falla('Este inmueble ya no figura como arrendado. Comunícate con tu asesor.', 409);
+  const ahora = ahoraBogota();
+  const ctxAccion = { cita: { id: null as string | null, empresa_id: inm.empresa_id }, inmueble: { id: inm.id } };
+
+  if (accion === 'obtener') {
+    const { data: citas } = await admin
+      .from('agenda_citas')
+      .select('fecha, hora_inicio, hora_fin, token_arrendatario, reubicacion_pendiente_desde')
+      .eq('inmueble_id', inm.id)
+      .eq('tipo_cita', 'visita_cliente')
+      .neq('estado', 'cancelada')
+      .gte('fecha', ahora.fecha)
+      .order('fecha', { ascending: true })
+      .order('hora_inicio', { ascending: true });
+    const { data: franjas } = await admin
+      .from('agenda_inmueble_ventanas')
+      .select('fecha, tipo, desde, hasta')
+      .eq('inmueble_id', inm.id)
+      .gte('fecha', ahora.fecha)
+      .order('fecha', { ascending: true })
+      .order('desde', { ascending: true });
+    return json({
+      ok: true,
+      modo: 'inmueble',
+      rol: 'arrendatario',
+      rentando: true,
+      tipo: sustantivo(inm.tipo_inmueble),
+      hoy: ahora.fecha,
+      max_franjas: MAX_FRANJAS_POR_DIA,
+      inmueble: {
+        numero: inm.numero_inmueble,
+        direccion: limpiarDireccion(inm.direccion),
+        zona: [inm.barrio, inm.ciudad].filter(Boolean).join(', '),
+        dias_permitidos: inm.dias_visita_permitidos || [],
+        desde: inm.hora_visita_desde ? inm.hora_visita_desde.slice(0, 5) : null,
+        hasta: inm.hora_visita_hasta ? inm.hora_visita_hasta.slice(0, 5) : null,
+      },
+      citas: (citas || [])
+        .filter((c) => !(c.fecha === ahora.fecha && c.hora_inicio.slice(0, 5) <= ahora.hora))
+        .map((c) => ({
+          fecha: c.fecha,
+          hora_inicio: c.hora_inicio.slice(0, 5),
+          hora_fin: c.hora_fin.slice(0, 5),
+          token: c.token_arrendatario,
+          por_reubicar: !!c.reubicacion_pendiente_desde,
+        })),
+      franjas: (franjas || []).map((f) => ({ fecha: f.fecha, tipo: f.tipo, desde: f.desde.slice(0, 5), hasta: f.hasta.slice(0, 5) })),
+    });
+  }
+
+  if (accion === 'ventanas_guardar') {
+    const fecha = String(body.fecha || '');
+    const tipo = body.tipo === 'bloqueo' ? 'bloqueo' : body.tipo === 'disponible' ? 'disponible' : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !tipo) return falla('Elige la fecha y si es un bloqueo o una franja disponible.');
+    if (fecha < ahora.fecha || fecha > sumarDias(ahora.fecha, 60)) return falla('Elige una fecha dentro de los próximos 60 días.');
+    const lista = Array.isArray(body.ventanas) ? (body.ventanas as Array<Record<string, unknown>>) : [];
+    if (!lista.length || lista.length > MAX_FRANJAS_POR_DIA) return falla(`Indica entre 1 y ${MAX_FRANJAS_POR_DIA} franjas.`);
+    const minutos = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+    const { data: cfgDur } = await admin.from('agenda_configuracion').select('duracion_visita_minutos').eq('empresa_id', inm.empresa_id).maybeSingle();
+    const duracion = inm.duracion_visita_minutos || cfgDur?.duracion_visita_minutos || 30;
+    const filas: Array<{ desde: string; hasta: string }> = [];
+    for (const v of lista) {
+      const desde = String(v.desde || '').slice(0, 5);
+      const hasta = String(v.hasta || '').slice(0, 5);
+      if (!/^\d{2}:\d{2}$/.test(desde) || !/^\d{2}:\d{2}$/.test(hasta)) return falla('Escribe la hora desde y hasta de cada franja.');
+      if (desde < '06:00' || hasta > '21:00') return falla('Las franjas deben estar entre las 6:00 a. m. y las 9:00 p. m.');
+      if (minutos(hasta) <= minutos(desde)) return falla('En cada franja, la hora "desde" debe ser anterior a "hasta".');
+      if (tipo === 'disponible' && minutos(hasta) - minutos(desde) < duracion) {
+        return falla(`Cada franja disponible debe permitir al menos una visita completa (${duracion} minutos).`);
+      }
+      filas.push({ desde, hasta });
+    }
+    filas.sort((a, b) => (a.desde < b.desde ? -1 : 1));
+    for (let i = 1; i < filas.length; i++) if (filas[i].desde < filas[i - 1].hasta) return falla('Las franjas no pueden cruzarse.');
+
+    await admin.from('agenda_inmueble_ventanas').delete().eq('inmueble_id', inm.id).eq('fecha', fecha);
+    const { error: errIns } = await admin
+      .from('agenda_inmueble_ventanas')
+      .insert(filas.map((f) => ({ empresa_id: inm.empresa_id, inmueble_id: inm.id, fecha, tipo, desde: f.desde, hasta: f.hasta })));
+    if (errIns) return falla('No se pudieron guardar las franjas. Inténtalo de nuevo.', 500);
+    await registrarAccion(admin, ctxAccion, 'ventanas_guardadas', { fecha, tipo, franjas: filas });
+    const afectadas = await reubicarAfectadas(admin, inm, fecha, ahora);
+    return json({ ok: true, afectadas });
+  }
+
+  if (accion === 'ventanas_borrar') {
+    const fecha = String(body.fecha || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return falla('Fecha inválida.');
+    await admin.from('agenda_inmueble_ventanas').delete().eq('inmueble_id', inm.id).eq('fecha', fecha);
+    await registrarAccion(admin, ctxAccion, 'ventanas_borradas', { fecha });
+    const afectadas = await reubicarAfectadas(admin, inm, fecha, ahora);
+    return json({ ok: true, afectadas });
+  }
+
+  return falla('Acción no reconocida.');
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return falla('Método no permitido.', 405);
@@ -351,7 +540,19 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const ctx = await cargarContexto(admin, token);
-  if (!ctx) return falla('Este enlace no es válido o ya no está activo.', 404);
+  if (!ctx) {
+    // ¿Es el enlace único del inmueble (arrendatario)? Si no, el enlace no sirve.
+    const inmuebleDelToken = await cargarInmueblePorToken(admin, token);
+    if (inmuebleDelToken) {
+      try {
+        return await manejarInmueble(admin, inmuebleDelToken, accion, body);
+      } catch (e) {
+        console.error('portal-visita inmueble', accion, e instanceof Error ? e.message : e);
+        return falla('Algo salió mal. Inténtalo de nuevo en unos minutos.', 500);
+      }
+    }
+    return falla('Este enlace no es válido o ya no está activo.', 404);
+  }
   const { cita, inmueble, asesor, rol } = ctx;
   const rentando = String(inmueble.estado_crm || '').trim().toLowerCase() === 'rentando';
   const nombreInm = sustantivo(inmueble.tipo_inmueble);
@@ -402,6 +603,8 @@ Deno.serve(async (req) => {
         rentando,
         tipo: nombreInm,
         hoy: ahora.fecha,
+        reubicacion: !!cita.reubicacion_pendiente_desde && citaVigente,
+        inmueble_token: rol === 'arrendatario' ? inmueble.token_arrendatario : undefined,
         cita: { fecha: cita.fecha, hora_inicio: horaCita, hora_fin: cita.hora_fin.slice(0, 5), estado: cita.estado, vigente: citaVigente },
         inmueble: {
           numero: inmueble.numero_inmueble,
@@ -475,6 +678,16 @@ Deno.serve(async (req) => {
       });
       if (errIns) return falla('No se pudo enviar la propuesta. Inténtalo de nuevo.', 409);
       await registrarAccion(admin, ctx, 'propuesta_creada', { por: rol, de: { fecha: cita.fecha, hora: horaCita }, a: { fecha, hora } });
+      if ((total || 0) + 1 >= MAX_PROPUESTAS) {
+        // Última propuesta permitida: si no hay acuerdo, el asesor tiene que coordinarlo directamente.
+        await avisarAsesor(
+          admin, cita.empresa_id, cita.id, cita.asesor_id,
+          `Visita sin acuerdo de horario · Inmueble ${inmueble.numero_inmueble}`,
+          'Esta visita necesita tu ayuda',
+          `<p style="margin:0 0 10px;text-align:justify">La visita de <b>${esc(cita.cliente_nombre)}</b> al inmueble Nº ${esc(String(inmueble.numero_inmueble))} (${lineaVisita}) ya llegó al tope de ${MAX_PROPUESTAS} propuestas de horario entre el cliente y el arrendatario. No se permiten más propuestas desde los enlaces.</p>
+<p style="margin:0;text-align:justify">Si hay una propuesta pendiente se mantiene hasta que venza; si no hay acuerdo, la visita sigue en la hora original. Comunícate con ambos para cerrarla.</p>`,
+        );
+      }
 
       const nuevaLinea = `<b>${esc(formatearFecha(fecha))}, ${esc(formatearHora(hora))}</b>`;
       if (rol === 'arrendatario') {
@@ -545,6 +758,7 @@ Deno.serve(async (req) => {
           hora_inicio: elegido.hora_inicio,
           hora_fin: elegido.hora_fin,
           asesor_id: elegido.asesor_id,
+          reubicacion_pendiente_desde: null,
           actualizado_en: new Date().toISOString(),
         })
         .eq('id', cita.id)
@@ -614,6 +828,13 @@ Deno.serve(async (req) => {
         return json({ ok: true, cita: { fecha: cita.fecha, hora_inicio: horaCita, hora_fin: cita.hora_fin.slice(0, 5), estado: 'cancelada', vigente: false } });
       }
       await registrarAccion(admin, ctx, 'cita_cancelada', { fecha: cita.fecha, hora: horaCita, motivo });
+      await avisarAsesor(
+        admin, cita.empresa_id, cita.id, cita.asesor_id,
+        `El arrendatario canceló una visita · Inmueble ${inmueble.numero_inmueble}`,
+        'El arrendatario canceló una visita',
+        `<p style="margin:0 0 10px;text-align:justify">El arrendatario canceló la visita de <b>${esc(cita.cliente_nombre)}</b> al inmueble Nº ${esc(String(inmueble.numero_inmueble))} (${lineaVisita}).${motivo ? ` Motivo: ${esc(motivo)}.` : ''}</p>
+<p style="margin:0;text-align:justify">Ya se avisó al cliente para que busque otro horario.</p>`,
+      );
 
       await enviarCorreos(admin, cita.empresa_id, cita.id, 'cliente', correosDe(cita.cliente_email).slice(0, 1), `Tu visita del ${formatearFecha(cita.fecha)} fue cancelada`, (extra) =>
         plantillaCorreo({
@@ -631,7 +852,9 @@ Deno.serve(async (req) => {
     // El cliente elige él mismo otra hora cuando NO hay arrendatario adentro (si lo hay, hay que acordar: proponer).
     if (accion === 'reagendar') {
       if (rol !== 'cliente') return falla('Esta acción no está disponible desde este enlace.', 403);
-      if (rentando) return falla('En este inmueble vive un arrendatario: propón una hora y él deberá aceptarla.', 409);
+      // Con arrendatario adentro, el cliente solo elige directo cuando se le pidió reubicarse (los turnos que se
+      // ofrecen ya están dentro de las franjas que el propio arrendatario abrió).
+      if (rentando && !cita.reubicacion_pendiente_desde) return falla('En este inmueble vive un arrendatario: propón una hora y él deberá aceptarla.', 409);
       if (!citaVigente) return falla('Esta visita ya no se puede cambiar (ya pasó o fue cancelada).', 409);
       const fecha = String(body.fecha || '');
       const hora = String(body.hora || '').slice(0, 5);
@@ -649,6 +872,7 @@ Deno.serve(async (req) => {
           hora_inicio: elegido.hora_inicio,
           hora_fin: elegido.hora_fin,
           asesor_id: elegido.asesor_id,
+          reubicacion_pendiente_desde: null,
           actualizado_en: new Date().toISOString(),
         })
         .eq('id', cita.id)
@@ -658,6 +882,7 @@ Deno.serve(async (req) => {
         .select('id')
         .maybeSingle();
       if (errMover || !movida) return falla('No se pudo cambiar la visita. Actualiza la página e inténtalo de nuevo.', 409);
+      if (rentando) await registrarAccion(admin, ctx, 'cita_reubicada', { de: { fecha: cita.fecha, hora: horaCita }, a: { fecha, hora } });
       await admin
         .from('agenda_cita_propuestas')
         .update({ estado: 'expirada', respondido_en: new Date().toISOString() })
@@ -667,7 +892,7 @@ Deno.serve(async (req) => {
       await fetch(`${SUPABASE_URL}/functions/v1/notificar-cambio-cita`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY },
-        body: JSON.stringify({ cita_id: cita.id, accion: 'movida', origen: 'cliente' }),
+        body: JSON.stringify({ cita_id: cita.id, accion: 'movida', origen: 'cliente', sin_aviso_arrendatario: rentando }),
       }).catch(() => {});
       return json({
         ok: true,
