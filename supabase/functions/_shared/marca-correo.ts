@@ -36,10 +36,10 @@ export function marcaCorreo(config: any): MarcaCorreo {
 // Encabezado de marca: franja blanca con el logo centrado, filo fino del color de acción y,
 // debajo, la fotografía de la empresa (imagen_correo_url) a todo el ancho. Sin logo ni foto,
 // queda solo el filo de color. Minimalista a propósito: la marca se nota por el orden, no por el ruido.
-export type TemaFoto = 'fachada' | 'sala' | 'conjunto' | 'llaves' | 'ninguna';
+export type TemaFoto = 'visita' | 'hogar' | 'opinion' | 'ninguna';
 
-// `tema` elige una fotografía realista según el tipo de correo (archivos en aplicacion/public/correo/, que
-// Netlify publica en citas.patrimonios.co/correo/). Sin `tema` usa la foto única de la empresa (imagen_correo_url).
+// `tema` elige una fotografía realista con personas según el tipo de correo (archivos en aplicacion/public/correo/, que
+// Netlify publica en citas.patrimonios.co/correo/). Sin `tema` usa la foto única de la empresa (imagen_correo_url): los correos a propietarios la conservan.
 // 'ninguna' deja solo el logo (accesos, contraseñas, pruebas).
 export function encabezadoImagen(marca: MarcaCorreo, alt: string, tema?: TemaFoto): string {
   const foto_url = tema === 'ninguna' ? null : tema ? `https://citas.patrimonios.co/correo/foto-${tema}.jpg` : marca.imagen;

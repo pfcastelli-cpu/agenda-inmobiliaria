@@ -406,7 +406,7 @@ Deno.serve(async (req) => {
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
   <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
-    ${encabezadoImagen(marca, `Tu visita quedó confirmada`, 'fachada')}
+    ${encabezadoImagen(marca, `Tu visita quedó confirmada`, 'visita')}
     <div style="padding:28px 26px 8px">
       <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 4px">${reagendada ? '¡Tu visita cambió de hora!' : '¡Tu visita quedó confirmada!'}</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, ${reagendada ? 'esta es la nueva hora de tu cita:' : 'estos son los detalles de tu cita:'}</p>

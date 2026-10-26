@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
       : ''
   }
   <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
-    ${encabezadoImagen(marca, `Visita programada`, 'fachada')}
+    ${encabezadoImagen(marca, `Visita programada`, 'hogar')}
     <div style="padding:28px 26px 20px">
       <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 6px">Visita programada en tu ${sust.n}</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer ${sust.el} que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo: si la hora no te sirve, puedes proponer otra.</p>

@@ -164,7 +164,7 @@ function plantilla(o: {
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
 ${o.modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(o.destinatarioReal)}</div>` : ''}
 <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
-${encabezadoImagen(o.marca, o.titulo, 'fachada')}
+${encabezadoImagen(o.marca, o.titulo, 'visita')}
 <div style="padding:28px 26px">
 <h1 style="color:${o.marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 12px">${esc(o.titulo)}</h1>
 <div style="color:#526575;font-size:14px;line-height:1.55">${o.cuerpo}</div>

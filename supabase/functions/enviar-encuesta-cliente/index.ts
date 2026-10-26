@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
 <div style="max-width:560px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
   <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
-    ${encabezadoImagen(marca, 'Tu opinión sobre la visita', 'llaves')}
+    ${encabezadoImagen(marca, 'Tu opinión sobre la visita', 'opinion')}
     <div style="padding:28px 26px;text-align:center">
     <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 10px">¿Qué te pareció la visita?</h1>
     <p style="color:#526575;font-size:14px;margin:0 0 22px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, gracias por visitar el inmueble. Tu opinión nos ayuda a mejorar y le llega directo al propietario.</p>

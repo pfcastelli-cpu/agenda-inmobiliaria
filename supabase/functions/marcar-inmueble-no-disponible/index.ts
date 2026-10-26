@@ -478,7 +478,7 @@ Deno.serve(async (req) => {
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
   <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
-    ${encabezadoImagen(marca, 'Tu visita fue cancelada', 'fachada')}
+    ${encabezadoImagen(marca, 'Tu visita fue cancelada', 'visita')}
     <div style="padding:28px 26px 8px">
       <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 4px">Tu visita fue cancelada</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 14px">Hola ${escaparHtml(fila.cliente_nombre) || ''}, te escribimos porque el inmueble que ibas a visitar${citaOriginal ? ` el ${escaparHtml(formatearFecha(citaOriginal.fecha))} a las ${escaparHtml(formatearHora(citaOriginal.hora_inicio.slice(0, 5)))}` : ''} (Nº ${inmueble.numero_inmueble}, ${escaparHtml(direccionInmueble)}${ciudadTexto ? ', ' + escaparHtml(ciudadTexto) : ''}) ${escaparHtml(etiquetaMotivo)}, así que ya no está disponible para visitas.</p>

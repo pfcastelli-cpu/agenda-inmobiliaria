@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
   <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
-    ${encabezadoImagen(marca, 'Aviso', 'conjunto')}
+    ${encabezadoImagen(marca, 'Aviso')}
     <div style="padding:26px">
     <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 14px">${escaparHtml(ETIQUETAS_TIPO[tipo])}</h1>
     <p style="color:#526575;font-size:14px;margin:0 0 16px">El propietario del inmueble Nº ${numeroInmueble}${nombreAsesor ? ` (tu inmueble, ${escaparHtml(nombreAsesor)})` : ''} escribió desde el informe en vivo:</p>
