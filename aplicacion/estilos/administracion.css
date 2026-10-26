@@ -112,3 +112,6 @@
 
 .pa-head img { height: 78px; max-width: 340px; }
 @media (max-width: 650px) { .pa-head img { height: 52px; max-width: 220px; } }
+
+/* Contacto por empresa: editor independiente de sedes y teléfonos. */
+.ad [data-contacto-empresa]{margin:28px 0}.ad [data-contacto-empresa] h3{margin-top:20px}.ad-contacto-telefono{display:grid;grid-template-columns:1fr 1.5fr .7fr auto;gap:12px;align-items:end;margin:16px 0}.ad [data-sede]{min-width:0;margin:16px 0}.ad-contacto-telefono>*{min-width:0}@media(max-width:800px){.ad-contacto-telefono{grid-template-columns:1fr 1fr}}@media(max-width:480px){.ad-contacto-telefono{grid-template-columns:1fr}}

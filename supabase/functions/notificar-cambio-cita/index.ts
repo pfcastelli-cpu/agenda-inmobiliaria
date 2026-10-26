@@ -172,7 +172,7 @@ ${o.boton ? `<p style="margin:22px 0 0;text-align:center"><a href="${esc(o.boton
 </div>
 </div>
 <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${esc(o.remitente)}</p>
-  ${pieContacto()}
+  ${pieContacto(o.marca)}
 </div></body></html>`;
 }
 
@@ -235,7 +235,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, plantilla_enlace_inmueble, dominio_publico',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, plantilla_enlace_inmueble, dominio_publico, contacto_empresa, correo_contacto, telefono, nombre_comercial, empresa:agenda_empresas(slug)',
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
   const { data: password } = await admin.rpc('agenda_obtener_password_correo', { p_empresa_id: cita.empresa_id });
   if (!password) return json({ ok: true, notificados, motivo: 'Falta guardar la contraseña SMTP.' });
 
-  const remitente = config.correo_remitente_nombre || 'Patrimonios Inmobiliarios';
+  const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
   const transporte = nodemailer.createTransport({
     host: config.correo_smtp_host,
     port: config.correo_smtp_puerto || 587,

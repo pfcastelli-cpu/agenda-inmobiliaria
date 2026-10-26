@@ -336,7 +336,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, dominio_publico, plantilla_enlace_inmueble, imagen_correo_url, logo_url, color_principal, color_accion',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, dominio_publico, plantilla_enlace_inmueble, imagen_correo_url, logo_url, color_principal, color_accion, contacto_empresa, correo_contacto, telefono, nombre_comercial, empresa:agenda_empresas(slug)',
     )
     .eq('empresa_id', inmueble.empresa_id)
     .maybeSingle();
@@ -429,7 +429,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const nombreRemitente = config?.correo_remitente_nombre || 'Patrimonios Inmobiliarios';
+  const nombreRemitente = config?.correo_remitente_nombre || config?.nombre_comercial || 'Agenda de citas';
   const direccionInmueble = limpiarDireccion(inmueble.direccion);
   const ciudadTexto = [inmueble.barrio, inmueble.ciudad].filter(Boolean).join(', ');
   const etiquetaMotivo = ETIQUETAS_MOTIVO[motivo] || ETIQUETAS_MOTIVO.otro;
@@ -495,7 +495,7 @@ Deno.serve(async (req) => {
     </div>
   </div>
   <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(nombreRemitente)}</p>
-  ${pieContacto()}
+  ${pieContacto(marca)}
 </div>
 </body>
 </html>`;

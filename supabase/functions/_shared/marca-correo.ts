@@ -1,9 +1,13 @@
+import { contactoEmpresa, contactoLegalCompleto, escaparContacto, htmlContacto, htmlLegal, type ContactoEmpresa } from './contacto-correo.ts';
 // Marca de la empresa para los correos. Cada función de correo la lee de
 // agenda_configuracion (columnas imagen_correo_url, color_principal, color_accion)
 // para que cambiar de empresa no requiera tocar código: logo/imagen, colores y
 // nombre salen de la configuración. Si la empresa no ha subido imagen, el correo
 // sale sin imagen de encabezado en lugar de mostrar la de otra empresa.
 export interface MarcaCorreo {
+  nombre: string;
+  contacto: ContactoEmpresa;
+  fotosTematicas: boolean;
   imagen: string | null;
   logo: string | null;
   principal: string;
@@ -25,6 +29,9 @@ export function marcaCorreo(config: any): MarcaCorreo {
   const accion = HEX.test(config?.color_accion ?? '') ? config.color_accion : '#00A9A5';
   const url = String(config?.imagen_correo_url ?? '').trim();
   return {
+    nombre: String(config?.nombre_comercial || config?.correo_remitente_nombre || 'Agenda de citas'),
+    contacto: contactoEmpresa(config),
+    fotosTematicas: config?.empresa?.slug === 'patrimonios',
     imagen: url.startsWith('https://') ? url : null,
     logo: String(config?.logo_url ?? '').trim().startsWith('https://') ? String(config.logo_url).trim() : null,
     principal,
@@ -39,13 +46,14 @@ export function marcaCorreo(config: any): MarcaCorreo {
 export type TemaFoto = 'visita' | 'hogar' | 'opinion' | 'ninguna';
 
 // `tema` elige una fotografía realista con personas según el tipo de correo (archivos en aplicacion/public/correo/, que
-// Netlify publica en citas.patrimonios.co/correo/). Sin `tema` usa la foto única de la empresa (imagen_correo_url): los correos a propietarios la conservan.
+// Netlify publica en citas.patrimonios.co/correo/). Solo se usan esas fotos con logo para la empresa de slug exacto patrimonios.
+// En otras empresas y sin `tema`, usa la imagen propia (imagen_correo_url).
 // 'ninguna' deja solo el logo (accesos, contraseñas, pruebas).
 export function encabezadoImagen(marca: MarcaCorreo, alt: string, tema?: TemaFoto): string {
-  const foto_url = tema === 'ninguna' ? null : tema ? `https://citas.patrimonios.co/correo/foto-${tema}.jpg` : marca.imagen;
+  const foto_url = tema === 'ninguna' ? null : tema && marca.fotosTematicas ? `https://citas.patrimonios.co/correo/foto-${tema}.jpg` : marca.imagen;
   const a = alt.replace(/[&<>"']/g, '');
   // Las fotos con personas ya llevan el logo incorporado: en esos correos no se repite arriba.
-  const fotoConLogo = tema === 'visita' || tema === 'hogar' || tema === 'opinion';
+  const fotoConLogo = marca.fotosTematicas && (tema === 'visita' || tema === 'hogar' || tema === 'opinion');
   const logo = marca.logo && !fotoConLogo
     ? `<tr><td align="center" style="padding:30px 24px 24px;background:#ffffff"><img src="${marca.logo}" alt="${a}" height="44" border="0" style="height:44px;width:auto;max-width:240px;display:block;border:0;outline:none" /></td></tr>`
     : '';
@@ -67,20 +75,10 @@ export function enlaceInmueble(config: any, numero: number | string): string {
   return /^https:\/\//i.test(url) ? url : respaldo;
 }
 
-// Datos legales de Patrimonios para el pie de los correos con publicidad (Ley 1581 de 2012: identificar al
-// responsable). Hoy son fijos porque agenda_configuracion no tiene columnas de NIT ni dirección; si se vende
-// a otra inmobiliaria, hay que moverlos a la configuración.
-const LEGAL = {
-  razon: 'Patrimonios Inmobiliarios S.A.S.',
-  nit: '900.140.990-1',
-  direccion: 'Carrera 67 (Av. Boyacá) Nº 167-61, Of. 203, Centro Empresarial Colina Office Park, Bogotá',
-  politica: 'https://www.patrimonios.co/politicas/politica-de-tratamiento-de-datos',
-  correo: 'info@patrimonios.co',
-};
-
 // Bloque de captación: SOLO para propietarios (nunca en accesos, contraseñas, cancelaciones ni avisos al
 // arrendatario). Una idea, un botón. Sin cifras ni promesas que no estén confirmadas.
 export function bloqueCaptacion(marca: MarcaCorreo): string {
+  if (!contactoLegalCompleto(marca.contacto) || !marca.contacto.correo) return '';
   const asunto = encodeURIComponent('Quiero consignar un inmueble');
   return `<div style="padding:6px 26px 28px">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
@@ -88,17 +86,14 @@ export function bloqueCaptacion(marca: MarcaCorreo): string {
           <div style="font-size:12px;color:#6b6b6b;margin-bottom:6px">📣 Publicidad</div>
           <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:20px;line-height:1.3;color:${marca.principal};margin:0 0 6px">¿Tienes otro inmueble? 🏡</div>
           <div style="font-size:15px;line-height:1.6;color:#4d4d4d;margin:0 0 18px">Consígnanoslo y lo cuidamos con la misma tranquilidad. 🤝</div>
-          <a href="mailto:${LEGAL.correo}?subject=${asunto}" target="_blank" style="display:inline-block;padding:14px 26px;background:${marca.principal};color:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;text-decoration:none;border-radius:999px">🤝&nbsp; Quiero consignar un inmueble</a>
+          <a href="mailto:${escaparContacto(marca.contacto.correo)}?subject=${asunto}" target="_blank" style="display:inline-block;padding:14px 26px;background:${marca.principal};color:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;text-decoration:none;border-radius:999px">🤝&nbsp; Quiero consignar un inmueble</a>
         </td>
       </tr></table>
     </div>`;
 }
 
-// Pie legal para correos con publicidad: responsable, NIT, dirección, política y baja.
-export function pieLegal(): string {
-  const baja = encodeURIComponent('Baja de comunicaciones comerciales');
-  return `<p style="text-align:center;color:#6b6b6b;font-size:12px;line-height:1.6;margin:18px 8px 0">${LEGAL.razon} · NIT ${LEGAL.nit}<br>${LEGAL.direccion}<br>📞 Bogotá (601) 917 9987 · Barranquilla (605) 319 8833 · Medellín (604) 590 4545<br>Tratamos tus datos conforme a la <a href="${LEGAL.politica}" style="color:#6b665c;text-decoration:underline">Política de Tratamiento de Datos</a> (Ley 1581 de 2012). Si no quieres recibir publicidad nuestra, <a href="mailto:${LEGAL.correo}?subject=${baja}" style="color:#6b665c;text-decoration:underline">escríbenos para darte de baja</a>; seguirás recibiendo los avisos de tus inmuebles.</p>`;
-}
+// Pie de la misma empresa, sin datos legales de respaldo de otra inmobiliaria.
+export function pieLegal(marca: MarcaCorreo): string { return htmlLegal(marca.contacto); }
 
 // Emoji que acompaña al título del correo cuando el título llega como variable.
 export function emojiTitulo(titulo: string): string {
@@ -114,7 +109,5 @@ export function emojiTitulo(titulo: string): string {
   return '✨';
 }
 
-// Datos de contacto para el pie de todos los correos: teléfonos fijos de las tres ciudades, correo y sitio web.
-export function pieContacto(): string {
-  return `<p style="text-align:center;color:#6b6b6b;font-size:13px;line-height:1.8;margin:6px 8px 0">📞 Bogotá <strong style="color:#1a2c45">(601) 917 9987</strong> · Barranquilla <strong style="color:#1a2c45">(605) 319 8833</strong> · Medellín <strong style="color:#1a2c45">(604) 590 4545</strong><br>✉️ <a href="mailto:${LEGAL.correo}" style="color:#6b6b6b;text-decoration:underline">${LEGAL.correo}</a> · 🌐 <a href="https://www.patrimonios.co" style="color:#6b6b6b;text-decoration:underline">www.patrimonios.co</a></p>`;
-}
+// Contacto de la empresa de esta comunicación.
+export function pieContacto(marca: MarcaCorreo): string { return htmlContacto(marca.contacto); }

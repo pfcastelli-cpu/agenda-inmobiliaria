@@ -140,7 +140,7 @@ async function configCorreo(admin: Admin, empresaId: string) {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, contacto_empresa, correo_contacto, telefono, nombre_comercial, dominio_publico, empresa:agenda_empresas(slug)',
     )
     .eq('empresa_id', empresaId)
     .maybeSingle();
@@ -171,7 +171,7 @@ ${opts.boton ? `<p style="margin:22px 0 0;text-align:center"><a href="${esc(opts
 </div>
 </div>
 <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${esc(opts.remitente)}</p>
-  ${pieContacto()}
+  ${pieContacto(opts.marca)}
 </div></body></html>`;
 }
 
@@ -188,7 +188,7 @@ async function enviarCorreos(
   const cfg = await configCorreo(admin, empresaId);
   if (!cfg) return;
   const { config, password, modoPruebas } = cfg;
-  const remitente = config.correo_remitente_nombre || 'Patrimonios Inmobiliarios';
+  const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
   const transporte = nodemailer.createTransport({
     host: config.correo_smtp_host,
     port: config.correo_smtp_puerto || 587,

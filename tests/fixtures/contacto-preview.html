@@ -1,0 +1,17 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contacto por empresa: prueba local</title>
+<link rel="stylesheet" href="/aplicacion/estilos/administracion.css">
+<style>body{margin:0;background:#f5f7fa;font-family:Arial,sans-serif}main{max-width:1120px;margin:auto;padding:16px}h1{font-size:24px}.preview-correo{max-width:580px;margin:24px auto;background:white;border:1px solid #dbe4e9;border-radius:24px;padding:24px;overflow-wrap:anywhere}.preview-correo h2{font-size:22px}output{display:block;margin:16px 0}select{font:inherit;padding:10px;max-width:100%}</style>
+</head><body><main><h1>Contacto por empresa</h1><p>Vista previa local con datos ficticios. Guardar aquí no modifica Supabase ni envía correos.</p>
+<label>Empresa de prueba <select id="empresa"><option value="a">Empresa A: varias sedes</option><option value="b">Empresa B: datos legales pendientes</option><option value="vacia">Empresa sin contacto</option></select></label>
+<div class="ad" id="editor"></div><output id="estado" role="status" aria-live="polite"></output>
+<div class="preview-correo"><h2>Ejemplo de correo</h2><p>Este bloque muestra el contacto que recibe cada empresa.</p><div id="pie"></div></div></main>
+<script type="module">
+import {htmlContactoEmpresa,montarContactoEmpresa} from '/aplicacion/js/contacto-empresa.js';
+import {marcaCorreo,pieLegal,bloqueCaptacion} from '/supabase/functions/_shared/marca-correo.ts';
+import {empresaA,empresaB} from './contacto-empresas.mjs';
+const empresas={a:structuredClone(empresaA),b:structuredClone(empresaB),vacia:{nombre_comercial:'Empresa vacía',correo_contacto:'',telefono:'',contacto_empresa:{}}};
+const editor=document.querySelector('#editor'),selector=document.querySelector('#empresa'),estado=document.querySelector('#estado');
+function abrir(){const config=empresas[selector.value];editor.innerHTML=`<form class="ad-form">${htmlContactoEmpresa(config)}<button type="submit" class="ad-primary">Guardar configuración de prueba</button></form>`;const form=editor.querySelector('form'),control=montarContactoEmpresa(form,config);document.querySelector('#pie').innerHTML=pieLegal(marcaCorreo(config))+bloqueCaptacion(marcaCorreo(config));estado.textContent='';form.onsubmit=e=>{e.preventDefault();try{Object.assign(config,control.leer());abrir();estado.textContent='Configuración de prueba guardada para '+config.nombre_comercial;}catch(error){estado.textContent=error.message;}};}
+selector.addEventListener('change',abrir);abrir();
+</script></body></html>

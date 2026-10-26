@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, plantilla_enlace_inmueble, dominio_publico',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, plantilla_enlace_inmueble, dominio_publico, contacto_empresa, correo_contacto, telefono, nombre_comercial, empresa:agenda_empresas(slug)',
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
@@ -425,7 +425,7 @@ Deno.serve(async (req) => {
       resumen: `Visita de cliente en tu inmueble Nº ${inmueble.numero_inmueble}`,
       descripcion: descripcionICS,
       ubicacion: direccionCompleta || undefined,
-      organizadorNombre: config!.correo_remitente_nombre || 'Patrimonios Inmobiliarios',
+      organizadorNombre: config!.correo_remitente_nombre || config!.nombre_comercial || 'Agenda de citas',
       organizadorEmail: config!.correo_remitente_email!,
       asistenteNombre: nombrePropietario || destinatarioEnvio,
       asistenteEmail: destinatarioEnvio,
@@ -468,7 +468,7 @@ Deno.serve(async (req) => {
       <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>
     </div>
   </div>
-  ${pieLegal()}
+  ${pieLegal(marca)}
 </div>
 </body>
 </html>`;
@@ -526,7 +526,7 @@ Deno.serve(async (req) => {
 
     try {
       await transporte.sendMail({
-        from: `${config.correo_remitente_nombre || 'Patrimonios Inmobiliarios'} <${config.correo_remitente_email}>`,
+        from: `${config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas'} <${config.correo_remitente_email}>`,
         to: destinatarioEnvio,
         subject: asunto,
         html: construirHtml(nombrePropietario, correoPropietario),

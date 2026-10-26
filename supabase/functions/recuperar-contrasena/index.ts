@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     const { data: config } = await admin
       .from('agenda_configuracion')
       .select(
-        'nombre_comercial, dominio_publico, correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion',
+        'nombre_comercial, dominio_publico, correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, contacto_empresa, correo_contacto, telefono, empresa:agenda_empresas(slug)',
       )
       .eq('empresa_id', empresaId)
       .maybeSingle();
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
 
     const modoPruebas = config.correo_modo_pruebas !== false;
     const destino = modoPruebas ? config.correo_pruebas_destino || correo : correo;
-    const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Patrimonios Inmobiliarios';
+    const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
     const html = `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
     </div>
   </div>
   <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(remitente)}</p>
-  ${pieContacto()}
+  ${pieContacto(marca)}
 </div>
 </body>
 </html>`;

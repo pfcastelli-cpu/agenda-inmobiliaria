@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, contacto_empresa, correo_contacto, telefono, nombre_comercial, dominio_publico, empresa:agenda_empresas(slug)',
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
@@ -433,8 +433,8 @@ Deno.serve(async (req) => {
       <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Si necesitas cambiar la hora o cancelar tu visita, usa el botón «Cambiar o cancelar mi visita» de arriba; si prefieres, comunícate directamente con tu asesor. También te dejamos la cita guardada en el archivo adjunto para que quede en el calendario de tu teléfono, con recordatorios 24, 2 y 1 hora antes.</p>
     </div>
   </div>
-  <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
-  ${pieContacto()}
+  <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas')}</p>
+  ${pieContacto(marca)}
 </div>
 </body>
 </html>`;
@@ -477,7 +477,7 @@ Deno.serve(async (req) => {
   // Invitación de calendario (.ics) — se adjunta siempre que la cita tenga
   // hora de inicio y de fin, con el mismo esquema de UID que usará después
   // la cancelación si el inmueble deja de estar disponible.
-  const nombreRemitente = config.correo_remitente_nombre || 'Patrimonios Inmobiliarios';
+  const nombreRemitente = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
   const descripcionICS = [
     numeroInmueble ? `Inmueble Nº ${numeroInmueble}` : null,
     direccionCompleta || null,

@@ -6,7 +6,7 @@
 // Solo administradores activos de la empresa pueden usarla — se verifica con el JWT
 // del que llama, igual que en gestion-accesos.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
+import { encabezadoImagen, marcaCorreo, pieContacto } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, contacto_empresa, correo_contacto, telefono, nombre_comercial, dominio_publico, empresa:agenda_empresas(slug)',
     )
     .eq('empresa_id', empresaId)
     .maybeSingle();
@@ -96,12 +96,12 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: 'No hay a dónde mandar la prueba: escribe un correo de destino.' }, 400);
   }
 
-  const asunto = 'Correo de prueba — configuración de citas de Patrimonios';
+  const asunto = `Correo de prueba — ${marca.nombre}`;
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif"><div style="max-width:560px;margin:0 auto;padding:28px 16px"><div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:2px;overflow:hidden">${encabezadoImagen(marca, 'Prueba de correo', 'ninguna')}<div style="padding:28px 26px">
     <h2 style="color:${marca.principal};font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:26px;margin:0 0 10px">Tu configuración de correo funciona ✅</h2>
     <p style="color:#4d4d4d">Este es un correo de prueba enviado desde el panel de administración de la agenda de citas, usando exactamente los mismos datos SMTP que se usan para los correos reales de confirmación de visitas.</p>
     <p style="color:#6b6b6b;font-size:12px">Enviado el ${new Date().toLocaleString('es-CO')}.</p>
-  </div></div></div></body></html>`;
+  </div></div>${pieContacto(marca)}</div></body></html>`;
 
   let password: string | null = null;
   try {
@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
     });
 
     await transporte.sendMail({
-      from: `${config.correo_remitente_nombre || 'Patrimonios Inmobiliarios'} <${config.correo_remitente_email}>`,
+      from: `${config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas'} <${config.correo_remitente_email}>`,
       to: destino,
       subject: asunto,
       html,
