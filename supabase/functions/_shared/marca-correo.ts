@@ -44,7 +44,9 @@ export type TemaFoto = 'visita' | 'hogar' | 'opinion' | 'ninguna';
 export function encabezadoImagen(marca: MarcaCorreo, alt: string, tema?: TemaFoto): string {
   const foto_url = tema === 'ninguna' ? null : tema ? `https://citas.patrimonios.co/correo/foto-${tema}.jpg` : marca.imagen;
   const a = alt.replace(/[&<>"']/g, '');
-  const logo = marca.logo
+  // Las fotos con personas ya llevan el logo incorporado: en esos correos no se repite arriba.
+  const fotoConLogo = tema === 'visita' || tema === 'hogar' || tema === 'opinion';
+  const logo = marca.logo && !fotoConLogo
     ? `<tr><td align="center" style="padding:30px 24px 24px;background:#ffffff"><img src="${marca.logo}" alt="${a}" height="44" border="0" style="height:44px;width:auto;max-width:240px;display:block;border:0;outline:none" /></td></tr>`
     : '';
   const foto = foto_url
