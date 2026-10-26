@@ -390,7 +390,7 @@ Deno.serve(async (req) => {
     );
   if (llamarUrl) filasBotones += filaBoton(llamarUrl, '#ffffff', marca.principal, '📞', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`);
 
-  let filasDatos = filaDato('', 'Inmueble', `Nº ${inmueble.numero_inmueble}`);
+  let filasDatos = filaDato('🏠', 'Inmueble', `Nº ${inmueble.numero_inmueble}`);
   filasDatos += filaDato('📅', 'Fecha de la visita', escaparHtml(fechaTexto));
   filasDatos += filaDato('🕐', 'Hora', escaparHtml(horaTexto));
   if (direccion) {
@@ -398,7 +398,7 @@ Deno.serve(async (req) => {
   }
   if (asesorNombre) {
     filasDatos += filaDato(
-      '',
+      '👤',
       'Asesor a cargo',
       `${escaparHtml(asesorNombre)}${asesorCelular ? ` · ${escaparHtml(asesorCelular)}` : ''}`,
     );

@@ -394,7 +394,7 @@ Deno.serve(async (req) => {
   }
   if (asesorNombre) {
     filasDatos += filaDato(
-      '',
+      '👤',
       'Tu asesor',
       `${escaparHtml(asesorNombre)}${asesorCelular ? ` · ${escaparHtml(asesorCelular)}` : ''}`,
     );
