@@ -180,7 +180,7 @@ function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: s
       <tr><td style="padding:7px 0">
         <table role="presentation" width="100%" align="center" cellpadding="0" cellspacing="0" border="0" style="max-width:380px;margin:0 auto"><tr>
           <td align="center" bgcolor="${colorFondo}" style="border-radius:999px;border:1px solid ${colorFondo === '#ffffff' ? colorTexto : colorFondo}">
-            <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:${colorTexto};text-decoration:none;border-radius:999px">
+            <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:${colorTexto};text-decoration:none;border-radius:999px">
               ${icono ? icono + '&nbsp;&nbsp;' : ''}${texto}
             </a>
           </td>
@@ -191,9 +191,10 @@ function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: s
 function filaDato(icono: string, etiqueta: string, valor: string): string {
   return `
       <tr>
-        <td style="padding:13px 0;vertical-align:top;border-bottom:1px solid #efefef">
-          <div style="font-size:11px;color:#6b6b6b;text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px">${icono ? icono + '&nbsp; ' : ''}${etiqueta}</div>
-          <div style="font-size:16px;color:#1a2c45;font-weight:500;line-height:1.4">${valor}</div>
+        <td style="padding:12px 14px 12px 0;vertical-align:middle;width:44px;border-bottom:1px solid #efefef"><div style="width:40px;height:40px;line-height:40px;text-align:center;border-radius:50%;background:#e3f8f7;font-size:19px">${icono}</div></td>
+        <td style="padding:12px 0;vertical-align:middle;border-bottom:1px solid #efefef">
+          <div style="font-size:13px;color:#6b6b6b;margin-bottom:2px">${etiqueta}</div>
+          <div style="font-size:16px;color:#1a2c45;font-weight:600;line-height:1.4">${valor}</div>
         </td>
       </tr>`;
 }
@@ -444,10 +445,10 @@ Deno.serve(async (req) => {
 <body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
+  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, `Se agendó una visita en tu inmueble`)}
     <div style="padding:28px 26px 8px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 4px">${reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble'}</h1>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 4px">${reagendada ? 'Cambió la hora de una visita en tu inmueble 🔄' : 'Se agendó una visita en tu inmueble 🏡'}</h1>
       <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, ${reagendada ? 'te avisamos que una visita ya agendada cambió de hora; esta es la hora actual:' : 'te informamos que un cliente interesado visitará tu inmueble:'}</p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
         ${filasDatos}

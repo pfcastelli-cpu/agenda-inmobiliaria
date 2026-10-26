@@ -195,15 +195,15 @@ Deno.serve(async (req) => {
 <body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
+  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, 'Tu opinión sobre la visita', 'opinion')}
     <div style="padding:28px 26px;text-align:center">
-    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 10px">¿Qué te pareció la visita?</h1>
+    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 10px">¿Qué te pareció la visita? ⭐</h1>
     <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 22px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, gracias por visitar el inmueble. Tu opinión nos ayuda a mejorar y le llega directo al propietario.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
       <td align="center" bgcolor="${marca.principal}" style="border-radius:999px">
-        <a href="${linkOpinion}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:999px">
-          Dejar mi opinión (1 minuto)
+        <a href="${linkOpinion}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px">
+          ⭐ Dejar mi opinión (1 minuto)
         </a>
       </td>
     </tr></table>

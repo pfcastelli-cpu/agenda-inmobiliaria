@@ -15,7 +15,7 @@
 // El cliente puede cancelar o cambiar su visita desde su correo en cualquier inmueble; con arrendatario
 // adentro (Rentando) el cambio de hora sigue siendo un acuerdo (proponer/responder).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo, type MarcaCorreo } from '../_shared/marca-correo.ts';
+import { encabezadoImagen, marcaCorreo, type MarcaCorreo, emojiTitulo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -162,12 +162,12 @@ function plantillaCorreo(opts: {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
 ${opts.modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(opts.destinatarioReal)}</div>` : ''}
-<div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
+<div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
 ${encabezadoImagen(opts.marca, opts.titulo, 'visita')}
 <div style="padding:28px 26px">
-<h1 style="color:${opts.marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 12px">${esc(opts.titulo)}</h1>
+<h1 style="color:${opts.marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 12px">${esc(opts.titulo)} ${emojiTitulo(opts.titulo)}</h1>
 <div style="color:#4d4d4d;font-size:14px;line-height:1.55">${opts.cuerpo}</div>
-${opts.boton ? `<p style="margin:22px 0 0;text-align:center"><a href="${esc(opts.boton.url)}" style="display:inline-block;background:${opts.marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:999px">${esc(opts.boton.texto)}</a></p>` : ''}
+${opts.boton ? `<p style="margin:22px 0 0;text-align:center"><a href="${esc(opts.boton.url)}" style="display:inline-block;background:${opts.marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:999px">${esc(opts.boton.texto)}</a></p>` : ''}
 </div>
 </div>
 <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${esc(opts.remitente)}</p>

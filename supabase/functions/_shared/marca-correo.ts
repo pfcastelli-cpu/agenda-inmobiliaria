@@ -84,11 +84,11 @@ export function bloqueCaptacion(marca: MarcaCorreo): string {
   const asunto = encodeURIComponent('Quiero consignar un inmueble');
   return `<div style="padding:6px 26px 28px">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="background:#f4f4f4;border-radius:14px;padding:26px 24px;text-align:center">
-          <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b6b6b;margin-bottom:6px">Publicidad</div>
-          <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:20px;line-height:1.3;color:${marca.principal};margin:0 0 6px">¿Tienes otro inmueble?</div>
-          <div style="font-size:15px;line-height:1.6;color:#4d4d4d;margin:0 0 18px">Consígnanoslo y lo cuidamos con la misma tranquilidad.</div>
-          <a href="mailto:${LEGAL.correo}?subject=${asunto}" target="_blank" style="display:inline-block;padding:14px 26px;background:${marca.principal};color:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border-radius:999px">Quiero consignar un inmueble</a>
+        <td style="background:#f4f4f4;border-radius:24px;padding:26px 24px;text-align:center">
+          <div style="font-size:12px;color:#6b6b6b;margin-bottom:6px">📣 Publicidad</div>
+          <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:20px;line-height:1.3;color:${marca.principal};margin:0 0 6px">¿Tienes otro inmueble? 🏡</div>
+          <div style="font-size:15px;line-height:1.6;color:#4d4d4d;margin:0 0 18px">Consígnanoslo y lo cuidamos con la misma tranquilidad. 🤝</div>
+          <a href="mailto:${LEGAL.correo}?subject=${asunto}" target="_blank" style="display:inline-block;padding:14px 26px;background:${marca.principal};color:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;text-decoration:none;border-radius:999px">🤝&nbsp; Quiero consignar un inmueble</a>
         </td>
       </tr></table>
     </div>`;
@@ -98,4 +98,18 @@ export function bloqueCaptacion(marca: MarcaCorreo): string {
 export function pieLegal(): string {
   const baja = encodeURIComponent('Baja de comunicaciones comerciales');
   return `<p style="text-align:center;color:#6b6b6b;font-size:12px;line-height:1.6;margin:18px 8px 0">${LEGAL.razon} · NIT ${LEGAL.nit}<br>${LEGAL.direccion}<br>Tratamos tus datos conforme a la <a href="${LEGAL.politica}" style="color:#6b665c;text-decoration:underline">Política de Tratamiento de Datos</a> (Ley 1581 de 2012). Si no quieres recibir publicidad nuestra, <a href="mailto:${LEGAL.correo}?subject=${baja}" style="color:#6b665c;text-decoration:underline">escríbenos para darte de baja</a>; seguirás recibiendo los avisos de tus inmuebles.</p>`;
+}
+
+// Emoji que acompaña al título del correo cuando el título llega como variable.
+export function emojiTitulo(titulo: string): string {
+  const t = String(titulo || '').toLowerCase();
+  if (/cancel/.test(t)) return '😕';
+  if (/contrase/.test(t)) return '🔑';
+  if (/acceso|invit|bienvenid/.test(t)) return '👋';
+  if (/informe/.test(t)) return '📊';
+  if (/asesor|solicit|pedido|pide/.test(t)) return '📩';
+  if (/cambi|hora|propone|propuesta|nueva/.test(t)) return '🔄';
+  if (/confirm|acept|list/.test(t)) return '🎉';
+  if (/visita/.test(t)) return '🏡';
+  return '✨';
 }

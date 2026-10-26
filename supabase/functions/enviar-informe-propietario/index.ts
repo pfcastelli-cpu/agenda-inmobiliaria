@@ -224,15 +224,15 @@ Deno.serve(async (req) => {
 <body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
+  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, `Informe de tu inmueble`)}
     <div style="padding:28px 26px 10px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 4px">El informe de tu inmueble Nº ${numeroInmueble}</h1>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 4px">El informe de tu inmueble Nº ${numeroInmueble} 📊</h1>
       <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, te compartimos el link con el informe en vivo de tu inmueble: cuántas visitas ha tenido, qué han dicho los clientes que lo han visto, y un espacio para pedirnos un cambio de precio, de fotos, o una asesoría cuando quieras. Se actualiza solo, así que puedes volver a verlo cuando quieras con este mismo link.</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
         <td align="center" bgcolor="${marca.principal}" style="border-radius:999px">
-          <a href="${linkInforme}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:999px">
-            Ver el informe de mi inmueble
+          <a href="${linkInforme}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px">
+            📊 Ver el informe de mi inmueble
           </a>
         </td>
       </tr></table>

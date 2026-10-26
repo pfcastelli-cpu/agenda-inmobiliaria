@@ -236,10 +236,10 @@ Deno.serve(async (req) => {
       ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}</div>`
       : ''
   }
-  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
+  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, `Visita programada`, 'hogar')}
     <div style="padding:28px 26px 20px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 6px">Visita programada en tu ${sust.n}</h1>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 6px">Visita programada en tu ${sust.n} 🏠</h1>
       <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer ${sust.el} que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo: si la hora no te sirve, puedes proponer otra.</p>
       <table style="width:100%;border-collapse:collapse">
         <tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">📅 Fecha</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(fechaTexto)}</td></tr>
@@ -247,8 +247,8 @@ Deno.serve(async (req) => {
         ${asesorNombre ? `<tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">👤 Asesor a cargo</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
       </table>
       <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:18px 0 0">¿No puedes recibir la visita a esa hora? Con el botón de abajo propones otra hora disponible; la visita solo cambia cuando la persona interesada la acepte. Si no respondes, la visita se mantiene a la hora indicada. También puedes cancelarla o cambiar los días y horas en que se muestra tu ${sust.n}. Gracias por tu colaboración.</p>
-      <p style="margin:18px 0 6px;text-align:center"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:999px">Ver la visita o proponer otra hora</a></p>
-      <p style="margin:10px 0 6px;text-align:center"><a href="${enlaceSitio}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:999px;border:2px solid ${marca.principal}">Ver el inmueble en nuestro sitio</a></p>
+      <p style="margin:18px 0 6px;text-align:center"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:999px">👀 Ver la visita o proponer otra hora</a></p>
+      <p style="margin:10px 0 6px;text-align:center"><a href="${enlaceSitio}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:999px;border:2px solid ${marca.principal}">🏠 Ver el inmueble en nuestro sitio</a></p>
       <p style="color:#6b6b6b;font-size:12px;margin:10px 0 0">Este enlace es solo para ti, no lo compartas. ¿Prefieres hablar? Llama o escríbele a tu asesor.</p>
     </div>
   </div>

@@ -126,12 +126,12 @@ Deno.serve(async (req) => {
       ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(correo)}</div>`
       : ''
   }
-  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
+  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, `${escaparHtml(remitente)}`, 'ninguna')}
     <div style="padding:28px 26px 26px;text-align:center">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 8px">Restablece tu contraseña</h1>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 8px">Restablece tu contraseña 🔑</h1>
       <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 22px">Hola ${escaparHtml(miembro.nombre || '')}, pulsa el botón para elegir una contraseña nueva.</p>
-      <a href="${escaparHtml(accion)}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:16px 30px;border-radius:999px">Elegir contraseña nueva</a>
+      <a href="${escaparHtml(accion)}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:16px 30px;border-radius:999px">🔑 Elegir contraseña nueva</a>
       <p style="color:#4d4d4d;text-align:justify;font-size:12.5px;margin:22px 0 0">El enlace es de un solo uso. Si no lo pediste, ignora este correo: tu contraseña sigue igual.</p>
     </div>
   </div>

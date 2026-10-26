@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
 
   const asunto = 'Correo de prueba — configuración de citas de Patrimonios';
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif"><div style="max-width:560px;margin:0 auto;padding:28px 16px"><div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:2px;overflow:hidden">${encabezadoImagen(marca, 'Prueba de correo', 'ninguna')}<div style="padding:28px 26px">
-    <h2 style="color:${marca.principal};font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:26px;margin:0 0 10px">Tu configuración de correo funciona</h2>
+    <h2 style="color:${marca.principal};font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:26px;margin:0 0 10px">Tu configuración de correo funciona ✅</h2>
     <p style="color:#4d4d4d">Este es un correo de prueba enviado desde el panel de administración de la agenda de citas, usando exactamente los mismos datos SMTP que se usan para los correos reales de confirmación de visitas.</p>
     <p style="color:#6b6b6b;font-size:12px">Enviado el ${new Date().toLocaleString('es-CO')}.</p>
   </div></div></div></body></html>`;

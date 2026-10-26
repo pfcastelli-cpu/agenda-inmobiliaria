@@ -8,7 +8,7 @@
 // afuera), y le avisa por correo al asesor a cargo del inmueble, con copia a
 // su supervisor si tiene uno configurado.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
+import { encabezadoImagen, marcaCorreo, emojiTitulo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -247,10 +247,10 @@ Deno.serve(async (req) => {
 <body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
+  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, 'Aviso')}
     <div style="padding:26px">
-    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 14px">${escaparHtml(ETIQUETAS_TIPO[tipo])}</h1>
+    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 14px">${escaparHtml(ETIQUETAS_TIPO[tipo])} 📩</h1>
     <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 16px">El propietario del inmueble Nº ${numeroInmueble}${nombreAsesor ? ` (tu inmueble, ${escaparHtml(nombreAsesor)})` : ''} escribió desde el informe en vivo:</p>
     <table style="width:100%;border-collapse:collapse">${filasDetalle.join('')}</table>
     </div>
