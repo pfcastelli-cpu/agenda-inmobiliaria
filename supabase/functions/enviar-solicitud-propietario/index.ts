@@ -217,21 +217,21 @@ Deno.serve(async (req) => {
     : destinoReal;
 
   const filasDetalle: string[] = [
-    `<tr><td style="padding:6px 0;color:#5b6b7d;font-size:12px;text-transform:uppercase">Inmueble</td></tr><tr><td style="padding:0 0 10px;font-size:15px;font-weight:700;color:${marca.principal}">Nº ${numeroInmueble}</td></tr>`,
+    `<tr><td style="padding:6px 0;color:#4d4d4d;font-size:12px;text-transform:uppercase">Inmueble</td></tr><tr><td style="padding:0 0 10px;font-size:15px;font-weight:700;color:${marca.principal}">Nº ${numeroInmueble}</td></tr>`,
   ];
   if (tipo === 'cambio_precio' && valorPropuesto != null) {
     filasDetalle.push(
-      `<tr><td style="padding:6px 0;color:#5b6b7d;font-size:12px;text-transform:uppercase">Precio propuesto por el propietario</td></tr><tr><td style="padding:0 0 10px;font-size:15px;font-weight:700;color:${marca.principal}">$${valorPropuesto.toLocaleString('es-CO')}</td></tr>`,
+      `<tr><td style="padding:6px 0;color:#4d4d4d;font-size:12px;text-transform:uppercase">Precio propuesto por el propietario</td></tr><tr><td style="padding:0 0 10px;font-size:15px;font-weight:700;color:${marca.principal}">$${valorPropuesto.toLocaleString('es-CO')}</td></tr>`,
     );
   }
   if (detalle) {
     filasDetalle.push(
-      `<tr><td style="padding:6px 0;color:#5b6b7d;font-size:12px;text-transform:uppercase">Mensaje del propietario</td></tr><tr><td style="padding:0 0 10px;font-size:14px;color:${marca.principal}">${escaparHtml(detalle)}</td></tr>`,
+      `<tr><td style="padding:6px 0;color:#4d4d4d;font-size:12px;text-transform:uppercase">Mensaje del propietario</td></tr><tr><td style="padding:0 0 10px;font-size:14px;color:${marca.principal}">${escaparHtml(detalle)}</td></tr>`,
     );
   }
   if (propietarioNombre || propietarioEmail) {
     filasDetalle.push(
-      `<tr><td style="padding:6px 0;color:#5b6b7d;font-size:12px;text-transform:uppercase">Quién escribió</td></tr><tr><td style="padding:0 0 4px;font-size:14px;color:${marca.principal}">${escaparHtml(propietarioNombre) || ''}${propietarioEmail ? ` · ${escaparHtml(propietarioEmail)}` : ''}</td></tr>`,
+      `<tr><td style="padding:6px 0;color:#4d4d4d;font-size:12px;text-transform:uppercase">Quién escribió</td></tr><tr><td style="padding:0 0 4px;font-size:14px;color:${marca.principal}">${escaparHtml(propietarioNombre) || ''}${propietarioEmail ? ` · ${escaparHtml(propietarioEmail)}` : ''}</td></tr>`,
     );
   }
 
@@ -243,19 +243,19 @@ Deno.serve(async (req) => {
 
   const html = `<!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
-<body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, 'Aviso')}
     <div style="padding:26px">
-    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 14px">${escaparHtml(ETIQUETAS_TIPO[tipo])}</h1>
-    <p style="color:#526575;font-size:14px;margin:0 0 16px">El propietario del inmueble Nº ${numeroInmueble}${nombreAsesor ? ` (tu inmueble, ${escaparHtml(nombreAsesor)})` : ''} escribió desde el informe en vivo:</p>
+    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 14px">${escaparHtml(ETIQUETAS_TIPO[tipo])}</h1>
+    <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 16px">El propietario del inmueble Nº ${numeroInmueble}${nombreAsesor ? ` (tu inmueble, ${escaparHtml(nombreAsesor)})` : ''} escribió desde el informe en vivo:</p>
     <table style="width:100%;border-collapse:collapse">${filasDetalle.join('')}</table>
     </div>
   </div>
-  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'} · aviso automático</p>
+  <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'} · aviso automático</p>
 </div>
 </body>
 </html>`;

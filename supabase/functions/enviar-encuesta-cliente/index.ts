@@ -191,25 +191,25 @@ Deno.serve(async (req) => {
 
   const html = `<!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
-<body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, 'Tu opinión sobre la visita', 'opinion')}
     <div style="padding:28px 26px;text-align:center">
-    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 10px">¿Qué te pareció la visita?</h1>
-    <p style="color:#526575;font-size:14px;margin:0 0 22px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, gracias por visitar el inmueble. Tu opinión nos ayuda a mejorar y le llega directo al propietario.</p>
+    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 10px">¿Qué te pareció la visita?</h1>
+    <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 22px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, gracias por visitar el inmueble. Tu opinión nos ayuda a mejorar y le llega directo al propietario.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td align="center" bgcolor="${marca.principal}" style="border-radius:2px">
-        <a href="${linkOpinion}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:2px">
+      <td align="center" bgcolor="${marca.principal}" style="border-radius:999px">
+        <a href="${linkOpinion}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:999px">
           Dejar mi opinión (1 minuto)
         </a>
       </td>
     </tr></table>
     </div>
   </div>
-  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
+  <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre) || 'Patrimonios Inmobiliarios'}</p>
 </div>
 </body>
 </html>`;

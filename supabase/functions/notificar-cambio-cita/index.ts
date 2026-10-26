@@ -160,18 +160,18 @@ function plantilla(o: {
   remitente: string;
   marca: MarcaCorreo;
 }) {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
 ${o.modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(o.destinatarioReal)}</div>` : ''}
-<div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+<div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
 ${encabezadoImagen(o.marca, o.titulo, 'visita')}
 <div style="padding:28px 26px">
-<h1 style="color:${o.marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 12px">${esc(o.titulo)}</h1>
-<div style="color:#526575;font-size:14px;line-height:1.55">${o.cuerpo}</div>
-${o.boton ? `<p style="margin:22px 0 0"><a href="${esc(o.boton.url)}" style="display:inline-block;background:${o.marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 24px;border-radius:2px">${esc(o.boton.texto)}</a></p>` : ''}
+<h1 style="color:${o.marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 12px">${esc(o.titulo)}</h1>
+<div style="color:#4d4d4d;font-size:14px;line-height:1.55">${o.cuerpo}</div>
+${o.boton ? `<p style="margin:22px 0 0;text-align:center"><a href="${esc(o.boton.url)}" style="display:inline-block;background:${o.marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 24px;border-radius:999px">${esc(o.boton.texto)}</a></p>` : ''}
 </div>
 </div>
-<p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${esc(o.remitente)}</p>
+<p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${esc(o.remitente)}</p>
 </div></body></html>`;
 }
 
@@ -364,8 +364,8 @@ Deno.serve(async (req) => {
         correos: correosArr,
         asunto: `Cambió la hora de la visita a tu ${sust.n} · ${fechaTexto}`,
         titulo: 'La visita cambió de hora',
-        cuerpo: `<p style="margin:0 0 10px">${saludoArr}la visita a tu ${esc(sust.n)}${lugar ? ` en ${esc(lugar)}` : ''} se movió. La nueva hora es ${lineaVisita}${asesor?.nombre ? `, con ${esc(asesor.nombre)}` : ''}.</p>
-<p style="margin:0">Si esa hora no te sirve, puedes proponer otra con el botón de abajo; la visita solo cambia si la persona interesada la acepta.</p>`,
+        cuerpo: `<p style="margin:0 0 10px;text-align:justify">${saludoArr}la visita a tu ${esc(sust.n)}${lugar ? ` en ${esc(lugar)}` : ''} se movió. La nueva hora es ${lineaVisita}${asesor?.nombre ? `, con ${esc(asesor.nombre)}` : ''}.</p>
+<p style="margin:0;text-align:justify">Si esa hora no te sirve, puedes proponer otra con el botón de abajo; la visita solo cambia si la persona interesada la acepta.</p>`,
         boton: { texto: 'Ver la visita o proponer otra hora', url: `${SITIO_URL}/arrendatario/${cita.token_arrendatario}` },
       });
     }
@@ -390,8 +390,8 @@ Deno.serve(async (req) => {
       correos: correosCliente,
       asunto: `Visita cancelada — ${fechaTexto}`,
       titulo: porCliente ? 'Cancelaste tu visita' : 'Tu visita fue cancelada',
-      cuerpo: `<p style="margin:0 0 10px">Hola ${esc(cita.cliente_nombre)}, ${porCliente ? 'cancelamos' : 'te avisamos que se canceló'} tu visita del ${lineaVisita} ${esc(sust.el.startsWith('el ') ? 'al ' + sust.el.slice(3) : 'a ' + sust.el)}${lugar ? ` en ${esc(lugar)}` : ''}${porCliente ? '' : '. Lamentamos el inconveniente'}.</p>
-<p style="margin:0">Ya se quitó del calendario de tu teléfono. ${porCliente ? 'Cuando quieras, puedes elegir otro horario' : 'Puedes elegir otro horario'}${!porCliente && asesor?.nombre ? ` o escribirle a tu asesor, ${esc(asesor.nombre)}` : ''}.</p>`,
+      cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(cita.cliente_nombre)}, ${porCliente ? 'cancelamos' : 'te avisamos que se canceló'} tu visita del ${lineaVisita} ${esc(sust.el.startsWith('el ') ? 'al ' + sust.el.slice(3) : 'a ' + sust.el)}${lugar ? ` en ${esc(lugar)}` : ''}${porCliente ? '' : '. Lamentamos el inconveniente'}.</p>
+<p style="margin:0;text-align:justify">Ya se quitó del calendario de tu teléfono. ${porCliente ? 'Cuando quieras, puedes elegir otro horario' : 'Puedes elegir otro horario'}${!porCliente && asesor?.nombre ? ` o escribirle a tu asesor, ${esc(asesor.nombre)}` : ''}.</p>`,
       boton: { texto: 'Agendar otro horario', url: `${SITIO_URL}/inmuebles/${inmueble.numero_inmueble}` },
       conIcsCancelacion: true,
       asistenteNombre: cita.cliente_nombre || undefined,
@@ -417,8 +417,8 @@ Deno.serve(async (req) => {
       correos: [correo],
       asunto: `Visita cancelada en tu inmueble Nº ${inmueble.numero_inmueble}`,
       titulo: 'Se canceló una visita en tu inmueble',
-      cuerpo: `<p style="margin:0 0 10px">Hola ${esc(nombres.join(' y '))}, te avisamos que la visita del ${lineaVisita} a tu inmueble Nº ${esc(String(inmueble.numero_inmueble))}${lugar ? ` (${esc(lugar)})` : ''} fue cancelada${origen === 'cliente' ? ' por la persona interesada' : ''}.</p>
-<p style="margin:0">No tienes que hacer nada. Si se agenda otra visita, te avisaremos.</p>`,
+      cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(nombres.join(' y '))}, te avisamos que la visita del ${lineaVisita} a tu inmueble Nº ${esc(String(inmueble.numero_inmueble))}${lugar ? ` (${esc(lugar)})` : ''} fue cancelada${origen === 'cliente' ? ' por la persona interesada' : ''}.</p>
+<p style="margin:0;text-align:justify">No tienes que hacer nada. Si se agenda otra visita, te avisaremos.</p>`,
       boton: { texto: 'Ver el inmueble en nuestro sitio', url: enlaceInmueble(config, inmueble.numero_inmueble) },
       conIcsCancelacion: true,
       asistenteNombre: nombres[0],
@@ -431,8 +431,8 @@ Deno.serve(async (req) => {
       correos: correosArr,
       asunto: `Visita cancelada · ${fechaTexto}`,
       titulo: `Se canceló la visita a tu ${sust.n}`,
-      cuerpo: `<p style="margin:0 0 10px">${saludoArr}la visita que estaba programada para ${lineaVisita}${lugar ? ` en ${esc(lugar)}` : ''} fue cancelada${origen === 'cliente' ? ' por la persona interesada' : ''}.</p>
-<p style="margin:0">No tienes que hacer nada. Gracias por tu colaboración.</p>`,
+      cuerpo: `<p style="margin:0 0 10px;text-align:justify">${saludoArr}la visita que estaba programada para ${lineaVisita}${lugar ? ` en ${esc(lugar)}` : ''} fue cancelada${origen === 'cliente' ? ' por la persona interesada' : ''}.</p>
+<p style="margin:0;text-align:justify">No tienes que hacer nada. Gracias por tu colaboración.</p>`,
     });
   }
 

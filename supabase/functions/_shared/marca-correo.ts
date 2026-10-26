@@ -33,7 +33,7 @@ export function marcaCorreo(config: any): MarcaCorreo {
   };
 }
 
-// Encabezado de marca: franja blanca con el logo centrado, filo fino del color de acción y,
+// Encabezado de marca: franja blanca con el logo centrado (sin línea de acento) y,
 // debajo, la fotografía de la empresa (imagen_correo_url) a todo el ancho. Sin logo ni foto,
 // queda solo el filo de color. Minimalista a propósito: la marca se nota por el orden, no por el ruido.
 export type TemaFoto = 'visita' | 'hogar' | 'opinion' | 'ninguna';
@@ -50,7 +50,7 @@ export function encabezadoImagen(marca: MarcaCorreo, alt: string, tema?: TemaFot
   const foto = foto_url
     ? `<tr><td style="font-size:0;line-height:0"><img src="${foto_url}" alt="${a}" width="580" border="0" style="width:100%;max-width:580px;height:auto;display:block;border:0;outline:none" /></td></tr>`
     : '';
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${logo}<tr><td style="height:3px;line-height:3px;font-size:0;background:${marca.accion}">&nbsp;</td></tr>${foto}</table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${logo}${foto}</table>`;
 }
 
 // Enlace para VER el inmueble en el sitio de la empresa (plantilla con {numero}); si la empresa no la
@@ -82,11 +82,11 @@ export function bloqueCaptacion(marca: MarcaCorreo): string {
   const asunto = encodeURIComponent('Quiero consignar un inmueble');
   return `<div style="padding:6px 26px 28px">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="background:#f1efe9;border-radius:2px;padding:22px 24px;border-left:3px solid ${marca.accion}">
-          <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a857b;margin-bottom:6px">Publicidad</div>
-          <div style="font-family:Georgia,'Times New Roman',serif;font-size:20px;line-height:1.3;color:${marca.principal};margin:0 0 6px">¿Tienes otro inmueble?</div>
-          <div style="font-size:15px;line-height:1.55;color:#4d4d4d;margin:0 0 16px">Consígnanoslo y lo cuidamos con la misma tranquilidad.</div>
-          <a href="mailto:${LEGAL.correo}?subject=${asunto}" target="_blank" style="display:inline-block;padding:13px 22px;background:${marca.principal};color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border-radius:2px">Quiero consignar un inmueble</a>
+        <td style="background:#f4f4f4;border-radius:14px;padding:26px 24px;text-align:center">
+          <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b6b6b;margin-bottom:6px">Publicidad</div>
+          <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:20px;line-height:1.3;color:${marca.principal};margin:0 0 6px">¿Tienes otro inmueble?</div>
+          <div style="font-size:15px;line-height:1.6;color:#4d4d4d;margin:0 0 18px">Consígnanoslo y lo cuidamos con la misma tranquilidad.</div>
+          <a href="mailto:${LEGAL.correo}?subject=${asunto}" target="_blank" style="display:inline-block;padding:14px 26px;background:${marca.principal};color:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border-radius:999px">Quiero consignar un inmueble</a>
         </td>
       </tr></table>
     </div>`;
@@ -95,5 +95,5 @@ export function bloqueCaptacion(marca: MarcaCorreo): string {
 // Pie legal para correos con publicidad: responsable, NIT, dirección, política y baja.
 export function pieLegal(): string {
   const baja = encodeURIComponent('Baja de comunicaciones comerciales');
-  return `<p style="text-align:center;color:#6b665c;font-size:12px;line-height:1.6;margin:18px 8px 0">${LEGAL.razon} · NIT ${LEGAL.nit}<br>${LEGAL.direccion}<br>Tratamos tus datos conforme a la <a href="${LEGAL.politica}" style="color:#6b665c;text-decoration:underline">Política de Tratamiento de Datos</a> (Ley 1581 de 2012). Si no quieres recibir publicidad nuestra, <a href="mailto:${LEGAL.correo}?subject=${baja}" style="color:#6b665c;text-decoration:underline">escríbenos para darte de baja</a>; seguirás recibiendo los avisos de tus inmuebles.</p>`;
+  return `<p style="text-align:center;color:#6b6b6b;font-size:12px;line-height:1.6;margin:18px 8px 0">${LEGAL.razon} · NIT ${LEGAL.nit}<br>${LEGAL.direccion}<br>Tratamos tus datos conforme a la <a href="${LEGAL.politica}" style="color:#6b665c;text-decoration:underline">Política de Tratamiento de Datos</a> (Ley 1581 de 2012). Si no quieres recibir publicidad nuestra, <a href="mailto:${LEGAL.correo}?subject=${baja}" style="color:#6b665c;text-decoration:underline">escríbenos para darte de baja</a>; seguirás recibiendo los avisos de tus inmuebles.</p>`;
 }

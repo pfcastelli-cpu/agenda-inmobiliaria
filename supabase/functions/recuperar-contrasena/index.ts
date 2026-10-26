@@ -118,24 +118,24 @@ Deno.serve(async (req) => {
     const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Patrimonios Inmobiliarios';
     const html = `<!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
-<body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${
     modoPruebas
       ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(correo)}</div>`
       : ''
   }
-  <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, `${escaparHtml(remitente)}`, 'ninguna')}
     <div style="padding:28px 26px 26px;text-align:center">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 8px">Restablece tu contraseña</h1>
-      <p style="color:#526575;font-size:14px;margin:0 0 22px">Hola ${escaparHtml(miembro.nombre || '')}, pulsa el botón para elegir una contraseña nueva.</p>
-      <a href="${escaparHtml(accion)}" style="display:inline-block;background:${marca.accion};color:${marca.textoAccion};text-decoration:none;font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:16px 30px;border-radius:2px">Elegir contraseña nueva</a>
-      <p style="color:#5b6b7d;font-size:12.5px;margin:22px 0 0">El enlace es de un solo uso. Si no lo pediste, ignora este correo: tu contraseña sigue igual.</p>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 8px">Restablece tu contraseña</h1>
+      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 22px">Hola ${escaparHtml(miembro.nombre || '')}, pulsa el botón para elegir una contraseña nueva.</p>
+      <a href="${escaparHtml(accion)}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:16px 30px;border-radius:999px">Elegir contraseña nueva</a>
+      <p style="color:#4d4d4d;text-align:justify;font-size:12.5px;margin:22px 0 0">El enlace es de un solo uso. Si no lo pediste, ignora este correo: tu contraseña sigue igual.</p>
     </div>
   </div>
-  <p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${escaparHtml(remitente)}</p>
+  <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(remitente)}</p>
 </div>
 </body>
 </html>`;

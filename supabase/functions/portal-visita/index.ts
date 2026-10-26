@@ -159,18 +159,18 @@ function plantillaCorreo(opts: {
   remitente: string;
   marca: MarcaCorreo;
 }) {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
 ${opts.modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(opts.destinatarioReal)}</div>` : ''}
-<div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+<div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
 ${encabezadoImagen(opts.marca, opts.titulo, 'visita')}
 <div style="padding:28px 26px">
-<h1 style="color:${opts.marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 12px">${esc(opts.titulo)}</h1>
-<div style="color:#526575;font-size:14px;line-height:1.55">${opts.cuerpo}</div>
-${opts.boton ? `<p style="margin:22px 0 0"><a href="${esc(opts.boton.url)}" style="display:inline-block;background:${opts.marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">${esc(opts.boton.texto)}</a></p>` : ''}
+<h1 style="color:${opts.marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 12px">${esc(opts.titulo)}</h1>
+<div style="color:#4d4d4d;font-size:14px;line-height:1.55">${opts.cuerpo}</div>
+${opts.boton ? `<p style="margin:22px 0 0;text-align:center"><a href="${esc(opts.boton.url)}" style="display:inline-block;background:${opts.marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:999px">${esc(opts.boton.texto)}</a></p>` : ''}
 </div>
 </div>
-<p style="text-align:center;color:#66758a;font-size:11.5px;margin-top:18px">${esc(opts.remitente)}</p>
+<p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${esc(opts.remitente)}</p>
 </div></body></html>`;
 }
 
@@ -382,7 +382,7 @@ Deno.serve(async (req) => {
     await enviarCorreos(admin, cita.empresa_id, cita.id, destino, correos, asunto, (extra) =>
       plantillaCorreo({
         titulo,
-        cuerpo: `<p style="margin:0 0 10px">Hola ${esc(nombre)},</p>${cuerpo}`,
+        cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(nombre)},</p>${cuerpo}`,
         boton: { texto: textoBoton, url: enlaceDe(destino) },
         ...extra,
       }),
@@ -481,10 +481,10 @@ Deno.serve(async (req) => {
           'cliente',
           `Propuesta de nuevo horario para tu visita · Inmueble ${inmueble.numero_inmueble}`,
           'Te proponen otra hora para tu visita',
-          `<p style="margin:0 0 10px">El inmueble que vas a visitar${direccion ? ` (${esc(direccion)})` : ''} está actualmente arrendado y ocupado, y el arrendatario no puede recibirte en el horario acordado.</p>
-<p style="margin:0 0 10px">Tu visita sigue para ${lineaVisita}, pero propone esta otra hora:</p>
-<p style="margin:0 0 10px;font-size:16px">${nuevaLinea}</p>
-<p style="margin:0">Tu visita solo cambia si tú aceptas. Si no te sirve, puedes dejarla como está o proponer otra hora. La propuesta vence en ${HORAS_VIGENCIA_PROPUESTA} horas.</p>`,
+          `<p style="margin:0 0 10px;text-align:justify">El inmueble que vas a visitar${direccion ? ` (${esc(direccion)})` : ''} está actualmente arrendado y ocupado, y el arrendatario no puede recibirte en el horario acordado.</p>
+<p style="margin:0 0 10px;text-align:justify">Tu visita sigue para ${lineaVisita}, pero propone esta otra hora:</p>
+<p style="margin:0 0 10px;font-size:16px;text-align:justify">${nuevaLinea}</p>
+<p style="margin:0;text-align:justify">Tu visita solo cambia si tú aceptas. Si no te sirve, puedes dejarla como está o proponer otra hora. La propuesta vence en ${HORAS_VIGENCIA_PROPUESTA} horas.</p>`,
           'Ver la propuesta',
         );
       } else {
@@ -492,9 +492,9 @@ Deno.serve(async (req) => {
           'arrendatario',
           `El interesado propone otra hora · Inmueble ${inmueble.numero_inmueble}`,
           'Te propusieron otra hora para la visita',
-          `<p style="margin:0 0 10px">En respuesta a tu propuesta, la persona interesada en tu ${nombreInm} sugiere esta hora:</p>
-<p style="margin:0 0 10px;font-size:16px">${nuevaLinea}</p>
-<p style="margin:0">La visita sigue para ${lineaVisita} y solo cambia si tú aceptas. Puedes aceptar, o proponer otra hora. Vence en ${HORAS_VIGENCIA_PROPUESTA} horas.</p>`,
+          `<p style="margin:0 0 10px;text-align:justify">En respuesta a tu propuesta, la persona interesada en tu ${nombreInm} sugiere esta hora:</p>
+<p style="margin:0 0 10px;font-size:16px;text-align:justify">${nuevaLinea}</p>
+<p style="margin:0;text-align:justify">La visita sigue para ${lineaVisita} y solo cambia si tú aceptas. Puedes aceptar, o proponer otra hora. Vence en ${HORAS_VIGENCIA_PROPUESTA} horas.</p>`,
           'Ver la propuesta',
         );
       }
@@ -516,8 +516,8 @@ Deno.serve(async (req) => {
           otraParte,
           `La propuesta de horario no fue aceptada · Inmueble ${inmueble.numero_inmueble}`,
           'La otra hora no se aceptó',
-          `<p style="margin:0 0 10px">No fue aceptada la hora que propusiste. La visita sigue para ${lineaVisita}.</p>
-<p style="margin:0">Si quieres, puedes proponer otra hora.</p>`,
+          `<p style="margin:0 0 10px;text-align:justify">No fue aceptada la hora que propusiste. La visita sigue para ${lineaVisita}.</p>
+<p style="margin:0;text-align:justify">Si quieres, puedes proponer otra hora.</p>`,
           'Proponer otra hora',
         );
         return json({ ok: true, resultado: 'rechazada' });
@@ -531,7 +531,7 @@ Deno.serve(async (req) => {
           otraParte,
           `La hora propuesta ya no está disponible · Inmueble ${inmueble.numero_inmueble}`,
           'Esa hora ya no está disponible',
-          `<p style="margin:0 0 10px">La hora propuesta se ocupó antes de poder confirmarla. La visita sigue para ${lineaVisita}.</p><p style="margin:0">Puedes proponer otra hora.</p>`,
+          `<p style="margin:0 0 10px;text-align:justify">La hora propuesta se ocupó antes de poder confirmarla. La visita sigue para ${lineaVisita}.</p><p style="margin:0;text-align:justify">Puedes proponer otra hora.</p>`,
           'Proponer otra hora',
         );
         return falla('Esa hora ya no está disponible. Propón otra.', 409);
@@ -568,7 +568,7 @@ Deno.serve(async (req) => {
       await enviarCorreos(admin, cita.empresa_id, cita.id, 'arrendatario', t.correos, `Visita confirmada en nuevo horario · Inmueble ${inmueble.numero_inmueble}`, (extra) =>
         plantillaCorreo({
           titulo: 'La visita quedó en firme',
-          cuerpo: `<p style="margin:0 0 10px">Hola ${esc(t.nombre)}, ambas partes aceptaron el cambio. La visita quedó para ${nuevaLinea}.</p><p style="margin:0">No tienes que hacer nada más.</p>`,
+          cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(t.nombre)}, ambas partes aceptaron el cambio. La visita quedó para ${nuevaLinea}.</p><p style="margin:0;text-align:justify">No tienes que hacer nada más.</p>`,
           boton: { texto: 'Ver mi visita', url: enlaceDe('arrendatario') },
           ...extra,
         }),
@@ -617,8 +617,8 @@ Deno.serve(async (req) => {
       await enviarCorreos(admin, cita.empresa_id, cita.id, 'cliente', correosDe(cita.cliente_email).slice(0, 1), `Tu visita del ${formatearFecha(cita.fecha)} fue cancelada`, (extra) =>
         plantillaCorreo({
           titulo: 'Tu visita fue cancelada',
-          cuerpo: `<p style="margin:0 0 10px">Hola ${esc(cita.cliente_nombre)}, lamentamos informarte que la visita del <b>${esc(formatearFecha(cita.fecha))}, ${esc(formatearHora(horaCita))}</b>${direccion ? ` al inmueble en ${esc(direccion)}` : ''} no se podrá realizar: el inmueble está arrendado y ocupado, y en ese horario no es posible recibirte.</p>
-<p style="margin:0">Puedes elegir otro horario cuando quieras${asesor?.nombre ? ` o escribirle a tu asesor, ${esc(asesor.nombre)}` : ''}.</p>`,
+          cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(cita.cliente_nombre)}, lamentamos informarte que la visita del <b>${esc(formatearFecha(cita.fecha))}, ${esc(formatearHora(horaCita))}</b>${direccion ? ` al inmueble en ${esc(direccion)}` : ''} no se podrá realizar: el inmueble está arrendado y ocupado, y en ese horario no es posible recibirte.</p>
+<p style="margin:0;text-align:justify">Puedes elegir otro horario cuando quieras${asesor?.nombre ? ` o escribirle a tu asesor, ${esc(asesor.nombre)}` : ''}.</p>`,
           boton: { texto: 'Agendar otro horario', url: `${SITIO_URL}/inmuebles/${inmueble.numero_inmueble}` },
           ...extra,
         }),

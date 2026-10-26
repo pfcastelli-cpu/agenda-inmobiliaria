@@ -178,10 +178,10 @@ function construirICS(opts: {
 function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: string, texto: string): string {
   return `
       <tr><td style="padding:7px 0">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td align="center" bgcolor="${colorFondo}" style="border-radius:2px;border:1px solid ${colorFondo === '#ffffff' ? colorTexto : colorFondo}">
-            <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:${colorTexto};text-decoration:none;border-radius:2px">
-              ${texto}
+        <table role="presentation" width="100%" align="center" cellpadding="0" cellspacing="0" border="0" style="max-width:380px;margin:0 auto"><tr>
+          <td align="center" bgcolor="${colorFondo}" style="border-radius:999px;border:1px solid ${colorFondo === '#ffffff' ? colorTexto : colorFondo}">
+            <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:${colorTexto};text-decoration:none;border-radius:999px">
+              ${icono ? icono + '&nbsp;&nbsp;' : ''}${texto}
             </a>
           </td>
         </tr></table>
@@ -191,9 +191,9 @@ function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: s
 function filaDato(icono: string, etiqueta: string, valor: string): string {
   return `
       <tr>
-        <td style="padding:13px 0;vertical-align:top;border-bottom:1px solid #eeebe5">
-          <div style="font-size:11px;color:#8a857b;text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px">${etiqueta}</div>
-          <div style="font-size:16px;color:#1f2933;font-weight:500;line-height:1.4">${valor}</div>
+        <td style="padding:13px 0;vertical-align:top;border-bottom:1px solid #efefef">
+          <div style="font-size:11px;color:#6b6b6b;text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px">${icono ? icono + '&nbsp; ' : ''}${etiqueta}</div>
+          <div style="font-size:16px;color:#1a2c45;font-weight:500;line-height:1.4">${valor}</div>
         </td>
       </tr>`;
 }
@@ -376,24 +376,24 @@ Deno.serve(async (req) => {
   const llamarUrl = asesorCelular ? `tel:${asesorCelular.replace(/\s+/g, '')}` : null;
 
   let filasBotones = '';
-  filasBotones += filaBoton(enlaceInmueble(config, inmueble.numero_inmueble), marca.principal, '#ffffff', '', 'Ver el inmueble en nuestro sitio');
-  if (wazeUrl) filasBotones += filaBoton(wazeUrl, '#ffffff', marca.principal, '', 'Cómo llegar con Waze');
-  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#ffffff', marca.principal, '', 'Cómo llegar con Google Maps');
+  filasBotones += filaBoton(enlaceInmueble(config, inmueble.numero_inmueble), marca.principal, '#ffffff', '🏠', 'Ver el inmueble en nuestro sitio');
+  if (wazeUrl) filasBotones += filaBoton(wazeUrl, '#ffffff', marca.principal, '🚗', 'Cómo llegar con Waze');
+  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#ffffff', marca.principal, '🗺️', 'Cómo llegar con Google Maps');
   if (whatsappUrl)
     filasBotones += filaBoton(
       whatsappUrl,
       '#ffffff',
       marca.principal,
-      '',
+      '💬',
       `Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp`,
     );
-  if (llamarUrl) filasBotones += filaBoton(llamarUrl, '#ffffff', marca.principal, '', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`);
+  if (llamarUrl) filasBotones += filaBoton(llamarUrl, '#ffffff', marca.principal, '📞', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`);
 
   let filasDatos = filaDato('', 'Inmueble', `Nº ${inmueble.numero_inmueble}`);
-  filasDatos += filaDato('', 'Fecha de la visita', escaparHtml(fechaTexto));
-  filasDatos += filaDato('', 'Hora', escaparHtml(horaTexto));
+  filasDatos += filaDato('📅', 'Fecha de la visita', escaparHtml(fechaTexto));
+  filasDatos += filaDato('🕐', 'Hora', escaparHtml(horaTexto));
   if (direccion) {
-    filasDatos += filaDato('', 'Dirección', `${escaparHtml(direccion)}${ciudad ? `, ${escaparHtml(ciudad)}` : ''}`);
+    filasDatos += filaDato('📍', 'Dirección', `${escaparHtml(direccion)}${ciudad ? `, ${escaparHtml(ciudad)}` : ''}`);
   }
   if (asesorNombre) {
     filasDatos += filaDato(
@@ -440,15 +440,15 @@ Deno.serve(async (req) => {
       : '';
     return `<!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
-<body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, `Se agendó una visita en tu inmueble`)}
     <div style="padding:28px 26px 8px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 4px">${reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble'}</h1>
-      <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, ${reagendada ? 'te avisamos que una visita ya agendada cambió de hora; esta es la hora actual:' : 'te informamos que un cliente interesado visitará tu inmueble:'}</p>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 4px">${reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble'}</h1>
+      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, ${reagendada ? 'te avisamos que una visita ya agendada cambió de hora; esta es la hora actual:' : 'te informamos que un cliente interesado visitará tu inmueble:'}</p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
         ${filasDatos}
       </table>
@@ -463,8 +463,8 @@ Deno.serve(async (req) => {
         : ''
     }
     ${bloqueCaptacion(marca)}
-    <div style="background:#faf9f7;padding:20px 28px;border-top:1px solid #eeebe5">
-      <p style="color:#5b6b7d;font-size:12px;margin:0">Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>
+    <div style="background:#f4f4f4;padding:20px 28px;border-top:1px solid #efefef">
+      <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>
     </div>
   </div>
   ${pieLegal()}

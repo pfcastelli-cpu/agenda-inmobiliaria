@@ -220,26 +220,26 @@ Deno.serve(async (req) => {
       : '';
     return `<!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
-<body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+  <div style="background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb">
     ${encabezadoImagen(marca, `Informe de tu inmueble`)}
     <div style="padding:28px 26px 10px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 4px">El informe de tu inmueble Nº ${numeroInmueble}</h1>
-      <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, te compartimos el link con el informe en vivo de tu inmueble: cuántas visitas ha tenido, qué han dicho los clientes que lo han visto, y un espacio para pedirnos un cambio de precio, de fotos, o una asesoría cuando quieras. Se actualiza solo, así que puedes volver a verlo cuando quieras con este mismo link.</p>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 4px">El informe de tu inmueble Nº ${numeroInmueble}</h1>
+      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, te compartimos el link con el informe en vivo de tu inmueble: cuántas visitas ha tenido, qué han dicho los clientes que lo han visto, y un espacio para pedirnos un cambio de precio, de fotos, o una asesoría cuando quieras. Se actualiza solo, así que puedes volver a verlo cuando quieras con este mismo link.</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td align="center" bgcolor="${marca.principal}" style="border-radius:2px">
-          <a href="${linkInforme}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:2px">
+        <td align="center" bgcolor="${marca.principal}" style="border-radius:999px">
+          <a href="${linkInforme}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:999px">
             Ver el informe de mi inmueble
           </a>
         </td>
       </tr></table>
     </div>
     ${bloqueCaptacion(marca)}
-    <div style="background:#faf9f7;padding:20px 28px;border-top:1px solid #eeebe5">
-      <p style="color:#5b6b7d;font-size:12px;margin:0">Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>
+    <div style="background:#f4f4f4;padding:20px 28px;border-top:1px solid #efefef">
+      <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>
     </div>
   </div>
   ${pieLegal()}
