@@ -65,8 +65,10 @@
 .ad .ad-paletas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
 .ad .ad-paleta{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:10px;border-radius:12px}
 .ad .ad-paleta small{color:#526575;font-size:13px}
-.ad .ad-paleta-muestra{display:flex;align-items:flex-end;gap:6px;width:100%;height:46px;border-radius:8px;padding:6px;margin-bottom:6px}
-.ad .ad-paleta-muestra i{width:22px;height:22px;border-radius:50%;border:2px solid #fff}
+.ad .ad-paleta-muestra{display:flex;align-items:flex-end;gap:6px;width:100%;height:64px;border-radius:4px;padding:8px;margin-bottom:8px;box-shadow:inset 0 -3px 0 rgba(255,255,255,.18),0 6px 14px -8px rgba(0,0,0,.45)}
+.ad .ad-paleta-muestra i{width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.85);box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.ad .ad-paleta-muestra i:first-child{width:30px;height:30px}
+.ad .ad-paleta-propia .ad-paleta-muestra{outline:1px dashed #8a97a5;outline-offset:2px}
 .ad .ad-paleta[aria-pressed=true]{background:var(--tema-tinte,#e3f8f7);color:#1a2c45;border-color:var(--empresa-accion,#00a9a5);box-shadow:0 0 0 2px var(--empresa-accion,#00a9a5)}
 .ad .ad-paleta[aria-pressed=true] small{color:#1a2c45}
 
