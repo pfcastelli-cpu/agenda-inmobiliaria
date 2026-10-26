@@ -6,7 +6,7 @@
 // Solo administradores activos de la empresa pueden usarla — se verifica con el JWT
 // del que llama, igual que en gestion-accesos.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { marcaCorreo } from '../_shared/marca-correo.ts';
+import { encabezadoImagen, marcaCorreo } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion',
     )
     .eq('empresa_id', empresaId)
     .maybeSingle();
@@ -97,11 +97,11 @@ Deno.serve(async (req) => {
   }
 
   const asunto = 'Correo de prueba — configuración de citas de Patrimonios';
-  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head><body style="font-family:Arial,Helvetica,sans-serif;padding:20px">
-    <h2 style="color:${marca.principal}">✅ Tu configuración de correo funciona</h2>
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head><body style="margin:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif"><div style="max-width:560px;margin:0 auto;padding:28px 16px"><div style="background:#ffffff;border:1px solid #e4e1db;border-radius:2px;overflow:hidden">${encabezadoImagen(marca, 'Prueba de correo', 'ninguna')}<div style="padding:28px 26px">
+    <h2 style="color:${marca.principal};font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:26px;margin:0 0 10px">Tu configuración de correo funciona</h2>
     <p style="color:#526575">Este es un correo de prueba enviado desde el panel de administración de la agenda de citas, usando exactamente los mismos datos SMTP que se usan para los correos reales de confirmación de visitas.</p>
     <p style="color:#66758a;font-size:12px">Enviado el ${new Date().toLocaleString('es-CO')}.</p>
-  </body></html>`;
+  </div></div></div></body></html>`;
 
   let password: string | null = null;
   try {

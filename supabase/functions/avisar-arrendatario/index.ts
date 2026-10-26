@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion, plantilla_enlace_inmueble, dominio_publico',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, plantilla_enlace_inmueble, dominio_publico',
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
@@ -229,17 +229,17 @@ Deno.serve(async (req) => {
   const html = (destinatarioReal: string) => `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
-<body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
+<body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${
     modoPruebas
-      ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">🧪 MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}</div>`
+      ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}</div>`
       : ''
   }
-  <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
-    ${encabezadoImagen(marca, `Visita programada`)}
+  <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+    ${encabezadoImagen(marca, `Visita programada`, 'fachada')}
     <div style="padding:28px 26px 20px">
-      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 6px">Visita programada en tu ${sust.n}</h1>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 6px">Visita programada en tu ${sust.n}</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer ${sust.el} que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo: si la hora no te sirve, puedes proponer otra.</p>
       <table style="width:100%;border-collapse:collapse">
         <tr><td style="padding:8px 0;color:#5b6b7d;font-size:13px">Fecha</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(fechaTexto)}</td></tr>
@@ -247,8 +247,8 @@ Deno.serve(async (req) => {
         ${asesorNombre ? `<tr><td style="padding:8px 0;color:#5b6b7d;font-size:13px">Asesor a cargo</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
       </table>
       <p style="color:#526575;font-size:14px;margin:18px 0 0">¿No puedes recibir la visita a esa hora? Con el botón de abajo propones otra hora disponible; la visita solo cambia cuando la persona interesada la acepte. Si no respondes, la visita se mantiene a la hora indicada. También puedes cancelarla o cambiar los días y horas en que se muestra tu ${sust.n}. Gracias por tu colaboración.</p>
-      <p style="margin:18px 0 6px"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:12px">Ver la visita o proponer otra hora</a></p>
-      <p style="margin:10px 0 6px"><a href="${enlaceSitio}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:12px;border:2px solid ${marca.principal}">Ver el inmueble en nuestro sitio</a></p>
+      <p style="margin:18px 0 6px"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:2px">Ver la visita o proponer otra hora</a></p>
+      <p style="margin:10px 0 6px"><a href="${enlaceSitio}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:2px;border:2px solid ${marca.principal}">Ver el inmueble en nuestro sitio</a></p>
       <p style="color:#66758a;font-size:12px;margin:10px 0 0">Este enlace es solo para ti, no lo compartas. ¿Prefieres hablar? Llama o escríbele a tu asesor.</p>
     </div>
   </div>

@@ -82,9 +82,9 @@ function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: s
   return `
       <tr><td style="padding:7px 0">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td align="center" bgcolor="${colorFondo}" style="border-radius:12px${borde ? `;border:2px solid ${borde}` : ''}">
-            <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${colorTexto};text-decoration:none;border-radius:12px">
-              ${icono}&nbsp;&nbsp;${texto}
+          <td align="center" bgcolor="${colorFondo}" style="border-radius:2px${borde ? `;border:1px solid ${borde}` : ''}">
+            <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:${colorTexto};text-decoration:none;border-radius:2px">
+              ${texto}
             </a>
           </td>
         </tr></table>
@@ -94,10 +94,9 @@ function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: s
 function filaDato(icono: string, etiqueta: string, valor: string): string {
   return `
       <tr>
-        <td style="padding:11px 0;font-size:20px;width:32px;vertical-align:top">${icono}</td>
-        <td style="padding:11px 0;vertical-align:top">
-          <div style="font-size:11.5px;color:#5b6b7d;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${etiqueta}</div>
-          <div style="font-size:15px;color:#1A2C45;font-weight:700;line-height:1.35">${valor}</div>
+        <td style="padding:13px 0;vertical-align:top;border-bottom:1px solid #eeebe5">
+          <div style="font-size:11px;color:#8a857b;text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px">${etiqueta}</div>
+          <div style="font-size:16px;color:#1f2933;font-weight:500;line-height:1.4">${valor}</div>
         </td>
       </tr>`;
 }
@@ -264,7 +263,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion',
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
@@ -350,7 +349,7 @@ Deno.serve(async (req) => {
 
   const bannerPruebas = modoPruebas
     ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
-        🧪 MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}
+        MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}
       </div>`
     : '';
 
@@ -372,28 +371,29 @@ Deno.serve(async (req) => {
   const llamarUrl = asesorCelular ? `tel:${asesorCelular.replace(/\s+/g, '')}` : null;
 
   let filasBotones = '';
-  if (wazeUrl) filasBotones += filaBoton(wazeUrl, '#0A7C8F', '#ffffff', '🚗', 'Ver ruta en Waze');
-  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#1A5FD0', '#ffffff', '🧭', 'Ver ruta en Google Maps');
+  if (wazeUrl) filasBotones += filaBoton(wazeUrl, marca.principal, '#ffffff', '', 'Cómo llegar con Waze');
+  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#ffffff', marca.principal, '', 'Cómo llegar con Google Maps', marca.principal);
   if (whatsappUrl)
     filasBotones += filaBoton(
       whatsappUrl,
-      '#128C4A',
       '#ffffff',
-      '💬',
+      marca.principal,
+      '',
       `Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp`,
+      marca.principal,
     );
-  if (llamarUrl) filasBotones += filaBoton(llamarUrl, marca.principal, '#ffffff', '📞', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`);
+  if (llamarUrl) filasBotones += filaBoton(llamarUrl, '#ffffff', marca.principal, '', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`, marca.principal);
   // El cliente puede cambiar la hora o cancelar su visita él mismo, sin llamar a nadie.
-  if (cita.token_cliente) filasBotones += filaBoton(`https://citas.patrimonios.co/visita/${cita.token_cliente}`, '#ffffff', marca.principal, '🗓️', 'Cambiar o cancelar mi visita', marca.principal);
+  if (cita.token_cliente) filasBotones += filaBoton(`https://citas.patrimonios.co/visita/${cita.token_cliente}`, '#ffffff', '#6b665c', '', 'Cambiar o cancelar mi visita', '#d9d5cc');
 
-  let filasDatos = filaDato('📅', 'Fecha', escaparHtml(fechaTexto));
-  filasDatos += filaDato('🕐', 'Hora', escaparHtml(horaTexto));
+  let filasDatos = filaDato('', 'Fecha', escaparHtml(fechaTexto));
+  filasDatos += filaDato('', 'Hora', escaparHtml(horaTexto));
   if (direccion) {
-    filasDatos += filaDato('📍', 'Dirección', `${escaparHtml(direccion)}${ciudad ? `, ${escaparHtml(ciudad)}` : ''}`);
+    filasDatos += filaDato('', 'Dirección', `${escaparHtml(direccion)}${ciudad ? `, ${escaparHtml(ciudad)}` : ''}`);
   }
   if (asesorNombre) {
     filasDatos += filaDato(
-      '🧑‍💼',
+      '',
       'Tu asesor',
       `${escaparHtml(asesorNombre)}${asesorCelular ? ` · ${escaparHtml(asesorCelular)}` : ''}`,
     );
@@ -402,13 +402,13 @@ Deno.serve(async (req) => {
   const html = `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
-<body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
+<body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
-    ${encabezadoImagen(marca, `Tu visita quedó confirmada`)}
+  <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+    ${encabezadoImagen(marca, `Tu visita quedó confirmada`, 'fachada')}
     <div style="padding:28px 26px 8px">
-      <h1 style="color:${marca.principal};font-size:21px;margin:0 0 4px">${reagendada ? '¡Tu visita cambió de hora!' : '¡Tu visita quedó confirmada!'}</h1>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 4px">${reagendada ? '¡Tu visita cambió de hora!' : '¡Tu visita quedó confirmada!'}</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 20px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, ${reagendada ? 'esta es la nueva hora de tu cita:' : 'estos son los detalles de tu cita:'}</p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
         ${filasDatos}
@@ -423,7 +423,7 @@ Deno.serve(async (req) => {
     </div>`
         : ''
     }
-    <div style="background:#f4f6f8;padding:16px 26px;border-top:1px solid #e6eaee">
+    <div style="background:#faf9f7;padding:20px 28px;border-top:1px solid #eeebe5">
       ${
         inmuebleOcupado
           ? `<p style="color:#526575;font-size:12.5px;margin:0 0 10px"><strong>Importante:</strong> este inmueble está arrendado y ocupado actualmente. Si el arrendatario no puede recibirte a esa hora, podría proponerte otra: te escribiremos y tu visita solo cambia si tú aceptas el nuevo horario.</p>`

@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, color_principal, color_accion',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion',
     )
     .eq('empresa_id', empresaId)
     .maybeSingle();
@@ -237,20 +237,20 @@ Deno.serve(async (req) => {
 
   const bannerPruebas = modoPruebas
     ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
-        🧪 MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinoReal.to)}${destinoReal.cc ? ' (con copia a ' + escaparHtml(destinoReal.cc) + ')' : ''}
+        MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinoReal.to)}${destinoReal.cc ? ' (con copia a ' + escaparHtml(destinoReal.cc) + ')' : ''}
       </div>`
     : '';
 
   const html = `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
-<body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
+<body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
-    ${encabezadoImagen(marca, 'Aviso')}
+  <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+    ${encabezadoImagen(marca, 'Aviso', 'conjunto')}
     <div style="padding:26px">
-    <h1 style="color:${marca.principal};font-size:20px;margin:0 0 14px">${escaparHtml(ETIQUETAS_TIPO[tipo])}</h1>
+    <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 14px">${escaparHtml(ETIQUETAS_TIPO[tipo])}</h1>
     <p style="color:#526575;font-size:14px;margin:0 0 16px">El propietario del inmueble Nº ${numeroInmueble}${nombreAsesor ? ` (tu inmueble, ${escaparHtml(nombreAsesor)})` : ''} escribió desde el informe en vivo:</p>
     <table style="width:100%;border-collapse:collapse">${filasDetalle.join('')}</table>
     </div>

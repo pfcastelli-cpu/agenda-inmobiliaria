@@ -133,9 +133,9 @@ function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: s
   return `
       <tr><td style="padding:7px 0">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td align="center" bgcolor="${colorFondo}" style="border-radius:12px">
-            <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${colorTexto};text-decoration:none;border-radius:12px">
-              ${icono}&nbsp;&nbsp;${texto}
+          <td align="center" bgcolor="${colorFondo}" style="border-radius:2px;border:1px solid ${colorFondo === '#ffffff' ? colorTexto : colorFondo}">
+            <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:${colorTexto};text-decoration:none;border-radius:2px">
+              ${texto}
             </a>
           </td>
         </tr></table>
@@ -336,7 +336,7 @@ Deno.serve(async (req) => {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, dominio_publico, plantilla_enlace_inmueble, imagen_correo_url, color_principal, color_accion',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_smtp_password_secret_id, correo_modo_pruebas, correo_pruebas_destino, dominio_publico, plantilla_enlace_inmueble, imagen_correo_url, logo_url, color_principal, color_accion',
     )
     .eq('empresa_id', inmueble.empresa_id)
     .maybeSingle();
@@ -396,7 +396,7 @@ Deno.serve(async (req) => {
           : '';
     return `
       <tr><td style="padding:10px 0;border-top:1px solid #e6eaee">
-        <div style="font-size:11.5px;color:#5b6b7d;text-transform:uppercase;letter-spacing:.04em">#${inm.numero_inmueble} · ${escaparHtml(inm.ciudad as string)}${inm.barrio ? ' · ' + escaparHtml(inm.barrio as string) : ''}</div>
+        <div style="font-size:11px;color:#8a857b;text-transform:uppercase;letter-spacing:.12em">#${inm.numero_inmueble} · ${escaparHtml(inm.ciudad as string)}${inm.barrio ? ' · ' + escaparHtml(inm.barrio as string) : ''}</div>
         <div style="font-size:15px;color:${marca.principal};font-weight:700;margin:2px 0">${escaparHtml(direccionLimpia)}</div>
         <div style="font-size:14px;color:${marca.accion};font-weight:700;margin-bottom:6px">${escaparHtml(precio)}</div>
         <a href="${linkPublico(inm.numero_inmueble as number)}" target="_blank" style="font-size:13px;color:${marca.principal};font-weight:600;text-decoration:underline">Ver este inmueble →</a>
@@ -467,20 +467,20 @@ Deno.serve(async (req) => {
 
     const bannerPruebas = modoPruebas
       ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
-          🧪 MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}
+          MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}
         </div>`
       : '';
 
     const html = `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
-<body style="margin:0;padding:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif">
+<body style="margin:0;padding:0;background:#f3f1ed;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:580px;margin:0 auto;padding:28px 16px">
   ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(26,44,69,0.08)">
-    ${encabezadoImagen(marca, 'Tu visita fue cancelada')}
+  <div style="background:#ffffff;border-radius:2px;overflow:hidden;border:1px solid #e4e1db">
+    ${encabezadoImagen(marca, 'Tu visita fue cancelada', 'fachada')}
     <div style="padding:28px 26px 8px">
-      <h1 style="color:${marca.principal};font-size:20px;margin:0 0 4px">Tu visita fue cancelada</h1>
+      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.01em;margin:0 0 4px">Tu visita fue cancelada</h1>
       <p style="color:#526575;font-size:14px;margin:0 0 14px">Hola ${escaparHtml(fila.cliente_nombre) || ''}, te escribimos porque el inmueble que ibas a visitar${citaOriginal ? ` el ${escaparHtml(formatearFecha(citaOriginal.fecha))} a las ${escaparHtml(formatearHora(citaOriginal.hora_inicio.slice(0, 5)))}` : ''} (Nº ${inmueble.numero_inmueble}, ${escaparHtml(direccionInmueble)}${ciudadTexto ? ', ' + escaparHtml(ciudadTexto) : ''}) ${escaparHtml(etiquetaMotivo)}, así que ya no está disponible para visitas.</p>
       <p style="color:#526575;font-size:14px;margin:0 0 18px">Por eso tu cita quedó cancelada y también se quitó del calendario de tu teléfono. Si quieres, tu asesor te ayuda a encontrar otras opciones.${detalle ? ' ' + escaparHtml(detalle) : ''}</p>
       ${
@@ -490,7 +490,7 @@ Deno.serve(async (req) => {
           : ''
       }
     </div>
-    <div style="background:#f4f6f8;padding:16px 26px;border-top:1px solid #e6eaee">
+    <div style="background:#faf9f7;padding:20px 28px;border-top:1px solid #eeebe5">
       <p style="color:#5b6b7d;font-size:12px;margin:0">Si tienes dudas o quieres agendar una visita a alguno de estos inmuebles, comunícate con tu asesor.</p>
     </div>
   </div>
