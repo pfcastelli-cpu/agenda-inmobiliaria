@@ -272,6 +272,10 @@ bitácora completa sesión por sesión):
   `v-tabla-res` o `ad-tabla`; CSS al final de `agenda.css`); filtros de Bitácora en 2 columnas; barra inferior con los 6 botones sin deslizar; hora de la cita sin partirse;
   campos a 16 px en pantallas táctiles (`pointer: coarse`) para que iPhone/iPad no hagan zoom al tocarlos; `code` largo parte línea. Convención: tabla nueva = clase `v-tabla-res`
   (con `<thead>`) para que salga bien en celular. No probado en un iPhone/iPad real.
+- 26-oct-2026 (sesión 7), `sql/015` YA APLICADO en Supabase y verificado con consultas revertidas (con fecha futura no ofrece horarios; desde la fecha sí); front end sin push: "Citas desde" por
+  inmueble (`agenda_inmuebles.citas_desde`, date, null = como siempre) para inmuebles que aún no se entregan. Se edita en Inmuebles → Editar restricción de horario (campo
+  "Citas desde"; "Borrar restricciones" también la limpia). La regla está en `agenda_slot_disponible` (agendar, mover y portales) y en `agenda_sugerir_horarios` (no ofrece días
+  anteriores). La RPC `agenda_actualizar_restriccion_inmueble` ganó el parámetro `p_citas_desde`. Sin probar con sesión.
 - Calidad de geolocalización: ahora solo lista inmuebles disponibles. Restricción de horario
   por inmueble: botón "Borrar restricciones".
 

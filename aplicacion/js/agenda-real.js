@@ -647,14 +647,19 @@ async function renderAgendaMes(barraAcciones, selectorVista) {
 // horario de la empresa (así nunca queda sin citas por un horario olvidado); el horario especial es opcional y,
 // si existe, se respeta. Al agendar se le avisa al arrendatario por correo.
 const esRentando = (inm) => String(inm?.estado_crm || '').trim().toLowerCase() === 'rentando';
-const tieneRestriccionHorario = (inm) => Boolean((inm.dias_visita_permitidos && inm.dias_visita_permitidos.length) || inm.hora_visita_desde || inm.hora_visita_hasta);
+const tieneRestriccionHorario = (inm) => Boolean((inm.dias_visita_permitidos && inm.dias_visita_permitidos.length) || inm.hora_visita_desde || inm.hora_visita_hasta || citasDesdeFutura(inm));
+
+// "Citas desde": inmueble que aún no se entrega; las visitas solo se agendan a partir de esa fecha (null = ya).
+const fechaDia = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+const citasDesdeFutura = (inm) => Boolean(inm.citas_desde && inm.citas_desde > hoyISO());
 
 function restriccionResumen(inm) {
+  const desde = citasDesdeFutura(inm) ? `citas desde el ${fechaDia(inm.citas_desde)}` : null;
   const dias = inm.dias_visita_permitidos && inm.dias_visita_permitidos.length ? inm.dias_visita_permitidos.slice().sort((a, b) => a - b).map((d) => DIAS_CORTOS_LUN[d - 1]).join(', ') : null;
   const horas = inm.hora_visita_desde || inm.hora_visita_hasta ? `${inm.hora_visita_desde ? horaFmt(inm.hora_visita_desde) : 'inicio'}–${inm.hora_visita_hasta ? horaFmt(inm.hora_visita_hasta) : 'cierre'}` : null;
   const duracion = inm.duracion_visita_minutos ? `visitas de ${inm.duracion_visita_minutos} min` : null;
-  if (!dias && !horas && !duracion) return 'Sin restricción de horario';
-  return [dias, horas, duracion].filter(Boolean).join(' · ');
+  if (!desde && !dias && !horas && !duracion) return 'Sin restricción de horario';
+  return [desde, dias, horas, duracion].filter(Boolean).join(' · ');
 }
 
 function restriccionEditor(inm) {
@@ -662,6 +667,8 @@ function restriccionEditor(inm) {
   return `<form id="v-restriccion-form" data-inmueble="${inm.id}" style="margin:10px 0 16px;padding:14px;border:1px solid var(--v-line);border-radius:12px;background:var(--v-tint)">
     <div class="v-sectiontitle" style="margin-bottom:8px">${icon('clock-3')}Restricción de horario para #${inm.numero_inmueble}</div>
     ${esRentando(inm) ? '<p class="v-note" style="margin-bottom:10px"><strong>Inmueble rentando:</strong> si no pones ningún horario aquí, se ofrece todo el horario de la empresa y se le avisa al arrendatario de cada visita. Pon un horario solo si el arrendatario lo pidió.</p>' : ''}<p class="v-muted" style="font-size:14px;margin-bottom:10px">Limita en qué días y en qué franja horaria se puede agendar una visita a este inmueble. Deja los días sin marcar y las horas vacías para no aplicar ninguna restricción.</p>
+    <label class="v-field" style="margin-bottom:12px;max-width:260px">Citas desde (opcional)<input type="date" class="v-input" name="citas_desde" value="${inm.citas_desde || ''}"></label>
+    <p class="v-muted" style="font-size:14px;margin:-6px 0 12px">Para un inmueble que todavía no han entregado: se podrán agendar visitas solo a partir de esta fecha. Vacío = se agenda desde ya, como siempre.</p>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${DIAS_CORTOS_LUN.map((d, i) => `<label class="v-check" style="text-transform:capitalize"><input type="checkbox" name="dia" value="${i + 1}" ${dias.includes(i + 1) ? 'checked' : ''}> ${d}</label>`).join('')}</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <label class="v-field" style="flex:1;min-width:140px">Desde<input type="time" class="v-input" name="hora_desde" value="${inm.hora_visita_desde ? hora(inm.hora_visita_desde) : ''}"></label>
@@ -670,7 +677,7 @@ function restriccionEditor(inm) {
     <label class="v-field" style="margin-top:10px;max-width:220px">Duración de la visita (min)<input type="number" min="1" step="1" class="v-input" name="duracion_minutos" placeholder="Por defecto de la empresa" value="${inm.duracion_visita_minutos || ''}"></label>
     <p class="v-muted" style="font-size:14px;margin:6px 0 0">Úsalo para inmuebles de visita rápida (p. ej. oficinas). Si es menor a la duración por defecto, al cliente se le muestra un aviso para que sea puntual, porque el asesor puede tener otra cita cerca.</p>
     <div id="v-restriccion-error" class="v-error" role="alert">${escape(state.errorRestriccion)}</div>
-    <div style="display:flex;gap:8px;margin-top:10px"><button class="v-btn v-primary" type="submit">${icon('check')}Guardar</button><button class="v-btn v-quiet" type="button" data-cerrar-restriccion>Cancelar</button>${!esRentando(inm) && (inm.dias_visita_permitidos?.length || inm.hora_visita_desde || inm.hora_visita_hasta || inm.duracion_visita_minutos) ? `<button class="v-btn v-quiet" type="button" data-borrar-restriccion="${inm.id}" style="margin-left:auto;color:#B3261E">${icon('trash-2')}Borrar restricciones</button>` : ''}</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="v-btn v-primary" type="submit">${icon('check')}Guardar</button><button class="v-btn v-quiet" type="button" data-cerrar-restriccion>Cancelar</button>${!esRentando(inm) && (inm.citas_desde || inm.dias_visita_permitidos?.length || inm.hora_visita_desde || inm.hora_visita_hasta || inm.duracion_visita_minutos) ? `<button class="v-btn v-quiet" type="button" data-borrar-restriccion="${inm.id}" style="margin-left:auto;color:#B3261E">${icon('trash-2')}Borrar restricciones</button>` : ''}</div>
   </form>`;
 }
 
@@ -1955,6 +1962,7 @@ function adjuntarEventos(rootEl) {
         p_hora_desde: null,
         p_hora_hasta: null,
         p_duracion_minutos: null,
+        p_citas_desde: null,
       });
       if (error) {
         b.disabled = false;
@@ -1969,6 +1977,7 @@ function adjuntarEventos(rootEl) {
           fila.hora_visita_desde = null;
           fila.hora_visita_hasta = null;
           fila.duracion_visita_minutos = null;
+          fila.citas_desde = null;
         }
       });
       state.restriccionId = null;
@@ -2237,6 +2246,7 @@ function adjuntarEventos(rootEl) {
       const horaHasta = e.target.querySelector('[name=hora_hasta]').value || null;
       const duracionRaw = e.target.querySelector('[name=duracion_minutos]').value;
       const duracionMinutos = duracionRaw ? Number(duracionRaw) : null;
+      const citasDesde = e.target.querySelector('[name=citas_desde]').value || null;
       if (horaDesde && horaHasta && horaDesde >= horaHasta) {
         state.errorRestriccion = 'La hora "desde" debe ser anterior a la hora "hasta".';
         renderInmuebles();
@@ -2255,6 +2265,7 @@ function adjuntarEventos(rootEl) {
         p_hora_desde: horaDesde,
         p_hora_hasta: horaHasta,
         p_duracion_minutos: duracionMinutos,
+        p_citas_desde: citasDesde,
       });
       boton.disabled = false;
       if (error) {
@@ -2269,6 +2280,7 @@ function adjuntarEventos(rootEl) {
           fila.hora_visita_desde = horaDesde;
           fila.hora_visita_hasta = horaHasta;
           fila.duracion_visita_minutos = duracionMinutos;
+          fila.citas_desde = citasDesde;
         }
       });
       state.restriccionId = null;
