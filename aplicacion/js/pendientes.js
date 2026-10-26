@@ -101,10 +101,12 @@ async function pintarLista(ctx, gestiona) {
   const texto = ui.texto.trim().toLowerCase();
   const filas = (data || []).filter((f) => !texto || `${f.titulo} ${f.detalle} ${f.responsable_nombre} ${f.numero_inmueble ?? ''}`.toLowerCase().includes(texto));
   const grupos = agrupar(filas);
+  if (gestiona) await cargarCargas(ctx);
   const vencidos = grupos.filter((g) => g.filas.some((f) => ['abierto', 'en_proceso'].includes(f.estado) && f.fecha_limite && f.fecha_limite < hoy)).length;
 
   el.innerHTML = `${cabecera(ctx, gestiona)}
-    <p class="v-note">Cada pendiente tiene un responsable y una fecha límite. Los de portales no se cierran a mano: el sistema los marca como resueltos cuando el siguiente Excel ya no muestra el problema.${gestiona ? '' : ' Solo ves los que son tuyos.'}</p>
+    ${resumenLista(ctx, filas, gestiona)}
+    <p class="v-note">Cada pendiente tiene un responsable y una fecha límite. Los de portales no se cierran a mano: el sistema los compara solo cada madrugada con Sedi y con el último Excel de cada portal, y los marca como resueltos cuando el problema ya no existe.${gestiona ? '' : ' Solo ves los que son tuyos.'}</p>
     <div class="v-filters" style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
       <label class="v-field">Estado<select id="pend-estado" class="v-input">
         <option value="abiertos" ${ui.estado === 'abiertos' ? 'selected' : ''}>Pendientes</option>
@@ -119,7 +121,7 @@ async function pintarLista(ctx, gestiona) {
     ${vencidos ? `<p style="margin-top:12px;color:#B3261E;font-weight:600">${vencidos} vencido(s)</p>` : ''}
     ${grupos.length === 0
       ? `<div class="v-empty" style="margin-top:16px">${icon('list-checks')}<h3>Sin pendientes</h3><p style="margin-top:8px">No hay pendientes con estos filtros.</p></div>`
-      : `<div style="margin-top:14px;display:flex;flex-direction:column;gap:10px">${grupos.map((g) => tarjeta(ctx, g, hoy, gestiona)).join('')}</div>`}`;
+      : seccionesPorTipo(ctx, grupos, hoy, gestiona)}`;
 
   enlazarSub(ctx);
   el.querySelector('#pend-estado').onchange = (e) => { ui.estado = e.target.value; renderPendientes(ctx).then(refreshIcons); };
@@ -132,6 +134,50 @@ async function pintarLista(ctx, gestiona) {
   el.querySelectorAll('[data-pend-accion]').forEach((b) => {
     b.onclick = () => accionPendiente(ctx, b.dataset.ids.split(','), b.dataset.pendAccion);
   });
+}
+
+/* Resumen de una mirada: cuántos inmuebles hay por corregir y de qué tipo, y qué tan frescos están los Excel. */
+const ORDEN_TIPOS = ['despublicar', 'publicar', 'revisar_precio', 'revisar_codigo', 'respuesta', 'terminacion', 'entrega', 'asamblea', 'otro'];
+const COLOR_TIPO = { despublicar: '#B3261E', publicar: '#B26A00', revisar_precio: '#1A2C45', revisar_codigo: '#6B7785' };
+
+function resumenLista(ctx, filas, gestiona) {
+  const { escape } = ctx;
+  const abiertas = filas.filter((f) => ['abierto', 'en_proceso'].includes(f.estado));
+  if (!abiertas.length) return '';
+  const grupos = agrupar(abiertas);
+  const conteo = {};
+  for (const g of grupos) conteo[g.tipo] = (conteo[g.tipo] || 0) + 1;
+  const inmuebles = new Set(abiertas.map((f) => f.numero_inmueble).filter((n) => n != null)).size;
+  const chips = ORDEN_TIPOS.filter((t) => conteo[t]).map((t) =>
+    `<span style="display:inline-block;margin:0 8px 6px 0;padding:3px 10px;border-radius:999px;border:1px solid var(--v-line);font-size:13px;border-left:4px solid ${COLOR_TIPO[t] || '#1A2C45'}"><strong>${conteo[t]}</strong> ${escape(TIPOS[t] || t)}</span>`).join('');
+  const hoy = hoyBogota();
+  const frescura = gestiona ? Object.entries(PORTALES).map(([k, p]) => {
+    const c = ui.cargas[k];
+    if (!c) return `${p.nombre}: sin cargar`;
+    const dias = diasEntre(c.cargado_en.slice(0, 10), hoy);
+    return `${p.nombre}: hace ${dias} día(s)${dias > DIAS_MAX_SIN_CARGA ? ' ⚠️' : ''}`;
+  }).join(' · ') : '';
+  return `<div style="margin-top:14px;padding:12px 14px;border:1px solid var(--v-line);border-radius:12px">
+    <p style="margin:0 0 8px;font-weight:600">${inmuebles ? `${inmuebles} inmueble(s)` : `${grupos.length} pendiente(s)`} por corregir</p>
+    <div>${chips}</div>
+    ${frescura ? `<p class="v-muted" style="margin:6px 0 0;font-size:12.5px">Último Excel — ${escape(frescura)}. Los pendientes de portales se re-evalúan solos cada madrugada con los datos de Sedi; al subir un Excel nuevo se actualizan al instante.</p>` : ''}
+  </div>`;
+}
+
+function seccionesPorTipo(ctx, grupos, hoy, gestiona) {
+  const { escape } = ctx;
+  const porTipo = new Map();
+  for (const g of grupos) porTipo.set(g.tipo, [...(porTipo.get(g.tipo) || []), g]);
+  const tipos = [...porTipo.keys()].sort((a, b) => ORDEN_TIPOS.indexOf(a) - ORDEN_TIPOS.indexOf(b));
+  return `<div style="margin-top:14px;display:flex;flex-direction:column;gap:10px">${tipos.map((t) => {
+    const gs = porTipo.get(t);
+    // Las de «sin código en Sedi» suelen ser muchas y viejas: van plegadas.
+    const abierta = t !== 'revisar_codigo' || gs.length <= 5;
+    return `<details ${abierta ? 'open' : ''} style="border:0">
+      <summary style="cursor:pointer;font-size:15px;font-weight:600;color:${COLOR_TIPO[t] || '#1A2C45'};padding:6px 0">${escape(TIPOS[t] || t)} (${gs.length})</summary>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">${gs.map((g) => tarjeta(ctx, g, hoy, gestiona)).join('')}</div>
+    </details>`;
+  }).join('')}</div>`;
 }
 
 function tarjeta(ctx, g, hoy, gestiona) {
@@ -162,9 +208,9 @@ function tarjeta(ctx, g, hoy, gestiona) {
 
   const cierre = !abierto
     ? (f0.estado === 'cerrado'
-      ? `Resuelto automáticamente${f0.cerrado_en ? ' el ' + f0.cerrado_en.slice(0, 10) : ''}: el Excel ya no muestra el problema.`
+      ? `Resuelto automáticamente${f0.cerrado_en ? ' el ' + f0.cerrado_en.slice(0, 10) : ''}: Sedi y el portal ya coinciden.`
       : `Descartado${f0.nota_cierre ? ': ' + f0.nota_cierre : ''}`)
-    : (delSistema ? 'Se marcará como resuelto solo cuando el próximo Excel del portal ya no muestre el problema.' : '');
+    : (delSistema ? 'Se marcará como resuelto solo cuando Sedi y el portal ya coincidan.' : '');
 
   const titulo = g.numero != null ? `${TIPOS[g.tipo] || g.tipo} · inmueble ${g.numero}` : (TIPOS[g.tipo] || g.tipo);
   return `<article style="border:1px solid var(--v-line);border-left:4px solid ${color};border-radius:12px;padding:12px 14px">
@@ -297,21 +343,23 @@ async function procesarArchivos(ctx, archivos) {
   if (!archivos.length) return;
   const errores = [];
   const nuevos = [];
+  const registrosPorPortal = {};
   let inmuebles;
   try { inmuebles = await cargarInmuebles(ctx); } catch (e) { ui.mensaje = `No se pudo leer el inventario: ${e.message}`; renderPendientes(ctx).then(refreshIcons); return; }
   for (const f of archivos) {
     try {
       const { portal, registros } = await leerExcelPortal(new Uint8Array(await f.arrayBuffer()));
       ui.analisis[portal] = { ...compararPortal(portal, registros, inmuebles), guardado: false, cargadoEn: new Date().toISOString() };
+      registrosPorPortal[portal] = registros;
       nuevos.push(portal);
     } catch (e) { errores.push(`${f.name}: ${e.message}`); }
   }
   // Al subir los archivos se guarda solo: crea los pendientes nuevos y marca como resueltos los que
   // ya no aparecen. No hay botón de por medio.
-  await guardarPortales(ctx, nuevos, errores);
+  await guardarPortales(ctx, nuevos, errores, registrosPorPortal);
 }
 
-async function guardarPortales(ctx, portales, previos = []) {
+async function guardarPortales(ctx, portales, previos = [], registrosPorPortal = {}) {
   const { supabase, empresaId, refreshIcons } = ctx;
   const partes = [...previos];
   for (const portal of portales) {
@@ -322,6 +370,12 @@ async function guardarPortales(ctx, portales, previos = []) {
     if (error) { partes.push(`${nombrePortal(portal)}: no se pudo guardar (${error.message})`); continue; }
     a.guardado = true;
     guardarLocal(ctx);
+    // La «foto» de lo publicado se guarda para que el sistema siga comparándola solo con Sedi cada madrugada (sql/021).
+    // Si la base aún no tiene esa función, el resto funciona igual que antes.
+    const registros = registrosPorPortal[portal];
+    if (registros?.length) {
+      await supabase.rpc('agenda_portales_guardar_foto', { p_empresa_id: empresaId, p_portal: portal, p_registros: registros }).then(() => {}, () => {});
+    }
     partes.push(`${nombrePortal(portal)}: guardado — ${data.nuevos} pendiente(s) nuevo(s), ${data.cerrados_solos} resuelto(s) solos`);
   }
   ui.mensaje = partes.join(' · ');

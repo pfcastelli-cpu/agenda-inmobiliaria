@@ -74,6 +74,7 @@ SaaS). Reemplaza un sistema legado en Google Calendar + Apps Script + Sheets. `P
 - Asuntos operativos ajenos al desarrollo (terminaciones en Sedi, vigilante de correos, respaldos, bot de WhatsApp):
   `docs/OPERATIVO-FUERA-DE-DESARROLLO.md`.
 - Contacto, sedes y datos legales por empresa: `docs/CONTACTO-EMPRESA.md` (contrato, archivos, pruebas y orden de aplicación de SQL 016, pendiente).
+- Pruebas: toda cita de prueba lleva `es_prueba = true` y el nombre empieza por «[PRUEBA] »; cómo reconocerlas y limpiarlas: `docs/LIMPIAR-PRUEBAS.md`.
 - Cómo mejorar sin riesgo cuando haya clientes reales (entorno de pruebas, respaldos, orden de salida): `docs/MEJORAS-EN-PRODUCCION.md`.
 - Estilo de correos: `supabase/functions/_shared/marca-correo.ts`; historia visual en la viñeta del 26-oct del histórico.
 

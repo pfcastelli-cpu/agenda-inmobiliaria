@@ -44,8 +44,16 @@ Funciones desplegadas: portal-visita, avisar-arrendatario, notificar-cambio-cita
 - Nota: con el modo de pruebas activo las encuestas «enviadas» quedan marcadas y NO se reenviarán a los clientes reales de esas visitas al apagar el modo de pruebas.
 - Pendiente por mejorar: turnos cada 15 min también en la lista que ve el cliente (hoy el portal pide 30 min y salen además los de 15 min junto a una visita existente); escalar al asesor cuando vence una reubicación sin respuesta (tarea programada); franjas ofrecidas por el cliente; resumen diario al arrendatario.
 
+## Citas de prueba marcadas y pendientes de portales automáticos (26-oct-2026, APLICADO)
+- `sql/020-citas-de-prueba.sql` APLICADO: `agenda_citas.es_prueba` + prefijo «[PRUEBA] »; 11 citas de Claude marcadas (1 sigue activa y 1 «completada»: «Prueba Claude 5 (127, comentarios)»). La agenda muestra la insignia «PRUEBA».
+  Las pruebas de Felipe («Pepe», «Gino», «Felipe Castelli», «Pedro Interesado») NO se marcaron. Convención y limpieza (solo con permiso): `docs/LIMPIAR-PRUEBAS.md`.
+- `sql/021-portales-automatico.sql` APLICADO: `agenda_portales_publicaciones` (la «foto» de lo publicado en cada portal), RPC `agenda_portales_guardar_foto` (la llama la pestaña Pendientes → Portales al subir un Excel) y
+  `agenda_portales_reevaluar()` con cron `portales-reevaluar` (6:30 a. m. Bogotá): compara la foto con Sedi y abre/mantiene/cierra solos los pendientes. PROBADO que coincide con `portales-logica.js` (`compararPortal`) en los 3 portales con datos
+  sintéticos dentro de una transacción que se deshizo (Fincaraíz 10/10, Metrocuadrado 11/11, Ciencuadras 15/15 pendientes, mismas claves). La lista de Pendientes ahora trae resumen (inmuebles por corregir, chips por tipo, edad de cada Excel) y secciones plegables.
+- IMPORTANTE: la foto está VACÍA hasta que alguien suba los 3 Excel una vez más (Pendientes → Portales); mientras tanto el cron no hace nada y los 49 pendientes abiertos (carga del 21-oct) siguen como estaban.
+
 ## Siguiente paso
-Probar con sesión (guardar Administración > Empresa, sedes, botones de la encuesta desde el correo, marca «Reubicación pendiente» en la agenda) y los pendientes de producto en `docs/historico/CLAUDE-completo-2026-10-26.md`.
+Subir los 3 Excel de portales una vez (para crear la foto) y probar con sesión (guardar Administración > Empresa, sedes, botones de la encuesta desde el correo, marca «Reubicación pendiente» en la agenda) y los pendientes de producto en `docs/historico/CLAUDE-completo-2026-10-26.md`.
 
 ## Respaldo y reversión
 El historial de git (GitHub) es el respaldo del código y permite volver a cualquier commit. Los datos de Supabase se respaldan con
