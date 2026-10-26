@@ -20,20 +20,19 @@ dirección, política de datos, correo de baja), para que los correos de cualqui
   solo local, sin commitear.** Verificado en producción: una empresa (`patrimonios`) con 3 sedes, NIT, `correo_contacto = info@patrimonios.co`,
   constraint presente, validador rechaza teléfonos inválidos y http, modo de pruebas sigue en `true`.
 - Edge Functions: las 12 con contacto por empresa DESPLEGADAS el 26-oct (CLI `--use-api`). Contactos que usan: `agenda_configuracion.contacto_empresa`.
-- Front end (editor Administración > Empresa): en `origin/main` pero NO publicado (commit con `[skip netlify]`); hasta publicarlo, la
-  configuración de sedes solo se puede cambiar por SQL.
+- Front end (editor Administración > Empresa): publicado con el push del 26-oct sin `[skip netlify]` (verificar en citas.patrimonios.co que el despliegue de Netlify terminó).
 - Respaldo previo a 016: `respaldos/agenda_configuracion-antes-016-2026-10-26.json` (carpeta fuera de git).
 
 ## Pruebas
 - Ejecutadas: 12/12 en `tests/contacto-empresa.test.mjs` (no ejecutan SQL; por eso no detectaron el error de 016). Correos reales en modo de pruebas a
   pf.castelli@patrimonios.co tras el despliegue: confirmación al cliente (2 citas), aviso al propietario y encuesta; los cuatro traen las tres sedes
   con teléfonos fijos clicables, info@ y la web.
+- Encuesta: correo con 4 botones de impresión desplegado y enviado (clic real sin probar); `marcar-inmueble-no-disponible` con SEQUENCE por hora actual desplegado.
 - Sin ver: arrendatario (la cita de prueba es de un Rentando ya cancelado; no llegó aviso), recuperar contraseña, accesos, cambio/cancelación,
   informe del propietario, portal y probar-correo (exigen sesión o cambian estado). Pendientes: Outlook y celular físicos; guardado desde el editor con sesión y RLS.
 
 ## Siguiente paso
-(1) Commit de la corrección de `sql/016` y de este archivo (pedir autorización). (2) Publicar el front end (push sin `[skip netlify]`) y probar el editor con sesión.
-(3) Probar con sesión los correos que faltan. Después, pendientes de producto en `docs/historico/CLAUDE-completo-2026-10-26.md`.
+(1) Probar el editor de sedes con sesión (guardar, RLS). (2) Probar con sesión los correos que faltan. Después, pendientes de producto en `docs/historico/CLAUDE-completo-2026-10-26.md`.
 
 ## Respaldo y reversión
 El historial de git (GitHub) es el respaldo del código y permite volver a cualquier commit. Los datos de Supabase se respaldan con
