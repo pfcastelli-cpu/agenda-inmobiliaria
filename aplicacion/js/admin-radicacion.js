@@ -13,8 +13,8 @@ const CAMPOS_TEXTO = [
   ['nombre_inmobiliaria', 'Nombre de la inmobiliaria ante la aseguradora', 'Vacío = el nombre comercial'],
   ['codigo_inmobiliaria', 'Código de la inmobiliaria', 'Ej. 1478'],
   ['poliza', 'Número de póliza', 'Ej. 14221'],
-  ['asesor_nombre', 'Asesor que pide la aseguradora', 'Nombre completo'],
-  ['asesor_correo', 'Correo de ese asesor', 'asesor@…'],
+  ['asesor_nombre', 'Asesor de respaldo (solo si la cita no tiene asesor)', 'Normalmente se usa el asesor que atendió al cliente'],
+  ['asesor_correo', 'Correo del asesor de respaldo', 'asesor@…'],
 ];
 
 function formFila(f, nombre) {
@@ -51,7 +51,7 @@ export async function radicacionTab(ctx) {
   };
   const bloques = [bloquesDe(null, 'Predeterminada (ciudades sin datos propios)'), ...(ciudades || []).map((c) => bloquesDe(c.id, c.nombre))];
   el.innerHTML = `<h2>Radicación del estudio de arrendatario</h2>
- <p>Cuando un cliente dice en la encuesta que <strong>quiere avanzar</strong>, recibe un correo con el enlace del estudio (persona natural o jurídica), los datos de la póliza listos para copiar, los pasos y los costos. Al asesor le llega un aviso para que esté pendiente. Los datos cambian por ciudad: la que no tenga fila propia usa la «Predeterminada». Si trabajas con varias aseguradoras, agrega una por ciudad y el cliente verá todas.</p>
+ <p>Cuando un cliente dice en la encuesta que <strong>quiere avanzar</strong>, recibe un correo con el enlace del estudio (persona natural o jurídica), los datos de la póliza listos para copiar, los pasos y los costos. Al asesor le llega un aviso para que esté pendiente. <strong>El asesor que va en el formulario es siempre el que atendió al cliente</strong> (nombre y correo de su ficha); el «asesor de respaldo» solo se usa si la cita no tiene asesor. Los demás datos cambian por ciudad: la que no tenga fila propia usa la «Predeterminada». Si trabajas con varias aseguradoras, agrega una por ciudad y el cliente verá todas.</p>
  <label class="ad-check"><input type="checkbox" id="rad-activa" ${config.radicacion_activa ? 'checked' : ''}> Enviar el correo automáticamente cuando el cliente elija «quiero avanzar»</label>
  <p class="ad-note">También puedes enviarlo a mano desde cada cita. Mientras el modo de pruebas del correo esté activo, todo llega a la dirección de pruebas.</p>
  <div style="margin-top:14px">${bloques.join('')}</div>`;

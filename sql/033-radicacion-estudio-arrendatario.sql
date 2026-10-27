@@ -61,9 +61,13 @@ declare
   v_emp record;
   v_ciudad_cfg uuid;
   v_lista jsonb;
+  v_asesor record;
 begin
   select c.id, c.empresa_id, c.cliente_nombre, c.cliente_email, c.inmueble_id, c.token_cliente, c.asesor_id into v_cita
     from public.agenda_citas c where c.id = p_cita_id;
+  -- El asesor que va en el formulario de la aseguradora es el que ATENDIÓ al cliente (el de la cita), no uno fijo por ciudad.
+  select a.nombre, btrim(split_part(replace(coalesce(a.correo, ''), ',', ';'), ';', 1)) as correo into v_asesor
+    from public.agenda_asesores a where a.id = (select asesor_id from public.agenda_citas where id = p_cita_id);
   if not found or v_cita.inmueble_id is null then return jsonb_build_object('error', 'no_encontrada'); end if;
   select numero_inmueble, direccion, ciudad, barrio, tipo_oferta, valor_canon, tiene_administracion, administracion_incluida, valor_administracion
     into v_inm from public.agenda_inmuebles where id = v_cita.inmueble_id;
@@ -81,7 +85,7 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object(
       'aseguradora', k.aseguradora, 'link_natural', k.link_natural, 'link_juridica', k.link_juridica,
       'nombre_inmobiliaria', coalesce(nullif(k.nombre_inmobiliaria, ''), v_emp.nombre_comercial),
-      'codigo_inmobiliaria', k.codigo_inmobiliaria, 'poliza', k.poliza, 'asesor_nombre', k.asesor_nombre, 'asesor_correo', k.asesor_correo,
+      'codigo_inmobiliaria', k.codigo_inmobiliaria, 'poliza', k.poliza, 'asesor_nombre', coalesce(nullif(v_asesor.nombre, ''), k.asesor_nombre), 'asesor_correo', coalesce(nullif(v_asesor.correo, ''), k.asesor_correo),
       'costo_valor', coalesce(k.costo_valor, case when k.costo_porcentaje is not null and v_inm.valor_canon is not null then round(v_inm.valor_canon * k.costo_porcentaje / 100) end),
       'costo_porcentaje', k.costo_porcentaje, 'costo_iva', k.costo_iva, 'costo_nota', k.costo_nota, 'instrucciones', k.instrucciones
     ) order by k.orden, k.aseguradora), '[]'::jsonb)

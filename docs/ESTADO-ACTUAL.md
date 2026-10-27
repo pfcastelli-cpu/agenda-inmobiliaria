@@ -110,6 +110,7 @@ Pedido de Felipe: probar en local antes de hacer push (para no gastar Netlify). 
   · PENDIENTE: ejemplo real de la descripción de una cita de Calendar para afinar el lector (si nombre/celular/correo salen vacíos); mostrar la lista de espera en alguna pantalla del equipo (hoy solo se guarda).
   · Probado: SQL 035 en transacción deshecha (19 pedidos → 19/19 en 24 h, tope 1 marca llena, lista de espera guarda, resumen sin sesión permitido para la service_role), 37 pruebas pasan. NO probado: importar un .ics real, correos, pantallas.
 - INTERRUPTOR DE VERIFICACIÓN DE CORREO (27-oct, SQL 036 APLICADO): Configuración → Empresa → «Reservas públicas» apaga temporalmente el código de verificación del correo en la reserva pública; dejarlo ENCENDIDO en producción.
+- RADICACIÓN: el asesor del formulario es el de la cita (SQL 037 APLICADO, 27-oct); el de la ciudad es solo respaldo.
 - SIN commit y SIN push: `index.html`, `agenda-real.js`, `arrendatario.js`, `reservar.js`, `tickets.js` (nuevo), `soporte.html`/`soporte.js` (nuevos), `vite.config.js`, `netlify.toml`, `portal-visita`, `avisar-ticket`, SQL 022 y 023, `docs/SOPORTE-PLATAFORMA.md`, fixtures. Felipe aprueba antes del push (cuesta 15 créditos de Netlify).
 
 ## Siguiente paso
