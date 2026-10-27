@@ -31,6 +31,8 @@ const state = {
   correoVerificado: false,
   correoVerificadoValor: null,
   verificacionNecesaria: null,
+  avisoHorarios: '', // aviso visible sobre la lista de horarios (horario tomado, agenda cambiada…)
+  scrollAviso: false,
   codigoEnviado: false,
   codigoInput: '',
   enviandoCodigo: false,
@@ -129,6 +131,7 @@ function icono(nombre, extra = '') {
 async function buscarInmueble(numero) {
   state.paso = 'buscando';
   state.errorMsg = '';
+  state.avisoHorarios = '';
   render();
   const [{ data, error }] = await Promise.all([
     supabase.rpc('agenda_info_publica_inmueble', { p_numero_inmueble: numero, p_host: hostActual() }),
@@ -205,7 +208,9 @@ async function cargarHorarios(aviso = '') {
     render();
     return;
   }
-  state.errorMsg = aviso;
+  state.errorMsg = '';
+  state.avisoHorarios = aviso;
+  state.scrollAviso = !!aviso;
   state.slots = slots;
   state.slotsEn = Date.now();
   render();
@@ -214,7 +219,7 @@ async function cargarHorarios(aviso = '') {
 // La ventana puede quedar abierta horas mientras la agenda cambia. Los horarios que se ven valen unos
 // minutos; pasado ese tiempo se consultan de nuevo antes de confirmar y al volver a la pestaña.
 const VIGENCIA_HORARIOS_MS = 60 * 1000;
-const AVISO_HORARIO_TOMADO = 'Ese horario acaba de ser tomado por otra persona. Te mostramos los que siguen libres.';
+const AVISO_HORARIO_TOMADO = 'Ese horario acaba de ser tomado por otra persona.';
 const esChoqueDeHorario = (error) => /ya no est[aá] disponible|ya fue tomado/i.test(error?.message || '');
 
 // Devuelve true si el horario elegido sigue libre (o no había uno elegido). Si ya no está, deja el aviso
@@ -227,7 +232,8 @@ async function refrescarHorarios() {
   state.slots = slots;
   state.slotsEn = Date.now();
   if (elegido && !slots.some((s) => s.hora_inicio === elegido)) {
-    state.errorMsg = `El horario de las ${formatoHora(elegido)} ya no está disponible porque la agenda cambió. Elige otro de los que siguen libres.`;
+    state.avisoHorarios = `El horario de las ${formatoHora(elegido)} ya no está disponible porque la agenda cambió.`;
+    state.scrollAviso = true;
     state.slotSel = null;
     render();
     return false;
@@ -561,15 +567,21 @@ function selectorFechas() {
   `;
 }
 
+function bannerAvisoHorarios() {
+  if (!state.avisoHorarios) return '';
+  return `<div class="pu-error" role="alert" id="pu-aviso-horarios" style="margin:0 0 12px"><strong>⚠️ ${escaparHtml(state.avisoHorarios)}</strong><br>No se guardó tu cita. <strong>Qué hacer:</strong> elige otro de los horarios de abajo (o cambia de fecha) y vuelve a confirmar. Tus datos siguen escritos.</div>`;
+}
+
 function selectorHorarios() {
   if (state.cargandoSlots) {
     return `<h3>Horarios disponibles</h3><div class="pu-spinner">Buscando horarios…</div>`;
   }
   if (!state.slots.length) {
-    return `<h3>Horarios disponibles</h3><div class="pu-vacio">No hay horarios disponibles ese día. Elige otra fecha.</div>`;
+    return `<h3>Horarios disponibles</h3>${bannerAvisoHorarios()}<div class="pu-vacio">No hay horarios disponibles ese día. Elige otra fecha.</div>`;
   }
   return `
     <h3>Horarios disponibles</h3>
+    ${bannerAvisoHorarios()}
     <div class="pu-slots" id="pu-slots">
       ${state.slots
         .map((s) => {
@@ -678,6 +690,10 @@ function render() {
   else if (state.paso === 'llena') html = `${tarjetaInmueble()}${htmlListaEspera(state.espera)}<button class="pu-link" id="pu-volver" style="margin-top:10px">Buscar otro inmueble</button>`;
   raiz.innerHTML = html;
   cablear();
+  if (state.scrollAviso) {
+    state.scrollAviso = false;
+    document.getElementById('pu-aviso-horarios')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 
 function cablear() {
@@ -752,6 +768,7 @@ function cablear() {
   if (slotsEl) {
     slotsEl.querySelectorAll('.pu-slot').forEach((el) => {
       el.addEventListener('click', () => {
+        state.avisoHorarios = '';
         state.slotSel = state.slots.find((s) => s.hora_inicio === el.dataset.hora);
         render();
       });
