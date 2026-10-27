@@ -1,3 +1,4 @@
+import { agendaLlena, htmlListaEspera, unirseListaEspera } from './lista-espera-publica.js';
 import { supabase, hayConfiguracionSupabase } from './cliente-supabase.js';
 import { aplicarMarcaPublica } from './marca-publica.js';
 import './teclado-publico.js';
@@ -148,6 +149,18 @@ async function buscarInmueble(numero) {
   }
   state.inmueble = fila;
   state.numero = numero;
+  // Si el inmueble ya llenó su tope de citas (sql/035), en vez de horarios se ofrece la lista de espera.
+  state.espera = null;
+  try {
+    if (await agendaLlena(numero, hostActual())) {
+      state.espera = { nombre: '', telefono: '', correo: '', enviando: false, enviada: false, error: '' };
+      state.paso = 'llena';
+      render();
+      return;
+    }
+  } catch {
+    /* si la base aún no tiene la función, se muestra la reserva de siempre */
+  }
   // Primera fecha con horarios (respeta «se puede mostrar desde», días y horas permitidos): así nadie tiene que adivinar el día.
   let primeraFecha = null;
   try {
@@ -662,11 +675,30 @@ function render() {
   else if (state.paso === 'error') html = vistaError();
   else if (state.paso === 'inmueble') html = vistaInmueble();
   else if (state.paso === 'confirmado') html = vistaConfirmado();
+  else if (state.paso === 'llena') html = `${tarjetaInmueble()}${htmlListaEspera(state.espera)}<button class="pu-link" id="pu-volver" style="margin-top:10px">Buscar otro inmueble</button>`;
   raiz.innerHTML = html;
   cablear();
 }
 
 function cablear() {
+  const formEspera = document.getElementById('pu-form-espera');
+  if (formEspera) {
+    formEspera.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const esp = state.espera;
+      esp.nombre = document.getElementById('pu-esp-nombre').value;
+      esp.telefono = document.getElementById('pu-esp-tel').value;
+      esp.correo = document.getElementById('pu-esp-correo').value;
+      esp.enviando = true;
+      esp.error = '';
+      render();
+      const r = await unirseListaEspera(state.numero, hostActual(), esp.nombre, esp.telefono, esp.correo);
+      esp.enviando = false;
+      if (r.ok) esp.enviada = true;
+      else esp.error = r.error;
+      render();
+    });
+  }
   const formCodigo = document.getElementById('pu-form-codigo');
   if (formCodigo) {
     formCodigo.addEventListener('submit', (e) => {

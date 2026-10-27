@@ -49,7 +49,7 @@ SaaS). Reemplaza un sistema legado en Google Calendar + Apps Script + Sheets. `P
   `npx --no-install supabase functions deploy <funciones> --project-ref ykiuuxludyonkhywtmgu --use-api`
   y añadir `--no-verify-jwt` SOLO a las públicas: enviar-correo-cita, enviar-correo-propietario,
   enviar-solicitud-propietario, enviar-encuesta-cliente, recuperar-contrasena, portal-visita, calendario-ics,
-  enviar-codigo-verificacion, filtrar-opiniones, enviar-encuestas-pendientes. Las demás (incl. crear-videollamada) llevan JWT.
+  enviar-codigo-verificacion, filtrar-opiniones, enviar-encuestas-pendientes, enviar-resumen-propietarios, enviar-radicacion-cliente, avisar-encuesta-respondida, avisar-demanda. Las demás (incl. crear-videollamada) llevan JWT.
 - Orden de salida cuando cambian imágenes de correos: primero push a `main` (Netlify publica `/correo/`), después desplegar funciones.
 - SQL: archivos en `sql/NNN-descripcion.sql`; si se aplica directo en Supabase, dejar el archivo de referencia.
 
