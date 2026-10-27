@@ -573,7 +573,7 @@ function citaCard(c) {
     ${esCaptacion ? `<span class="v-tag v-tag-captacion" style="margin-top:6px">${icon('key-round')}CAPTACIÓN · PRIORIDAD TOTAL</span>` : esInterna ? `<span class="v-tag v-tag-neutral" style="margin-top:6px">${escape(etiquetaTipo)}</span>` : ''}
     <h3 style="margin-top:6px">${escape(esInterna && c.titulo ? c.titulo : direccion)}</h3>
     <div class="v-apptmeta"><span>${esInterna ? escape(direccion) : escape(c.cliente_nombre)}</span>${c.es_prueba ? ' <span class="v-badge" style="background:#FEF3C7;color:#92400E;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700">PRUEBA</span>' : ''}</div>
-    ${c.reubicacion_pendiente_desde && c.estado !== 'cancelada' ? `<p class="v-note" style="margin:6px 0 0">⚠️ Reubicación pendiente: el arrendatario limitó ese día y el cliente aún no elige otro turno. Sigue en esta hora hasta que elija.</p>` : ''}
+    ${c.reubicacion_pendiente_desde && c.estado !== 'cancelada' ? `<p class="v-note" style="margin:6px 0 0">🔓 Horario liberado: el arrendatario no puede recibir esta visita y ese turno ya está disponible para otros clientes. El cliente elige una nueva hora (o la visita se cancela sola al vencer su plazo). No tienes que hacer nada.</p>` : ''}
     <div class="v-row"><span class="v-avatar">${asesor ? escape(asesor.nombre.slice(0, 1)) : '?'}</span><span class="v-advisorname">${asesor ? escape(asesor.nombre) : 'Sin asesor'}${asesor && asesor.tipo_vinculacion === 'freelance' ? ' · freelance' : ''}</span></div>
     ${htmlEnlaceReunion(c)}
     ${htmlLlegada(c, hoyISO())}

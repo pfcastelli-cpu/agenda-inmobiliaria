@@ -22,7 +22,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, marcaCorreo, type MarcaCorreo, emojiTitulo, pieContacto } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
-import { calcularVencimiento, correoClienteNuevoHorario, correoClienteRecordatorio, formatearMomento, MAX_DIAS_PAUSA, requiereLlamada, type MotivoReubicacion } from '../_shared/reubicacion.ts';
+import { calcularVencimiento, horasUltimoRecordatorio, correoClienteNuevoHorario, correoClienteRecordatorio, formatearMomento, MAX_DIAS_PAUSA, requiereLlamada, type MotivoReubicacion } from '../_shared/reubicacion.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -456,9 +456,9 @@ async function reubicarAfectadas(
       admin, inm.empresa_id, lista[0].id, asesorId,
       `Visitas por reubicar · Inmueble ${inm.numero_inmueble} · ${formatearFecha(fecha)}`,
       'Visitas por reubicar',
-      `<p style="margin:0 0 10px;text-align:justify">El arrendatario del inmueble Nº ${esc(String(inm.numero_inmueble))} no puede recibir visitas el <b>${esc(formatearFecha(fecha))}</b>${motivo === 'pausa' ? ' (pausó las visitas por un tiempo)' : ''}. Estas visitas tuyas deben cambiar de hora y ya se le pidió a cada cliente que elija otra, con un plazo:</p>
+      `<p style="margin:0 0 10px;text-align:justify">El arrendatario del inmueble Nº ${esc(String(inm.numero_inmueble))} no puede recibir visitas el <b>${esc(formatearFecha(fecha))}</b>${motivo === 'pausa' ? ' (pausó las visitas por un tiempo)' : ''}. <b>No tienes que hacer nada:</b> ese horario ya quedó libre en tu agenda para atender a otras personas, y a cada cliente ya se le pidió elegir otra hora, con un plazo:</p>
 <ul style="margin:0 0 10px;padding-left:20px">${lista.map((a) => `<li>${esc(formatearHora(a.hora))} · ${esc(a.cliente)} · plazo hasta ${esc(a.vence)}${a.llamar ? ' · <b>llámalo hoy: falta menos de un día</b>' : ''}</li>`).join('')}</ul>
-<p style="margin:0;text-align:justify">Si un cliente no elige antes de su plazo, la visita se cancela sola y se avisa a todos. En la agenda aparecen marcadas «Reubicación pendiente».</p>`,
+<p style="margin:0;text-align:justify">Si el cliente elige una nueva hora, la visita se mueve sola y te llega el aviso. Si no elige antes de su plazo, se cancela sola. Mientras tanto aparece en tu agenda como «Horario liberado».</p>`,
     );
   }
   return afectadasTotal;
@@ -646,11 +646,12 @@ async function procesarReubicaciones(admin: Admin) {
       continue;
     }
 
-    // Recordatorios: a mitad del plazo (si todavía faltan más de 2 h) y 2 h antes de que venza.
+    // Recordatorios: a mitad del plazo y otro antes de que venza (24 h antes si el plazo es largo, 2 h si es corto).
     const desdeMs = new Date(c.reubicacion_pendiente_desde as string).getTime();
     const faltaMs = venceMs - ahoraMs;
-    const toca1 = !c.reubicacion_recordada_en && ahoraMs >= desdeMs + (venceMs - desdeMs) / 2 && faltaMs > 2 * 3600_000;
-    const toca2 = !c.reubicacion_recordada2_en && faltaMs <= 2 * 3600_000;
+    const umbral2Ms = horasUltimoRecordatorio(desdeMs, venceMs) * 3600_000;
+    const toca1 = !c.reubicacion_recordada_en && ahoraMs >= desdeMs + (venceMs - desdeMs) / 2 && faltaMs > umbral2Ms;
+    const toca2 = !c.reubicacion_recordada2_en && faltaMs <= umbral2Ms;
     if (!toca1 && !toca2) continue;
     // Se marca primero (condicional): si dos corridas se cruzan, solo una envía.
     const marca = new Date().toISOString();

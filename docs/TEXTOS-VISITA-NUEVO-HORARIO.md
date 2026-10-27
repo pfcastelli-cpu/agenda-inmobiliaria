@@ -93,3 +93,10 @@ Botones: [Puedo, pero a otra hora] [No puedo ese día] [No puedo recibir visitas
 
 **Cliente, en su enlace:** «Tu visita necesita una nueva hora» — Quien vive en el inmueble no puede recibirte a la hora acordada… Tienes hasta el {plazo} para elegir. Si no lo haces, la visita se cancela y el horario queda libre. No vayas al inmueble a la hora original: nadie podrá recibirte.
 Botones: [Aceptar esta hora] (si el arrendatario propuso una) [Elegir otra hora] [Cancelar mi visita]. Ya no existe «dejar la hora original».
+
+## Cambios del 27-oct (plazo proporcional y horario liberado)
+- **Plazo:** ya no es fijo (24/48 h). Es la mitad del tiempo que falta para la visita, entre 24 h y 7 días, y nunca después de 24 h antes de la visita (2 h antes si la visita está a menos de 48 h). Ej.: visita en 17 días → 7 días; en 3 días → 36 h; mañana → 10 h. Recordatorios: a mitad del plazo y 24 h antes de vencer (2 h si el plazo es corto).
+- **Horario liberado:** desde que se marca «por reubicar», ese horario queda libre para otros clientes y para el asesor (SQL 034). El cliente sigue teniendo derecho a elegir otra hora hasta su plazo; si no elige, la visita se cancela sola.
+- **Texto al cliente:** «Ese horario ya quedó libre para otras personas, así que no vayas al inmueble a la hora original… Si no eliges otra hora: la visita se cancelará.»
+- **Texto al asesor:** «No tienes que hacer nada: ese horario ya quedó libre en tu agenda…»; en la tarjeta de la agenda: «🔓 Horario liberado…».
+- **Texto al arrendatario:** «Tu horario queda libre desde ya y tú no tienes que hacer nada más.»
