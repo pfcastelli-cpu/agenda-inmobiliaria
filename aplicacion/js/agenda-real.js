@@ -1,4 +1,5 @@
 import { supabase } from './cliente-supabase.js';
+import { claveHorario, revisarCruce, htmlAvisoCruce, puedeCruzar, estadoReunion, htmlCampoReunion, crearEnlaceReunion, htmlEnlaceReunion } from './citas-cruce-virtual.js';
 import { renderPendientes, reiniciarPendientes } from './pendientes.js';
 import { renderTickets, reiniciarTickets, abrirTicket } from './tickets.js';
 import { crearApiSoporte } from './soporte-comun/api.js';
@@ -213,8 +214,9 @@ const state = {
   moveFecha: '',
   moveHora: '',
   moveError: '',
+  moveForzable: false,
   completarId: null,
-  interna: { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: hoyISO(), hora: '09:00', duracion: '', titulo: '', notas: '', coberturaId: '', propietarioNombre: '', propietarioTelefono: '', tipoInmuebleCaptacion: '', valorEstimado: '', origenCaptacion: '', mandatoExclusivo: false, slotsCaptacion: [], slotSeleccionado: null, buscandoSlots: false, errorSlots: '' },
+  interna: { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: hoyISO(), hora: '09:00', duracion: '', titulo: '', notas: '', coberturaId: '', propietarioNombre: '', propietarioTelefono: '', tipoInmuebleCaptacion: '', valorEstimado: '', origenCaptacion: '', mandatoExclusivo: false, slotsCaptacion: [], slotSeleccionado: null, buscandoSlots: false, errorSlots: '', virtual: false, enlace: '', cruce: null, cruceClave: '', cruceOk: '' },
   errorInterna: '',
   restriccionId: null,
   errorRestriccion: '',
@@ -568,10 +570,12 @@ function citaCard(c) {
     <div class="v-apptmeta"><span>${esInterna ? escape(direccion) : escape(c.cliente_nombre)}</span>${c.es_prueba ? ' <span class="v-badge" style="background:#FEF3C7;color:#92400E;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700">PRUEBA</span>' : ''}</div>
     ${c.reubicacion_pendiente_desde && c.estado !== 'cancelada' ? `<p class="v-note" style="margin:6px 0 0">⚠️ Reubicación pendiente: el arrendatario limitó ese día y el cliente aún no elige otro turno. Sigue en esta hora hasta que elija.</p>` : ''}
     <div class="v-row"><span class="v-avatar">${asesor ? escape(asesor.nombre.slice(0, 1)) : '?'}</span><span class="v-advisorname">${asesor ? escape(asesor.nombre) : 'Sin asesor'}${asesor && asesor.tipo_vinculacion === 'freelance' ? ' · freelance' : ''}</span></div>
+    ${htmlEnlaceReunion(c)}
+    ${c.cruce_autorizado ? '<span class="v-tag v-tag-neutral" style="margin-top:6px">Cruce autorizado</span>' : ''}
     ${inmueble ? `<a class="v-link" href="${linkPublico(inmueble.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver inmueble</a>` : ''}
     ${c.estado === 'completada' ? (c.feedback_cliente ? `<p class="v-muted" style="margin-top:8px;font-size:12.5px">Comentario del cliente: ${escape(c.feedback_cliente)}</p>` : '') : `<div class="v-actions"><button data-completar="${c.id}">Realizada</button><button data-mover="${c.id}">Mover</button><button class="v-danger" data-cancelar="${c.id}">Cancelar</button></div>`}
     ${inmueble && avisaArrendatario(inmueble) && c.estado !== 'cancelada' && c.tipo_cita === 'visita_cliente' ? `<div class="v-actions" style="margin-top:8px"><button data-avisar-arrendatario="${c.id}">${icon('mail')}${c.arrendatario_avisado_en ? 'Reenviar aviso al arrendatario' : 'Informar al arrendatario'}</button></div>${c.arrendatario_avisado_en ? `<p class="v-muted" style="font-size:12.5px;margin-top:4px">Arrendatario informado el ${new Date(c.arrendatario_avisado_en).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}</p>` : ''}` : ''}
-    ${state.moveId === c.id ? `<div class="v-cancelbox">${esCaptacion ? '<p style="margin:0 0 8px;font-weight:600">Esta es una cita de captación con prioridad total.</p>' : ''}<label class="v-field">Nueva fecha<input type="date" id="v-mover-fecha" class="v-input" value="${state.moveFecha}"></label><label class="v-field">Nueva hora<input type="time" id="v-mover-hora" class="v-input" value="${state.moveHora}"></label>${state.moveError ? `<p class="v-error">${escape(state.moveError)}</p>` : ''}<div class="v-actions"><button class="v-primary" data-confirmarmover="${c.id}">Guardar nuevo horario</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
+    ${state.moveId === c.id ? `<div class="v-cancelbox">${esCaptacion ? '<p style="margin:0 0 8px;font-weight:600">Esta es una cita de captación con prioridad total.</p>' : ''}<label class="v-field">Nueva fecha<input type="date" id="v-mover-fecha" class="v-input" value="${state.moveFecha}"></label><label class="v-field">Nueva hora<input type="time" id="v-mover-hora" class="v-input" value="${state.moveHora}"></label>${state.moveError ? `<p class="v-error">${escape(state.moveError)}</p>` : ''}${state.moveForzable ? `<p class="v-note">Puedes moverla de todos modos; quedará registrado que autorizaste el cruce.</p><div class="v-actions"><button data-forzarmover="${c.id}">Mover de todos modos</button></div>` : ''}<div class="v-actions"><button class="v-primary" data-confirmarmover="${c.id}">Guardar nuevo horario</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
     ${state.cancelId === c.id ? `<div class="v-cancelbox">${esCaptacion ? 'Esta es una cita de captación con prioridad total. ' : ''}¿Cancelar esta ${esInterna ? 'actividad' : 'visita'}? Se libera el horario.<div class="v-actions"><button class="v-danger" data-confirmarcancelar="${c.id}">Sí, cancelar ${esInterna ? 'la actividad' : 'la visita'}</button><button data-mantener="${c.id}">No, mantener ${esInterna ? 'la actividad' : 'la visita'}</button></div></div>` : ''}
     ${state.completarId === c.id ? `<div class="v-cancelbox"><label class="v-field">¿Qué dijo el cliente? (para el informe al propietario)<textarea id="v-feedback-texto" class="v-input" rows="3" placeholder="Ej: le gustó mucho, va a decidir con su familia…"></textarea></label><div class="v-actions"><button class="v-primary" data-guardarrealizada="${c.id}">Guardar y marcar como realizada</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
   </div></article>`;
@@ -952,6 +956,8 @@ async function renderInterna() {
   const it = state.interna;
   const esCaptacion = it.tipo === 'captacion';
   const slotElegido = it.slotSeleccionado;
+  const estadoReu = await estadoReunion(contexto.empresaId);
+  if (it.cruce && it.cruceClave !== claveHorario({ asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion })) it.cruce = null;
   main().innerHTML = `<div class="v-top"><button class="v-btn v-quiet" data-volver-agenda>${icon('arrow-left')}Volver</button><span class="v-demo">Actividad interna</span></div>
     <form id="v-interna-form">
       <div class="v-sectiontitle">${icon('clipboard-list')}¿Qué actividad es?</div>
@@ -1008,6 +1014,8 @@ async function renderInterna() {
       <label class="v-field" for="v-interna-duracion">Duración (minutos)<input class="v-input" id="v-interna-duracion" type="number" min="5" step="5" placeholder="Por defecto, la misma que una visita" value="${it.duracion}"></label>`
       }
       <label class="v-field" for="v-interna-notas">Notas (opcional)<textarea class="v-input" id="v-interna-notas">${escape(it.notas)}</textarea></label>
+      ${htmlCampoReunion(it, estadoReu)}
+      ${it.cruce ? htmlAvisoCruce(it.cruce, horaFmt) : ''}
       <div id="v-interna-error" class="v-error" role="alert">${escape(state.errorInterna)}</div>
       <button class="v-btn v-primary v-full" type="submit"${esCaptacion && !slotElegido ? ' disabled' : ''}>${icon('check')}Guardar actividad</button>
       <p class="v-note" style="margin-top:12px">Queda registrada en la agenda del asesor con trazabilidad completa (quién la creó, si se mueve o se cancela).</p>
@@ -1676,6 +1684,7 @@ function adjuntarEventos(rootEl) {
     if (e.target.id === 'v-telefono') state.telefono = e.target.value;
     if (e.target.id === 'v-correo') state.correo = e.target.value;
     if (e.target.id === 'v-interna-titulo') state.interna.titulo = e.target.value;
+    if (e.target.id === 'v-interna-enlace') state.interna.enlace = e.target.value;
     if (e.target.id === 'v-interna-duracion') state.interna.duracion = e.target.value;
     if (e.target.id === 'v-interna-direccion') state.interna.direccionLibre = e.target.value;
     if (e.target.id === 'v-interna-ciudad') state.interna.ciudadLibre = e.target.value;
@@ -1748,6 +1757,10 @@ function adjuntarEventos(rootEl) {
       state.interna.errorSlots = '';
       render();
     }
+    if (e.target.id === 'v-interna-virtual') {
+      state.interna.virtual = e.target.checked;
+      render();
+    }
     if (e.target.id === 'v-interna-asesor') state.interna.asesorId = e.target.value;
     if (e.target.id === 'v-interna-inmueble') state.interna.inmuebleId = e.target.value;
     if (e.target.id === 'v-interna-fecha') {
@@ -1811,7 +1824,7 @@ function adjuntarEventos(rootEl) {
       return;
     }
     if (b.hasAttribute('data-new-interna')) {
-      state.interna = { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: state.fecha, hora: '09:00', duracion: '', titulo: '', notas: '', coberturaId: '', propietarioNombre: '', propietarioTelefono: '', tipoInmuebleCaptacion: '', valorEstimado: '', origenCaptacion: '', mandatoExclusivo: false, slotsCaptacion: [], slotSeleccionado: null, buscandoSlots: false, errorSlots: '' };
+      state.interna = { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: state.fecha, hora: '09:00', duracion: '', titulo: '', notas: '', coberturaId: '', propietarioNombre: '', propietarioTelefono: '', tipoInmuebleCaptacion: '', valorEstimado: '', origenCaptacion: '', mandatoExclusivo: false, slotsCaptacion: [], slotSeleccionado: null, buscandoSlots: false, errorSlots: '', virtual: false, enlace: '', cruce: null, cruceClave: '', cruceOk: '' };
       state.errorInterna = '';
       setView('interna');
       return;
@@ -2093,6 +2106,41 @@ function adjuntarEventos(rootEl) {
       render();
       return;
     }
+    if (b.hasAttribute('data-cruce-confirmar')) {
+      state.interna.cruceOk = state.interna.cruceClave;
+      state.interna.cruce = null;
+      rootEl.querySelector('#v-interna-form')?.requestSubmit();
+      return;
+    }
+    if (b.hasAttribute('data-cruce-cambiar')) {
+      state.interna.cruce = null;
+      state.errorInterna = '';
+      render();
+      return;
+    }
+    if (b.dataset.forzarmover) {
+      if (!confirm('Ese horario está ocupado. ¿Mover la cita de todos modos? Quedará registrado que tú autorizaste el cruce.')) return;
+      b.disabled = true;
+      const { error } = await supabase.rpc('agenda_mover_cita', {
+        p_cita_id: b.dataset.forzarmover,
+        p_solicitante_asesor_id: null,
+        p_nueva_fecha: state.moveFecha,
+        p_nueva_hora_inicio: state.moveHora,
+        p_forzar: true,
+      });
+      b.disabled = false;
+      if (error) {
+        state.moveError = 'No se pudo mover: ' + error.message;
+        render();
+        return;
+      }
+      state.moveId = null;
+      state.moveError = '';
+      state.moveForzable = false;
+      render();
+      toast('Cita movida sobre un horario ocupado. ' + (await avisarCambioCita(b.dataset.forzarmover, 'movida')));
+      return;
+    }
     if (b.dataset.confirmarmover) {
       const fechaInput = rootEl.querySelector('#v-mover-fecha');
       const horaInput = rootEl.querySelector('#v-mover-hora');
@@ -2112,7 +2160,11 @@ function adjuntarEventos(rootEl) {
       });
       b.disabled = false;
       if (error) {
-        state.moveError = error.message.includes('ya no está disponible') || error.message.includes('ya tiene una cita') ? 'Ese horario ya no está disponible para este asesor.' : 'No se pudo mover: ' + error.message;
+        const ocupado = error.message.includes('ya no está disponible') || error.message.includes('ya tiene una cita');
+        state.moveError = ocupado ? 'Ese horario ya no está disponible para este asesor.' : 'No se pudo mover: ' + error.message;
+        state.moveFecha = nuevaFecha;
+        state.moveHora = nuevaHora;
+        state.moveForzable = ocupado && (await puedeCruzar(contexto.empresaId));
         render();
         return;
       }
@@ -2174,7 +2226,19 @@ function adjuntarEventos(rootEl) {
       }
       const boton = e.target.querySelector('button[type=submit]');
       boton.disabled = true;
-      const { error } = await supabase.rpc('agenda_crear_cita_interna', {
+      const claveActual = claveHorario({ asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion });
+      if (!esCaptacion && it.cruceOk !== claveActual) {
+        const cruce = await revisarCruce({ empresaId: contexto.empresaId, asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion });
+        if (!cruce.libre) {
+          boton.disabled = false;
+          it.cruce = cruce;
+          it.cruceClave = claveActual;
+          state.errorInterna = '';
+          render();
+          return;
+        }
+      }
+      const { data: citaNuevaId, error } = await supabase.rpc('agenda_crear_cita_interna', {
         p_empresa_id: contexto.empresaId,
         p_asesor_id: it.asesorId,
         p_fecha: it.fecha,
@@ -2193,6 +2257,9 @@ function adjuntarEventos(rootEl) {
         p_valor_estimado_captacion: esCaptacion && it.valorEstimado ? Number(it.valorEstimado) : null,
         p_mandato_exclusivo: esCaptacion ? it.mandatoExclusivo : null,
         p_origen_captacion: esCaptacion ? it.origenCaptacion || null : null,
+        p_forzar: !esCaptacion && it.cruceOk === claveActual,
+        p_modalidad: it.virtual ? 'virtual' : 'presencial',
+        p_enlace_virtual: it.virtual ? (it.enlace || '').trim() : '',
       });
       boton.disabled = false;
       if (error) {
@@ -2205,7 +2272,15 @@ function adjuntarEventos(rootEl) {
         return;
       }
       state.fecha = it.fecha;
-      toast('Actividad guardada en la agenda.');
+      let textoToast = 'Actividad guardada en la agenda.';
+      if (it.virtual && !(it.enlace || '').trim() && citaNuevaId) {
+        const r = await crearEnlaceReunion(citaNuevaId);
+        textoToast += r.ok ? ' Enlace de la reunión creado.' : ` Pero no se pudo crear el enlace de la reunión (${r.error}). Pégalo a mano o reintenta.`;
+      }
+      it.virtual = false;
+      it.enlace = '';
+      it.cruceOk = '';
+      toast(textoToast);
       setView('agenda');
       return;
     }

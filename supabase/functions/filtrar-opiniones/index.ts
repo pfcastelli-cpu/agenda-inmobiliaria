@@ -5,14 +5,18 @@
 // Dos formas de llamarla (desplegar con --no-verify-jwt; la autorización la valida la propia función):
 //   {}                          → pg_cron cada 10 min: revisa comentarios pendientes de todas las empresas con clave.
 //   { empresa_id, probar:true } → botón «Probar la clave» de Configuración (JWT de un administrador activo).
-// La clave de API sale de Vault vía agenda_obtener_clave_ia (solo service_role); nunca se devuelve ni se escribe en logs.
+// La clave de API (y el proveedor elegido: Anthropic, OpenAI o Google) sale de Vault vía agenda_obtener_clave_ia (solo service_role); nunca se devuelve ni se escribe en logs.
 // Falla cerrado: si la IA falla, responde algo inesperado o no hay clave, el comentario NO se muestra al propietario.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const MODELO = 'claude-haiku-5-5';
+// Proveedores admitidos (la empresa elige uno en Configuración → Inteligencia artificial) y su modelo por defecto.
+// El modelo puede cambiarse desde la misma pantalla (agenda_configuracion.ia_modelo) sin tocar el código.
+type Proveedor = 'anthropic' | 'openai' | 'google';
+const MODELOS_POR_DEFECTO: Record<Proveedor, string> = { anthropic: 'claude-haiku-5-5', openai: 'gpt-4o-mini', google: 'gemini-2.0-flash' };
+type Credencial = { clave: string; proveedor: Proveedor; modelo: string };
 const LOTE_POR_EMPRESA = 10;
 const MAX_INTENTOS = 3;
 const MAX_CARACTERES_ENTRADA = 1500;
@@ -52,24 +56,55 @@ function limpiarSalida(texto: string): string {
     .slice(0, MAX_CARACTERES_SALIDA);
 }
 
-async function consultarIA(clave: string, comentario: string): Promise<{ estado: 'publicable' | 'sin_contenido'; texto: string }> {
-  const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': clave, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
-      model: MODELO,
-      max_tokens: 400,
-      system: SISTEMA,
-      messages: [{ role: 'user', content: `<comentario>\n${comentario.slice(0, MAX_CARACTERES_ENTRADA)}\n</comentario>` }],
-    }),
-    signal: AbortSignal.timeout(25000),
-  });
+// Cada adaptador recibe el texto y devuelve la respuesta de la IA como texto plano; el resto del flujo es común.
+async function llamarProveedor(cred: Credencial, comentario: string): Promise<string> {
+  const entrada = `<comentario>
+${comentario.slice(0, MAX_CARACTERES_ENTRADA)}
+</comentario>`;
+  let respuesta: Response;
+  if (cred.proveedor === 'anthropic') {
+    respuesta = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': cred.clave, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: cred.modelo, max_tokens: 400, system: SISTEMA, messages: [{ role: 'user', content: entrada }] }),
+      signal: AbortSignal.timeout(25000),
+    });
+  } else if (cred.proveedor === 'openai') {
+    respuesta = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${cred.clave}` },
+      body: JSON.stringify({
+        model: cred.modelo,
+        max_completion_tokens: 400,
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'system', content: SISTEMA }, { role: 'user', content: entrada }],
+      }),
+      signal: AbortSignal.timeout(25000),
+    });
+  } else {
+    respuesta = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cred.modelo)}:generateContent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': cred.clave },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SISTEMA }] },
+        contents: [{ role: 'user', parts: [{ text: entrada }] }],
+        generationConfig: { maxOutputTokens: 400, temperature: 0, responseMimeType: 'application/json' },
+      }),
+      signal: AbortSignal.timeout(25000),
+    });
+  }
   if (!respuesta.ok) {
     // Nunca se registra el cuerpo completo ni la clave; solo el código.
     throw new Error(`La IA respondió ${respuesta.status}`);
   }
   const cuerpo = await respuesta.json();
-  const bruto = String(cuerpo?.content?.[0]?.text ?? '');
+  if (cred.proveedor === 'anthropic') return String(cuerpo?.content?.[0]?.text ?? '');
+  if (cred.proveedor === 'openai') return String(cuerpo?.choices?.[0]?.message?.content ?? '');
+  return String(cuerpo?.candidates?.[0]?.content?.parts?.[0]?.text ?? '');
+}
+
+async function consultarIA(cred: Credencial, comentario: string): Promise<{ estado: 'publicable' | 'sin_contenido'; texto: string }> {
+  const bruto = await llamarProveedor(cred, comentario);
   const inicio = bruto.indexOf('{');
   const fin = bruto.lastIndexOf('}');
   if (inicio < 0 || fin <= inicio) throw new Error('Respuesta de la IA sin formato esperado');
@@ -80,9 +115,17 @@ async function consultarIA(clave: string, comentario: string): Promise<{ estado:
   return texto ? { estado: 'publicable', texto } : { estado: 'sin_contenido', texto: '' };
 }
 
+// La RPC devuelve {clave, proveedor, modelo}; sin clave o con el filtro apagado devuelve null.
+async function credencialDe(admin: Admin, empresaId: string): Promise<Credencial | null> {
+  const { data } = await admin.rpc('agenda_obtener_clave_ia', { p_empresa_id: empresaId });
+  if (!data?.clave) return null;
+  const proveedor = (['anthropic', 'openai', 'google'].includes(data.proveedor) ? data.proveedor : 'anthropic') as Proveedor;
+  return { clave: String(data.clave), proveedor, modelo: String(data.modelo || MODELOS_POR_DEFECTO[proveedor]) };
+}
+
 async function procesarEmpresa(admin: Admin, empresaId: string): Promise<{ revisados: number; errores: number; sinClave?: boolean }> {
-  const { data: clave } = await admin.rpc('agenda_obtener_clave_ia', { p_empresa_id: empresaId });
-  if (!clave) return { revisados: 0, errores: 0, sinClave: true };
+  const cred = await credencialDe(admin, empresaId);
+  if (!cred) return { revisados: 0, errores: 0, sinClave: true };
 
   const { data: filas } = await admin
     .from('agenda_encuestas_cliente')
@@ -97,7 +140,7 @@ async function procesarEmpresa(admin: Admin, empresaId: string): Promise<{ revis
   let errores = 0;
   for (const fila of filas ?? []) {
     try {
-      const r = await consultarIA(String(clave), String(fila.comentario ?? ''));
+      const r = await consultarIA(cred, String(fila.comentario ?? ''));
       await admin
         .from('agenda_encuestas_cliente')
         .update({ comentario_revision: r.estado, comentario_inmueble: r.estado === 'publicable' ? r.texto : null, comentario_revisado_en: new Date().toISOString() })
@@ -143,10 +186,10 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (miembro?.rol !== 'administrador') return json({ ok: false, error: 'Solo un administrador puede probar la clave.' }, 403);
 
-    const { data: clave } = await admin.rpc('agenda_obtener_clave_ia', { p_empresa_id: body.empresa_id });
-    if (!clave) return json({ ok: false, error: 'Todavía no hay una clave guardada, o el filtro está apagado.' });
+    const cred = await credencialDe(admin, body.empresa_id);
+    if (!cred) return json({ ok: false, error: 'Todavía no hay una clave guardada, o el filtro está apagado.' });
     try {
-      const r = await consultarIA(String(clave), 'El apartamento es muy luminoso pero la cocina es pequeña. El asesor Juan fue muy amable, llámenme al 3001234567.');
+      const r = await consultarIA(cred, 'El apartamento es muy luminoso pero la cocina es pequeña. El asesor Juan fue muy amable, llámenme al 3001234567.');
       // La prueba usa un texto inventado: no toca ninguna encuesta real.
       const procesadas = await procesarEmpresa(admin, body.empresa_id);
       return json({ ok: true, ejemplo: r.texto, revisados_ahora: procesadas.revisados });

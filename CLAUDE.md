@@ -49,7 +49,7 @@ SaaS). Reemplaza un sistema legado en Google Calendar + Apps Script + Sheets. `P
   `npx --no-install supabase functions deploy <funciones> --project-ref ykiuuxludyonkhywtmgu --use-api`
   y añadir `--no-verify-jwt` SOLO a las públicas: enviar-correo-cita, enviar-correo-propietario,
   enviar-solicitud-propietario, enviar-encuesta-cliente, recuperar-contrasena, portal-visita, calendario-ics,
-  enviar-codigo-verificacion. Las demás llevan JWT.
+  enviar-codigo-verificacion, filtrar-opiniones, enviar-encuestas-pendientes. Las demás (incl. crear-videollamada) llevan JWT.
 - Orden de salida cuando cambian imágenes de correos: primero push a `main` (Netlify publica `/correo/`), después desplegar funciones.
 - SQL: archivos en `sql/NNN-descripcion.sql`; si se aplica directo en Supabase, dejar el archivo de referencia.
 
@@ -67,6 +67,7 @@ SaaS). Reemplaza un sistema legado en Google Calendar + Apps Script + Sheets. `P
 - `correos/`: fotos y bocetos de correos; `correos/pruebas-enviadas/` son copias HTML de pruebas.
 
 ## Dónde consultar detalles según la tarea
+- Cómo está armado el código, dónde va cada cambio y la regla «función nueva = módulo nuevo»: `docs/GUIA-DEL-CODIGO.md` (léela antes de abrir módulos grandes).
 - Estado, trabajo en curso y siguiente paso: `docs/ESTADO-ACTUAL.md` (único resumen vigente).
 - Historia completa de lo construido, decisiones y pendientes largos: `docs/historico/CLAUDE-completo-2026-10-26.md`
   (copia íntegra del CLAUDE.md anterior; buscar por palabra clave, no leerla entera). Secciones útiles: «Acuerdo de horario en

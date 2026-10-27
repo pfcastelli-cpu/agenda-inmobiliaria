@@ -1,5 +1,6 @@
 import { htmlContactoEmpresa, montarContactoEmpresa } from './contacto-empresa.js';
 import { supabase } from './cliente-supabase.js';
+import { iaTab as iaTabModulo, reunionesTab as reunionesTabModulo } from './admin-ia-reuniones.js';
 import { invalidarDominioPublico } from './agenda-real.js';
 import {
  listarAccesos,
@@ -42,7 +43,7 @@ export async function iniciarAdministracion(a){
  if(turno!==revision)return;
  if(data)config=data;marca();
  if(a.membresia.rol!=='administrador')return;
- root=document.createElement('section');root.className='ad';root.innerHTML=`<nav aria-label="Administración"><button data-tab="agenda" aria-pressed="true" class="ad-volver" hidden>← Volver a la agenda</button><span class="ad-nav-sep"></span><button data-tab="config" aria-pressed="false" class="ad-gear" title="Configuración" aria-label="Configuración"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></button></nav><p role="status" aria-live="polite"></p><div class="ad-body" hidden><nav class="ad-subnav" aria-label="Configuración"><button data-subtab="equipo" aria-pressed="true">Equipo</button><button data-subtab="ciudades" aria-pressed="false">Ciudades y festivos</button><button data-subtab="marca" aria-pressed="false">Empresa</button><button data-subtab="correo" aria-pressed="false">Correo</button><button data-subtab="ia" aria-pressed="false">Inteligencia artificial</button><button data-subtab="calendario" aria-pressed="false">Calendario</button><button data-subtab="importar" aria-pressed="false">Importar citas</button><button data-subtab="accesos" aria-pressed="false">Accesos</button></nav><div class="ad-subbody"></div></div>`;
+ root=document.createElement('section');root.className='ad';root.innerHTML=`<nav aria-label="Administración"><button data-tab="agenda" aria-pressed="true" class="ad-volver" hidden>← Volver a la agenda</button><span class="ad-nav-sep"></span><button data-tab="config" aria-pressed="false" class="ad-gear" title="Configuración" aria-label="Configuración"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></button></nav><p role="status" aria-live="polite"></p><div class="ad-body" hidden><nav class="ad-subnav" aria-label="Configuración"><button data-subtab="equipo" aria-pressed="true">Equipo</button><button data-subtab="ciudades" aria-pressed="false">Ciudades y festivos</button><button data-subtab="marca" aria-pressed="false">Empresa</button><button data-subtab="correo" aria-pressed="false">Correo</button><button data-subtab="ia" aria-pressed="false">Inteligencia artificial</button><button data-subtab="reuniones" aria-pressed="false">Reuniones virtuales</button><button data-subtab="calendario" aria-pressed="false">Calendario</button><button data-subtab="importar" aria-pressed="false">Importar citas</button><button data-subtab="accesos" aria-pressed="false">Accesos</button></nav><div class="ad-subbody"></div></div>`;
  document.getElementById('pa-agenda-content').before(root);
  root.querySelector('nav').addEventListener('click',async e=>{const t=e.target.closest('button')?.dataset.tab;if(!t)return;root.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===t)));const body=root.querySelector('.ad-body');body.hidden=t==='agenda';document.getElementById('pa-agenda-content').hidden=t!=='agenda';root.querySelector('.ad-volver').hidden=t==='agenda';aviso('');if(t==='config')await abrirSubtab(root.querySelector('.ad-subnav [aria-pressed=true]')?.dataset.subtab||'equipo');});
  root.querySelector('.ad-subnav').addEventListener('click',async e=>{const st=e.target.closest('button')?.dataset.subtab;if(!st)return;await abrirSubtab(st);});
@@ -74,6 +75,8 @@ function nombresCiudades(asesorId){
  const ids=asesorCiudades[asesorId]||[];
  return ids.map(id=>ciudades.find(c=>c.id===id)?.nombre).filter(Boolean).join(', ')||'Sin ciudad asignada';
 }
+// Contexto que reciben las pestañas que viven en módulos aparte (admin-ia-reuniones.js).
+function ctxSubtab(){const turno=revision;return{el:root.querySelector('.ad-subbody'),empresaId:config.empresa_id,aviso,vigente:()=>turno===revision};}
 async function abrirSubtab(st){
  root.querySelectorAll('.ad-subnav [data-subtab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.subtab===st)));
  aviso('');
@@ -81,7 +84,8 @@ async function abrirSubtab(st){
  if(st==='ciudades')await ciudadesTab();
  if(st==='marca')marcaForm();
  if(st==='correo')await correoForm();
- if(st==='ia')await iaTab();
+ if(st==='ia')await iaTabModulo(ctxSubtab());
+ if(st==='reuniones')await reunionesTabModulo(ctxSubtab());
  if(st==='calendario')await calendarioTab();
  if(st==='importar')await importarTab();
  if(st==='accesos')await accesosTab();
@@ -408,7 +412,7 @@ function marcaForm(){
  <div class="ad-grid">${campo('plantilla_enlace_inmueble','Enlace para VER el inmueble en tu sitio real (usa {numero} donde va el código)',config.plantilla_enlace_inmueble,'text','placeholder="https://www.patrimonios.co/inmuebles/#inmueble{numero}"')}</div>
  <p class="ad-note">El botón "Ver inmueble" (en las citas y en la lista de inmuebles) usa esta plantilla para llevar a la ficha real del inmueble en tu página, no a la agenda. Ejemplo con el inmueble 245: <code>${enlaceInmuebleEjemplo}</code>. Si la dejas vacía, se usa el dominio de arriba con el formato <code>/inmuebles/{numero}</code>.</p>
  <h3>Reglas de la agenda</h3>
- <div class="ad-grid">${campo('duracion_visita_minutos','Duración de la primera cita (minutos)',config.duracion_visita_minutos,'number','min="10" step="5" required')}${campo('minutos_traslado_entre_inmuebles','Traslado mínimo entre inmuebles distintos (minutos)',config.minutos_traslado_entre_inmuebles,'number','min="0" step="5" required')}<label>Citas seguidas para el mismo inmueble<select name="modo_mismo_inmueble"><option value="separado">Permitir, separadas cada X minutos</option><option value="simultaneo">Permitir, una tras otra sin espera</option><option value="desactivado">No permitir (usar siempre traslado completo)</option></select></label>${campo('separacion_mismo_inmueble_minutos','Separación entre citas del mismo inmueble (minutos)',config.separacion_mismo_inmueble_minutos,'number','min="5" step="5" required')}${campo('radio_zona_km','Radio de zona (km) para agrupar citas por la mañana/tarde',config.radio_zona_km,'number','min="1" step="0.5" required')}${campo('horas_minimas_anticipacion','Anticipación mínima para agendar (horas)',config.horas_minimas_anticipacion,'number','min="0" step="1" required')}${campo('horas_minimas_anticipacion_mismo_inmueble','Anticipación mínima si el asesor ya está en ese inmueble (horas)',config.horas_minimas_anticipacion_mismo_inmueble,'number','min="0" step="0.5" required')}<label>Formato de hora<select name="formato_hora"><option value="12h">12 horas (2:00 p. m.)</option><option value="24h">24 horas / militar (14:00)</option></select></label></div>
+ <div class="ad-grid">${campo('duracion_visita_minutos','Duración de la primera cita (minutos)',config.duracion_visita_minutos,'number','min="10" step="5" required')}${campo('minutos_traslado_entre_inmuebles','Traslado mínimo entre inmuebles distintos (minutos)',config.minutos_traslado_entre_inmuebles,'number','min="0" step="5" required')}<label>Citas seguidas para el mismo inmueble<select name="modo_mismo_inmueble"><option value="separado">Varias personas al mismo inmueble, escalonadas cada X minutos (visita en grupo escalonada)</option><option value="simultaneo">Varias personas al mismo inmueble a la misma hora (visita en grupo)</option><option value="desactivado">Una sola cita a la vez por asesor (con traslado completo)</option></select></label>${campo('separacion_mismo_inmueble_minutos','Separación entre personas del mismo inmueble (minutos, solo modo escalonado)',config.separacion_mismo_inmueble_minutos,'number','min="5" step="5" required')}${campo('radio_zona_km','Radio de zona (km) para agrupar citas por la mañana/tarde',config.radio_zona_km,'number','min="1" step="0.5" required')}${campo('horas_minimas_anticipacion','Anticipación mínima para agendar (horas)',config.horas_minimas_anticipacion,'number','min="0" step="1" required')}${campo('horas_minimas_anticipacion_mismo_inmueble','Anticipación mínima si el asesor ya está en ese inmueble (horas)',config.horas_minimas_anticipacion_mismo_inmueble,'number','min="0" step="0.5" required')}<label>Formato de hora<select name="formato_hora"><option value="12h">12 horas (2:00 p. m.)</option><option value="24h">24 horas / militar (14:00)</option></select></label></div>
  <p class="ad-note">Cada asesor puede tener su propia anticipación mínima desde su ficha en Equipo; si no la define, se usa la de aquí. La anticipación más corta solo aplica a citas adicionales en un inmueble donde el asesor ya tiene una cita ese día — no hace falta preparar llaves de nuevo.</p>
  <p class="ad-note">Si un asesor ya tiene una cita en la mañana (o en la tarde), en esa misma mitad del día solo se ofrecen inmuebles a menos de este radio; los inmuebles más lejanos se ofrecen para la otra mitad del día, así no cruza la ciudad varias veces. La anticipación mínima evita que agenden una visita en los próximos minutos, para dar tiempo de preparar llaves. El formato de hora aplica tanto en tu agenda interna como en la página pública.</p>
  <h3>Citas de seguimiento según el valor del inmueble</h3>
@@ -416,6 +420,9 @@ function marcaForm(){
  <p class="ad-note">Si el canon o el precio de venta de un inmueble está por debajo de este mínimo, no se le ofrecen citas de seguimiento (solo su cita inicial): en cuanto termina + el traslado, el asesor queda libre para otros inmuebles, incluyendo los de mayor valor. Deja en 0 para no aplicar ningún límite.</p>
  <div class="ad-grid">${campo('valor_alto_canon_zona','Canon desde el cual un inmueble es de alto valor (arriendo, $/mes)',config.valor_alto_canon_zona,'number','min="0" step="50000"')}${campo('valor_alto_venta_zona','Precio desde el cual un inmueble es de alto valor (venta, $)',config.valor_alto_venta_zona,'number','min="0" step="1000000"')}</div>
  <p class="ad-note">Un inmueble de alto valor puede agendarse aunque quede fuera de la zona/mitad del día del asesor ese momento: no espera a la otra mitad del día, solo respeta el tiempo de traslado real hasta y desde ese inmueble. Deja en 0 para no aplicar ninguna excepción.</p>
+ <h3>Agendar sobre un horario ocupado</h3>
+ <div class="ad-grid"><label class="ad-check"><input type="checkbox" name="asesores_pueden_cruzar"> Los asesores pueden agendar una cita aunque ese horario esté ocupado (se les muestra una advertencia y deben confirmar)</label></div>
+ <p class="ad-note">Si lo apagas, solo los administradores pueden hacerlo. Las citas agendadas así quedan marcadas como «cruce autorizado» con quién lo confirmó.</p>
  <h3>Almuerzo (horario general de la empresa)</h3>
  <div class="ad-grid"><label class="ad-check"><input type="checkbox" name="almuerzo_activo"> La agenda respeta un horario de almuerzo</label>${campo('almuerzo_inicio','Almuerzo desde',config.almuerzo_inicio?.slice(0,5)||'12:00','time')}${campo('almuerzo_fin','Almuerzo hasta',config.almuerzo_fin?.slice(0,5)||'13:00','time')}</div>
  <p class="ad-note">Cada asesor puede tener su propio horario de almuerzo desde su ficha en Equipo; si no lo define, se usa este.</p>
@@ -430,6 +437,7 @@ function marcaForm(){
  <button class="ad-primary" type="submit" style="margin-top:18px">Guardar configuración</button></form>`;
  el.querySelector('[name=modo_mismo_inmueble]').value=config.modo_mismo_inmueble||'separado';
  el.querySelector('[name=formato_hora]').value=config.formato_hora||'12h';
+const chkCruce=el.querySelector('[name=asesores_pueden_cruzar]');if(chkCruce)chkCruce.checked=config.asesores_pueden_cruzar!==false;
  el.querySelector('[name=almuerzo_activo]').checked=config.almuerzo_activo!==false;
  const chkEncuesta=el.querySelector('[name=encuesta_automatica]');if(chkEncuesta)chkEncuesta.checked=config.encuesta_automatica!==false;
  const selAviso=el.querySelector('[name=encuesta_aviso_admin]');if(selAviso)selAviso.value=config.encuesta_aviso_admin||'cada';
@@ -445,7 +453,7 @@ function marcaForm(){
  formCfg.onsubmit=async e=>{e.preventDefault();const f=e.target;const b=f.querySelector('[type=submit]');b.disabled=true;
  let contactoActual;try{contactoActual=editorContacto.leer();}catch(error){b.disabled=false;aviso(error.message,true);return;}
  const equipoVisibleRoles=['administrador'];if(f.equipo_ve_coordinador.checked)equipoVisibleRoles.push('coordinador');if(f.equipo_ve_asesor.checked)equipoVisibleRoles.push('asesor');
- const v={...contactoActual,...('encuesta_minutos_despues' in config?{encuesta_automatica:f.encuesta_automatica.checked,encuesta_minutos_despues:Math.max(0,Math.min(1440,Number(f.encuesta_minutos_despues.value)||0))}:{}),...('encuesta_aviso_admin' in config?{encuesta_aviso_admin:f.encuesta_aviso_admin.value,encuesta_aviso_correos:f.encuesta_aviso_correos.value.trim()}:{}),empresa_id:config.empresa_id,nombre_comercial:f.nombre_comercial.value.trim(),logo_url:f.logo_url.value.trim(),...('imagen_correo_url' in config?{imagen_correo_url:f.imagen_correo_url.value.trim()||null}:{}),color_principal:f.color_principal.value,color_accion:f.color_accion.value,correo_contacto:f.correo_contacto.value.trim(),telefono:f.telefono.value.trim(),enlace_documentos:f.enlace_documentos.value.trim(),dominio_publico:f.dominio_publico.value.trim()||null,plantilla_enlace_inmueble:f.plantilla_enlace_inmueble.value.trim()||null,duracion_visita_minutos:Number(f.duracion_visita_minutos.value),minutos_traslado_entre_inmuebles:Number(f.minutos_traslado_entre_inmuebles.value),modo_mismo_inmueble:f.modo_mismo_inmueble.value,separacion_mismo_inmueble_minutos:Number(f.separacion_mismo_inmueble_minutos.value),radio_zona_km:Number(f.radio_zona_km.value),valor_minimo_canon_seguimiento:Number(f.valor_minimo_canon_seguimiento.value),valor_minimo_venta_seguimiento:Number(f.valor_minimo_venta_seguimiento.value),valor_alto_canon_zona:Number(f.valor_alto_canon_zona.value),valor_alto_venta_zona:Number(f.valor_alto_venta_zona.value),horas_minimas_anticipacion:Number(f.horas_minimas_anticipacion.value),horas_minimas_anticipacion_mismo_inmueble:Number(f.horas_minimas_anticipacion_mismo_inmueble.value),formato_hora:f.formato_hora.value,almuerzo_activo:f.almuerzo_activo.checked,almuerzo_inicio:f.almuerzo_inicio.value,almuerzo_fin:f.almuerzo_fin.value,equipo_visible_roles:equipoVisibleRoles};
+ const v={...contactoActual,...('asesores_pueden_cruzar' in config?{asesores_pueden_cruzar:f.asesores_pueden_cruzar.checked}:{}),...('encuesta_minutos_despues' in config?{encuesta_automatica:f.encuesta_automatica.checked,encuesta_minutos_despues:Math.max(0,Math.min(1440,Number(f.encuesta_minutos_despues.value)||0))}:{}),...('encuesta_aviso_admin' in config?{encuesta_aviso_admin:f.encuesta_aviso_admin.value,encuesta_aviso_correos:f.encuesta_aviso_correos.value.trim()}:{}),empresa_id:config.empresa_id,nombre_comercial:f.nombre_comercial.value.trim(),logo_url:f.logo_url.value.trim(),...('imagen_correo_url' in config?{imagen_correo_url:f.imagen_correo_url.value.trim()||null}:{}),color_principal:f.color_principal.value,color_accion:f.color_accion.value,correo_contacto:f.correo_contacto.value.trim(),telefono:f.telefono.value.trim(),enlace_documentos:f.enlace_documentos.value.trim(),dominio_publico:f.dominio_publico.value.trim()||null,plantilla_enlace_inmueble:f.plantilla_enlace_inmueble.value.trim()||null,duracion_visita_minutos:Number(f.duracion_visita_minutos.value),minutos_traslado_entre_inmuebles:Number(f.minutos_traslado_entre_inmuebles.value),modo_mismo_inmueble:f.modo_mismo_inmueble.value,separacion_mismo_inmueble_minutos:Number(f.separacion_mismo_inmueble_minutos.value),radio_zona_km:Number(f.radio_zona_km.value),valor_minimo_canon_seguimiento:Number(f.valor_minimo_canon_seguimiento.value),valor_minimo_venta_seguimiento:Number(f.valor_minimo_venta_seguimiento.value),valor_alto_canon_zona:Number(f.valor_alto_canon_zona.value),valor_alto_venta_zona:Number(f.valor_alto_venta_zona.value),horas_minimas_anticipacion:Number(f.horas_minimas_anticipacion.value),horas_minimas_anticipacion_mismo_inmueble:Number(f.horas_minimas_anticipacion_mismo_inmueble.value),formato_hora:f.formato_hora.value,almuerzo_activo:f.almuerzo_activo.checked,almuerzo_inicio:f.almuerzo_inicio.value,almuerzo_fin:f.almuerzo_fin.value,equipo_visible_roles:equipoVisibleRoles};
  const {data,error}=await supabase.from('agenda_configuracion').upsert(v).select('*').single();b.disabled=false;if(error){aviso('No se pudo guardar la configuración. Verifica permisos y conexión.',true);return;}config=data;marca();invalidarDominioPublico();marcaForm();aviso('Configuración guardada.');};
 }
 
@@ -505,60 +513,6 @@ function bitacoraCorreoHtml(filas){
   </li>`;
  }).join('')}</ul>`;
 }
-// Clave de API del proveedor de IA que filtra las opiniones de la encuesta antes de que lleguen al propietario.
-// La clave se guarda en Vault (agenda_guardar_clave_ia) y nunca vuelve al navegador: solo se sabe si existe.
-async function iaTab(){
- const el=root.querySelector('.ad-subbody');
- el.innerHTML='<p class="ad-muted">Cargando…</p>';
- const turno=revision;
- const {data:estado,error}=await supabase.rpc('agenda_ia_estado',{p_empresa_id:config.empresa_id});
- if(turno!==revision)return;
- if(error){el.innerHTML='<p class="error">No se pudo leer el estado de la inteligencia artificial. Aplica primero el SQL 028.</p>';return;}
- const c=estado.comentarios||{};
- const tiene=estado.tiene_clave;
- el.innerHTML=`<h2>Inteligencia artificial</h2>
- <p>Cuando un cliente deja un comentario en la encuesta, la IA lo revisa antes de que el propietario lo lea en su informe: conserva solo lo que dice <strong>del inmueble</strong> y quita críticas o comentarios sobre la inmobiliaria o los asesores, datos personales e insultos. El comentario original lo ve solo la administración en la Bitácora.</p>
- <div class="ad-correo-estado ${tiene&&estado.activa?'ad-correo-estado-ok':'ad-correo-estado-pendiente'}">${tiene?(estado.activa?'✅ Filtro activo — los comentarios se revisan automáticamente (cada 10 minutos aprox.).':'⏸ Hay una clave guardada, pero el filtro está apagado.'):'⚠️ Sin clave: los comentarios de los clientes no se muestran a los propietarios hasta que configures una.'}</div>
- <form id="ad-ia-form">
-  <div class="ad-grid"><label>Clave de API${tiene?' · <small class="ad-muted">ya guardada, deja este campo vacío para conservarla</small>':''}<span class="ad-correo-password-row"><input name="ia_clave" type="password" placeholder="${tiene?'••••••••••••••••':'Pega aquí la clave (empieza por sk-ant-…)'}" autocomplete="new-password"><button type="button" class="ad-link-btn" data-reveal-ia>Mostrar</button></span></label></div>
-  <p class="ad-note">Se usa el servicio de Anthropic (Claude). Crea la clave en console.anthropic.com → API keys y pégala aquí. Queda cifrada en la bóveda de Supabase y no se vuelve a mostrar. El costo es mínimo: una opinión equivale a una fracción de centavo.</p>
-  <label class="ad-check"><input type="checkbox" name="ia_activa" ${estado.activa?'checked':''}> Filtrar las opiniones con IA</label>
-  <div class="ad-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-   <button type="submit">Guardar</button>
-   <button type="button" data-probar-ia ${tiene?'':'disabled'}>Probar la clave</button>
-   ${tiene?'<button type="button" class="ad-link-btn" data-quitar-ia style="color:#B3261E">Quitar la clave</button>':''}
-  </div>
-  <p class="ad-probar-ia-resultado ad-muted" role="status" style="margin-top:8px"></p>
- </form>
- <p class="ad-note">Comentarios: ${c.publicable||0} publicados · ${c.pendiente||0} por revisar · ${c.sin_contenido||0} sin nada del inmueble · ${c.error||0} con error.</p>`;
- const resultado=el.querySelector('.ad-probar-ia-resultado');
- el.querySelector('[data-reveal-ia]').onclick=ev=>{const i=el.querySelector('[name=ia_clave]');const m=i.type==='password';i.type=m?'text':'password';ev.currentTarget.textContent=m?'Ocultar':'Mostrar';};
- el.querySelector('#ad-ia-form').onsubmit=async e=>{
-  e.preventDefault();const f=e.target;const b=f.querySelector('button[type=submit]');b.disabled=true;
-  const {error:err}=await supabase.rpc('agenda_guardar_clave_ia',{p_empresa_id:config.empresa_id,p_clave:f.ia_clave.value||null,p_activa:f.ia_activa.checked,p_quitar:false});
-  b.disabled=false;
-  if(err){aviso(err.message||'No se pudo guardar la clave.',true);return;}
-  aviso('Configuración de inteligencia artificial guardada.');
-  await iaTab();
- };
- el.querySelector('[data-probar-ia]').onclick=async ev=>{
-  const b=ev.currentTarget;b.disabled=true;resultado.classList.remove('error');resultado.textContent='Probando…';
-  try{
-   const {data,error:err}=await supabase.functions.invoke('filtrar-opiniones',{body:{empresa_id:config.empresa_id,probar:true}});
-   if(err||!data?.ok){resultado.textContent='❌ '+(data?.error||'No se pudo probar la clave.');resultado.classList.add('error');}
-   else resultado.textContent=`✅ La clave funciona. Texto de ejemplo ya filtrado: «${data.ejemplo||'(sin contenido)'}»${data.revisados_ahora?` · Se revisaron ${data.revisados_ahora} comentarios pendientes.`:''}`;
-  }catch{resultado.textContent='❌ No se pudo conectar con el servicio.';resultado.classList.add('error');}
-  b.disabled=false;
- };
- const quitar=el.querySelector('[data-quitar-ia]');
- if(quitar)quitar.onclick=async()=>{
-  if(!confirm('¿Quitar la clave? Los comentarios nuevos dejarán de mostrarse a los propietarios hasta que guardes otra.'))return;
-  const {error:err}=await supabase.rpc('agenda_guardar_clave_ia',{p_empresa_id:config.empresa_id,p_clave:null,p_activa:false,p_quitar:true});
-  if(err){aviso(err.message||'No se pudo quitar la clave.',true);return;}
-  aviso('Clave eliminada.');await iaTab();
- };
-}
-
 async function correoForm(){
  const el=root.querySelector('.ad-subbody');
  el.innerHTML='<p class="ad-muted">Cargando…</p>';

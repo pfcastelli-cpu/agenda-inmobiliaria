@@ -8,7 +8,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const CRON_SECRETO = Deno.env.get('CRON_ENCUESTAS_SECRETO') || '';
-const MAX_POR_CORRIDA = 12; // cada corrida dura unos 2-4 s por correo; el cron corre cada 10 minutos
+const MAX_POR_CORRIDA = 40; // tope por corrida (el cron corre cada 10 minutos); si hay más, salen en las corridas siguientes
+const EN_PARALELO = 4; // correos enviados a la vez (cada uno tarda unos 2-4 s)
 
 function json(cuerpo: unknown, status = 200) {
   return new Response(JSON.stringify(cuerpo), { status, headers: { 'Content-Type': 'application/json' } });
@@ -73,23 +74,24 @@ Deno.serve(async (req) => {
     const fallos = new Map<string, number>();
     for (const l of intentos || []) fallos.set(l.cita_id, (fallos.get(l.cita_id) || 0) + 1);
 
-    for (const c of vencidas) {
-      if (restantes <= 0) break;
-      if (hechas.has(c.id) || (fallos.get(c.id) || 0) >= 3) continue;
-      restantes--;
-      try {
-        const r = await fetch(`${SUPABASE_URL}/functions/v1/enviar-encuesta-cliente`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY },
-          body: JSON.stringify({ cita_id: c.id }),
-          signal: AbortSignal.timeout(20000),
-        });
-        const cuerpo = await r.json().catch(() => ({}));
-        (cuerpo?.enviado ? enviadas : omitidas).push(c.id);
-      } catch (e) {
-        console.error('enviar-encuestas-pendientes', c.id, e instanceof Error ? e.message : e);
-        omitidas.push(c.id);
-      }
+    const porEnviar = vencidas.filter((c) => !hechas.has(c.id) && (fallos.get(c.id) || 0) < 3).slice(0, Math.max(0, restantes));
+    restantes -= porEnviar.length;
+    for (let i = 0; i < porEnviar.length; i += EN_PARALELO) {
+      await Promise.all(porEnviar.slice(i, i + EN_PARALELO).map(async (c) => {
+        try {
+          const r = await fetch(`${SUPABASE_URL}/functions/v1/enviar-encuesta-cliente`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY },
+            body: JSON.stringify({ cita_id: c.id }),
+            signal: AbortSignal.timeout(20000),
+          });
+          const cuerpo = await r.json().catch(() => ({}));
+          (cuerpo?.enviado ? enviadas : omitidas).push(c.id);
+        } catch (e) {
+          console.error('enviar-encuestas-pendientes', c.id, e instanceof Error ? e.message : e);
+          omitidas.push(c.id);
+        }
+      }));
     }
   }
 
