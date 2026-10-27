@@ -204,6 +204,23 @@ async function procesarEncuesta(admin: Admin, filtro: { token?: string; id?: str
   const filaDato = (k: string, v: string) => `<tr><td style="padding:6px 0;color:#6b6b6b;font-size:13px;vertical-align:top;width:34%">${k}</td><td style="padding:6px 0;color:#1a2c45;font-size:14px;font-weight:600">${v}</td></tr>`;
   const resultado = { asesor: 0, admin: 0 };
 
+  // 0) Quiere avanzar: se le manda al cliente el correo para radicar el estudio de arrendatario (si la empresa lo activó, sql/033).
+  //    El aviso al asesor de abajo incluye que ya se envió, para que esté pendiente.
+  let radicacionEnviada = false;
+  if (enc.intencion === 'avanzar') {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/enviar-radicacion-cliente`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY },
+        body: JSON.stringify({ cita_id: enc.cita_id, avisar_asesor: false }),
+        signal: AbortSignal.timeout(25000),
+      });
+      radicacionEnviada = (await r.json().catch(() => ({})))?.enviado === true;
+    } catch (e) {
+      console.error('avisar-encuesta-respondida radicación:', e instanceof Error ? e.message : e);
+    }
+  }
+
   // 1) Aviso inmediato al asesor: el cliente quiere avanzar / otra visita / que lo contacten.
   if (enc.intencion && INTENCIONES_CALIENTES.includes(enc.intencion) && !enc.aviso_asesor_en && asesor) {
     const { data: reclamo } = await admin.from('agenda_encuestas_cliente').update({ aviso_asesor_en: new Date().toISOString() }).eq('id', enc.id).is('aviso_asesor_en', null).select('id').maybeSingle();
@@ -214,7 +231,7 @@ async function procesarEncuesta(admin: Admin, filtro: { token?: string; id?: str
         admin, enc.empresa_id, enc.cita_id, correos,
         `${intn ? intn[0] : '✅'} ${cita.cliente_nombre} quiere dar el siguiente paso · Inmueble ${num}`,
         'Un cliente quiere dar el siguiente paso',
-        `<p style="margin:0 0 12px;text-align:justify">Hola ${esc(asesor.nombre)}, <b>${esc(cita.cliente_nombre)}</b> respondió la encuesta de su visita al inmueble Nº ${esc(String(num))}${inmueble?.direccion ? ` (${esc(inmueble.direccion)})` : ''}. Conviene contactarlo pronto.</p>
+        `<p style="margin:0 0 12px;text-align:justify">Hola ${esc(asesor.nombre)}, <b>${esc(cita.cliente_nombre)}</b> respondió la encuesta de su visita al inmueble Nº ${esc(String(num))}${inmueble?.direccion ? ` (${esc(inmueble.direccion)})` : ''}. Conviene contactarlo pronto.${radicacionEnviada ? ' <b>Ya le enviamos el correo para radicar su estudio de arrendatario: está pendiente de que lo complete</b>, así que acompáñalo y resuélvele las dudas.' : ''}</p>
 <table style="width:100%;border-collapse:collapse">
 ${intn ? filaDato('Siguiente paso', `${intn[0]} ${esc(intn[1])}`) : ''}
 ${imp ? filaDato('Impresión', `${imp[0]} ${esc(imp[1])}`) : ''}

@@ -13,6 +13,11 @@
   status = 200
 
 [[redirects]]
+  from = "/radicar/*"
+  to = "/radicar.html"
+  status = 200
+
+[[redirects]]
   from = "/preferencias/*"
   to = "/preferencias.html"
   status = 200

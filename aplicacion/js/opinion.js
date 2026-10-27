@@ -184,11 +184,17 @@ function vistaYaRespondida() {
       ${d.comentario ? `<p style="margin-top:10px">${escapeHtml(d.comentario)}</p>` : ''}
       <p style="margin-top:16px">Gracias por ayudarnos a mejorar.</p>
       ${botonAgendarOtraVisita(d.intencion)}
+      ${botonRadicar(d.intencion)}
     </div>
   `;
 }
 
 // Si el cliente dijo que quiere otra visita, su opinión ya quedó guardada: se le lleva directo a agendarla (misma página pública de reserva).
+function botonRadicar(intencion) {
+  if (intencion !== 'avanzar' || !state.token) return '';
+  return `<p style="margin-top:16px"><a class="pu-main" style="display:inline-block;text-decoration:none" href="${window.location.origin}/radicar/${encodeURIComponent(state.token)}">Ver cómo radicar mi estudio</a></p>`;
+}
+
 function botonAgendarOtraVisita(intencion) {
   const numero = state.datos?.numero_inmueble;
   if (intencion !== 'segunda_visita' || !numero) return '';
@@ -201,8 +207,10 @@ function vistaEnviado() {
       <div class="pu-icono">✓</div>
       <h2>¡Gracias por tu opinión!</h2>
       <p>Tu opinión nos ayuda a mejorar nuestro servicio.</p>
+      ${state.intencionSel === 'avanzar' ? '<p>Dijiste que quieres avanzar. Te mostramos cómo radicar tu estudio:</p>' : ''}
       ${state.intencionSel === 'segunda_visita' ? '<p>Dijiste que quieres volver a ver el inmueble. Escoge el día y la hora que mejor te quede:</p>' : ''}
       ${botonAgendarOtraVisita(state.intencionSel)}
+      ${botonRadicar(state.intencionSel)}
     </div>
   `;
 }
