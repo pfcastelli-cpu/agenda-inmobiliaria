@@ -8,6 +8,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, enlaceInmueble, marcaCorreo, bloqueCaptacion, pieLegal } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
+import { preferenciasDe, urlPreferencias } from '../_shared/preferencias-propietario.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -336,6 +337,9 @@ Deno.serve(async (req) => {
     return json({ ok: true, enviados: 0, motivo: 'El inmueble no tiene propietarios con correo registrado.' });
   }
 
+  // Preferencias del propietario (sql/032): solo recibe un correo por visita quien eligió «con cada visita».
+  const prefs = await preferenciasDe(admin, cita.empresa_id, [...destinatarios.keys()]);
+
   let asesorNombre = '';
   let asesorCelular = '';
   if (cita.asesor_id) {
@@ -463,12 +467,12 @@ Deno.serve(async (req) => {
     </div>`
         : ''
     }
-    ${bloqueCaptacion(marca)}
+    ${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}
     <div style="background:#f4f4f4;padding:20px 28px;border-top:1px solid #efefef">
       <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>
     </div>
   </div>
-  ${pieLegal(marca)}
+  ${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}
 </div>
 </body>
 </html>`;
@@ -521,6 +525,14 @@ Deno.serve(async (req) => {
 
   let enviados = 0;
   for (const [correoPropietario, nombres] of destinatarios) {
+    const pref = prefs.get(correoPropietario.toLowerCase());
+    if (pref && pref.frecuencia !== 'cada_cita') {
+      await registrarLog(admin, {
+        empresa_id: cita.empresa_id, cita_id: cita.id, destinatario_tipo: 'propietario', destinatario_email: correoPropietario, asunto,
+        estado: 'omitido', detalle_error: `El propietario eligió ${pref.frecuencia === 'ninguna' ? 'no recibir correos' : 'recibir un resumen ' + pref.frecuencia}.`, modo_pruebas: modoPruebas,
+      });
+      continue;
+    }
     const nombrePropietario = nombres[0] || '';
     const destinatarioEnvio = modoPruebas ? config.correo_pruebas_destino || correoPropietario : correoPropietario;
 

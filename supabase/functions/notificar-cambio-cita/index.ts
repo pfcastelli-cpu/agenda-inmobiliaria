@@ -10,6 +10,7 @@
 //                        el arrendatario. La cita ya debe estar cancelada en la base.
 // origen: 'asesor' (agenda interna) | 'cliente' (enlace del cliente). Los textos cambian según el origen y
 // según el tipo de inmueble (vivienda, oficina, local...): no todo lo que se visita es una vivienda.
+import { preferenciasDe } from '../_shared/preferencias-propietario.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, enlaceInmueble, marcaCorreo, type MarcaCorreo, emojiTitulo, pieContacto } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
@@ -418,7 +419,10 @@ Deno.serve(async (req) => {
       porCorreo.set(c, nombres);
     }
   }
+  const prefsProp = await preferenciasDe(admin, cita.empresa_id, [...porCorreo.keys()]);
   for (const [correo, nombres] of porCorreo) {
+    const prefProp = prefsProp.get(correo.toLowerCase());
+    if (prefProp && prefProp.frecuencia !== 'cada_cita') continue; // eligió resumen o ningún correo (sql/032)
     await enviar({
       tipo: 'propietario',
       correos: [correo],

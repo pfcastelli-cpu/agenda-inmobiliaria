@@ -93,7 +93,7 @@ export function bloqueCaptacion(marca: MarcaCorreo): string {
 }
 
 // Pie de la misma empresa, sin datos legales de respaldo de otra inmobiliaria.
-export function pieLegal(marca: MarcaCorreo): string { return htmlLegal(marca.contacto); }
+export function pieLegal(marca: MarcaCorreo, urlPreferencias?: string): string { return htmlLegal(marca.contacto, urlPreferencias); }
 
 // Emoji que acompaña al título del correo cuando el título llega como variable.
 export function emojiTitulo(titulo: string): string {

@@ -63,9 +63,10 @@ export function htmlContacto(c: ContactoEmpresa): string {
   return lineas.length ? `<p style="text-align:center;color:#6b6b6b;font-size:13px;line-height:1.8;margin:6px 8px 0;overflow-wrap:anywhere">${lineas.join('<br>')}</p>` : '';
 }
 
-export function htmlLegal(c: ContactoEmpresa): string {
+export function htmlLegal(c: ContactoEmpresa, urlPreferencias?: string): string {
   const lineas = [c.razonSocial || c.nombre, c.nit ? `NIT ${c.nit}` : '', c.direccion].filter(Boolean).map(escaparContacto);
   if (c.politicaDatos) lineas.push(`<a href="${escaparContacto(c.politicaDatos)}" style="color:inherit;text-decoration:underline">Política de tratamiento de datos</a>`);
-  if (contactoLegalCompleto(c)) lineas.push(`Para dejar de recibir comunicaciones comerciales, <a href="mailto:${escaparContacto(c.correoBaja)}?subject=Baja%20de%20comunicaciones%20comerciales" style="color:inherit;text-decoration:underline">solicita la baja</a>. Seguirás recibiendo los avisos de tus inmuebles.`);
+  if (urlPreferencias) lineas.push(`Elige cuándo recibir estos correos (con cada visita, resumen semanal o mensual, o ninguno) y si quieres recibir publicidad: <a href="${escaparContacto(urlPreferencias)}" style="color:inherit;text-decoration:underline">administra tus preferencias</a>.`);
+  else if (contactoLegalCompleto(c)) lineas.push(`Para dejar de recibir comunicaciones comerciales, <a href="mailto:${escaparContacto(c.correoBaja)}?subject=Baja%20de%20comunicaciones%20comerciales" style="color:inherit;text-decoration:underline">solicita la baja</a>. Seguirás recibiendo los avisos de tus inmuebles.`);
   return `${htmlContacto(c)}${lineas.length ? `<p style="text-align:center;color:#6b6b6b;font-size:12px;line-height:1.6;margin:18px 8px 0;overflow-wrap:anywhere">${lineas.join('<br>')}</p>` : ''}`;
 }

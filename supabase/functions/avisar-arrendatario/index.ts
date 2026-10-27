@@ -241,6 +241,12 @@ Deno.serve(async (req) => {
   const asunto = `Visitas programadas en tu ${sust.n} · Inmueble ${inmueble.numero_inmueble}`;
   const nombre = escaparHtml(arrendatario?.nombre || '');
   const enlacePortal = `${SITIO_URL}/arrendatario/${inmueble.token_arrendatario || cita.token_arrendatario}`;
+  // Botones para hablar con el asesor sin buscar su número (WhatsApp con mensaje listo y llamada).
+  const celularDigitos = asesorCelular.replace(/\D/g, '');
+  const celularWa = celularDigitos.length === 10 && celularDigitos.startsWith('3') ? '57' + celularDigitos : celularDigitos;
+  const botonesAsesor = celularWa.length >= 11
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 0"><tr><td align="center" style="padding:4px 0"><a href="https://wa.me/${celularWa}?text=${encodeURIComponent('Hola' + (asesorNombre ? ' ' + asesorNombre : '') + ', te escribo por las visitas a mi vivienda.')}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:999px;border:2px solid ${marca.principal}">💬 Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp</a></td></tr><tr><td align="center" style="padding:4px 0"><a href="tel:+${celularWa}" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:14px;padding:8px 18px">📞 Llamar al asesor</a></td></tr></table>`
+    : '';
   const enlaceSitio = enlaceInmueble(config, inmueble.numero_inmueble);
   const lugarTexto = [direccion, ciudad].filter(Boolean).join(', ').replace(/\.+$/, '');
   const remitenteNombre = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
@@ -278,7 +284,8 @@ Deno.serve(async (req) => {
       <p style="color:#4d4d4d;text-align:justify;font-size:14px;line-height:1.6;margin:10px 0 0">${OPCIONES_ARRENDATARIO.consecuencia} Gracias por tu colaboración.</p>
       <p style="margin:18px 0 6px;text-align:center"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:999px">👀 Ver mis visitas y mis horarios</a></p>
       <p style="margin:10px 0 6px;text-align:center"><a href="${enlaceSitio}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:999px;border:2px solid ${marca.principal}">🏠 Ver el inmueble en nuestro sitio</a></p>
-      <p style="color:#6b6b6b;font-size:12px;margin:10px 0 0">Este enlace es solo para ti, no lo compartas. ¿Prefieres hablar? Llama o escríbele a tu asesor.</p>
+      ${botonesAsesor}
+      <p style="color:#6b6b6b;font-size:12px;margin:10px 0 0">Este enlace es solo para ti, no lo compartas.${botonesAsesor ? '' : ' ¿Prefieres hablar? Llama o escríbele a tu asesor.'}</p>
     </div>
   </div>
   <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(remitenteNombre)}</p>

@@ -12,6 +12,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, marcaCorreo, bloqueCaptacion, pieLegal } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
+import { preferenciasDe, urlPreferencias } from '../_shared/preferencias-propietario.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -165,6 +166,7 @@ Deno.serve(async (req) => {
     return json({ ok: true, enviados: 0, motivo: 'El inmueble no tiene propietarios con correo registrado.' });
   }
 
+  const prefs = await preferenciasDe(admin, empresaId, [...destinatarios.keys()]);
   const dominio = config.dominio_publico || 'citas.patrimonios.co';
   const linkInforme = `https://${dominio}/propietario/${token}`;
   const asunto = `El informe en vivo de tu inmueble Nº ${numeroInmueble}`;
@@ -237,12 +239,12 @@ Deno.serve(async (req) => {
         </td>
       </tr></table>
     </div>
-    ${bloqueCaptacion(marca)}
+    ${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}
     <div style="background:#f4f4f4;padding:20px 28px;border-top:1px solid #efefef">
       <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>
     </div>
   </div>
-  ${pieLegal(marca)}
+  ${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}
 </div>
 </body>
 </html>`;

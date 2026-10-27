@@ -1,4 +1,6 @@
 import { supabase } from './cliente-supabase.js';
+import { htmlLlegada, registrarLlegada } from './llegada-cita.js';
+import { abrirVisorEncuestaDesdeUrl } from './visor-encuesta.js';
 import { claveHorario, revisarCruce, htmlAvisoCruce, puedeCruzar, estadoReunion, htmlCampoReunion, crearEnlaceReunion, htmlEnlaceReunion } from './citas-cruce-virtual.js';
 import { renderPendientes, reiniciarPendientes } from './pendientes.js';
 import { renderTickets, reiniciarTickets, abrirTicket } from './tickets.js';
@@ -179,11 +181,13 @@ export function iniciarAgendaReal(acceso) {
 
   if (iniciada) {
     render();
+    abrirVisorEncuestaDesdeUrl();
     return;
   }
   iniciada = true;
   adjuntarEventos(root);
   render();
+  abrirVisorEncuestaDesdeUrl();
 }
 
 const state = {
@@ -571,6 +575,7 @@ function citaCard(c) {
     ${c.reubicacion_pendiente_desde && c.estado !== 'cancelada' ? `<p class="v-note" style="margin:6px 0 0">⚠️ Reubicación pendiente: el arrendatario limitó ese día y el cliente aún no elige otro turno. Sigue en esta hora hasta que elija.</p>` : ''}
     <div class="v-row"><span class="v-avatar">${asesor ? escape(asesor.nombre.slice(0, 1)) : '?'}</span><span class="v-advisorname">${asesor ? escape(asesor.nombre) : 'Sin asesor'}${asesor && asesor.tipo_vinculacion === 'freelance' ? ' · freelance' : ''}</span></div>
     ${htmlEnlaceReunion(c)}
+    ${htmlLlegada(c, hoyISO())}
     ${c.cruce_autorizado ? '<span class="v-tag v-tag-neutral" style="margin-top:6px">Cruce autorizado</span>' : ''}
     ${inmueble ? `<a class="v-link" href="${linkPublico(inmueble.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver inmueble</a>` : ''}
     ${c.estado === 'completada' ? (c.feedback_cliente ? `<p class="v-muted" style="margin-top:8px;font-size:12.5px">Comentario del cliente: ${escape(c.feedback_cliente)}</p>` : '') : `<div class="v-actions"><button data-completar="${c.id}">Realizada</button><button data-mover="${c.id}">Mover</button><button class="v-danger" data-cancelar="${c.id}">Cancelar</button></div>`}
@@ -2104,6 +2109,15 @@ function adjuntarEventos(rootEl) {
       state.moveId = null;
       state.completarId = null;
       render();
+      return;
+    }
+    if (b.dataset.llegada) {
+      b.disabled = true;
+      const r = await registrarLlegada(b.dataset.llegada);
+      b.disabled = false;
+      if (r.cancelado) return;
+      toast(r.texto);
+      if (r.ok) render();
       return;
     }
     if (b.hasAttribute('data-cruce-confirmar')) {

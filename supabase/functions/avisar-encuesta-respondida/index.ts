@@ -72,7 +72,7 @@ async function contextoCorreo(admin: Admin, empresaId: string) {
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
-      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, dominio_publico, nombre_comercial, contacto_empresa, correo_contacto, telefono, encuesta_aviso_admin, encuesta_aviso_correos, empresa:agenda_empresas(slug)',
+      'correo_remitente_nombre, correo_remitente_email, correo_smtp_host, correo_smtp_puerto, correo_smtp_seguridad, correo_smtp_usuario, correo_modo_pruebas, correo_pruebas_destino, imagen_correo_url, logo_url, color_principal, color_accion, dominio_publico, nombre_comercial, contacto_empresa, correo_contacto, telefono, encuesta_aviso_admin, encuesta_aviso_correos, alerta_baja_calificacion, alerta_baja_incluye_asesor, empresa:agenda_empresas(slug)',
     )
     .eq('empresa_id', empresaId)
     .maybeSingle();
@@ -166,9 +166,21 @@ async function destinatariosAdmin(admin: Admin, empresaId: string, config: Cfg):
   return [...new Set(correos)];
 }
 
+// Quién supervisa a un asesor: su supervisor (ficha del asesor, pestaña Equipo) + los correos que Configuración defina para los avisos de encuesta.
+// Si no hay ninguno de los dos, los administradores activos. Así los avisos no «enloquecen» a todo el equipo.
+async function destinatariosSupervision(admin: Admin, empresaId: string, config: Cfg, supervisorId: string | null): Promise<string[]> {
+  const correos = new Set<string>(correosDe(config.encuesta_aviso_correos));
+  if (supervisorId) {
+    const { data: sup } = await admin.from('agenda_asesores').select('correo, correos_adicionales').eq('id', supervisorId).maybeSingle();
+    for (const c of [...correosDe(sup?.correo), ...correosDe(sup?.correos_adicionales)]) correos.add(c);
+  }
+  if (correos.size) return [...correos];
+  return await destinatariosAdmin(admin, empresaId, config);
+}
+
 // ---- Una encuesta contestada ---------------------------------------------------------------
 async function procesarEncuesta(admin: Admin, filtro: { token?: string; id?: string }) {
-  let q = admin.from('agenda_encuestas_cliente').select('id, cita_id, inmueble_id, empresa_id, calificacion, comentario, respondido_en, impresion, intencion, motivo, aviso_admin_en, aviso_asesor_en');
+  let q = admin.from('agenda_encuestas_cliente').select('id, cita_id, inmueble_id, empresa_id, calificacion, comentario, respondido_en, impresion, intencion, motivo, aviso_admin_en, aviso_asesor_en, aviso_calidad_en');
   q = filtro.token ? q.eq('token', filtro.token) : q.eq('id', filtro.id as string);
   const { data: enc } = await q.maybeSingle();
   if (!enc || !enc.respondido_en) return { asesor: 0, admin: 0 };
@@ -181,9 +193,9 @@ async function procesarEncuesta(admin: Admin, filtro: { token?: string; id?: str
   const ctx = await contextoCorreo(admin, enc.empresa_id);
   if (!ctx) return { asesor: 0, admin: 0 };
   const dominio = ctx.config.dominio_publico || 'citas.patrimonios.co';
-  let asesor: { nombre: string; correo: string | null; correos_adicionales: string | null } | null = null;
+  let asesor: { nombre: string; correo: string | null; correos_adicionales: string | null; supervisor_id: string | null } | null = null;
   if (cita.asesor_id) {
-    const { data } = await admin.from('agenda_asesores').select('nombre, correo, correos_adicionales').eq('id', cita.asesor_id).maybeSingle();
+    const { data } = await admin.from('agenda_asesores').select('nombre, correo, correos_adicionales, supervisor_id').eq('id', cita.asesor_id).maybeSingle();
     asesor = data;
   }
   const num = inmueble?.numero_inmueble ?? '';
@@ -210,18 +222,51 @@ ${filaDato('Atención del asesor', estrellas(enc.calificacion))}
 ${contacto ? filaDato('Contacto', contacto) : ''}
 </table>
 ${enc.comentario ? `<p style="margin:14px 0 0;padding:12px 14px;background:#f4f4f4;border-radius:10px;text-align:justify">«${esc(enc.comentario)}»</p>` : ''}`,
-        { texto: 'Ver la agenda', url: `https://${dominio}/` },
+        { texto: 'Ver la encuesta', url: `https://${dominio}/?encuesta=${enc.id}` },
       );
     }
   }
 
-  // 2) Aviso a la administración, según Configuración (por defecto: cada encuesta).
+  // 2) Calificación baja: alerta a quien supervisa («revisar qué pasó»). Al asesor solo si la empresa lo activó.
   const modo = ctx.config.encuesta_aviso_admin || 'cada';
+  const umbral = Number(ctx.config.alerta_baja_calificacion ?? 2);
+  const esBaja = (enc.calificacion != null && enc.calificacion <= umbral) || enc.impresion === 'no_me_gusto';
+  if (esBaja && !enc.aviso_calidad_en) {
+    const ahora = new Date().toISOString();
+    // Si el aviso a la administración es «cada encuesta», esta alerta lo reemplaza para esta opinión (un solo correo).
+    const marcas: Record<string, string> = { aviso_calidad_en: ahora };
+    if (modo === 'cada' && !enc.aviso_admin_en) marcas.aviso_admin_en = ahora;
+    const { data: reclamo } = await admin.from('agenda_encuestas_cliente').update(marcas).eq('id', enc.id).is('aviso_calidad_en', null).select('id').maybeSingle();
+    if (reclamo) {
+      enc.aviso_admin_en = marcas.aviso_admin_en ?? enc.aviso_admin_en;
+      const correos = await destinatariosSupervision(admin, enc.empresa_id, ctx.config, asesor?.supervisor_id ?? null);
+      if (ctx.config.alerta_baja_incluye_asesor && asesor) for (const c of [...correosDe(asesor.correo), ...correosDe(asesor.correos_adicionales)]) if (!correos.includes(c)) correos.push(c);
+      resultado.admin += await enviar(
+        admin, enc.empresa_id, enc.cita_id, correos,
+        `⚠️ Revisar: calificación baja · Inmueble ${num}${asesor ? ` · ${asesor.nombre}` : ''}`,
+        'Una visita recibió una calificación baja',
+        `<p style="margin:0 0 12px;text-align:justify">Conviene revisar qué pasó en esta visita y hablar con el asesor y, si hace falta, con el cliente. Una calificación baja es un indicio para conversar, no una conclusión.</p>
+<table style="width:100%;border-collapse:collapse">
+${filaDato('Inmueble', `Nº ${esc(String(num))}${inmueble?.direccion ? ` · ${esc(inmueble.direccion)}` : ''}`)}
+${filaDato('Cliente', esc(cita.cliente_nombre))}
+${asesor ? filaDato('Asesor', esc(asesor.nombre)) : ''}
+${imp ? filaDato('Impresión', `${imp[0]} ${esc(imp[1])}`) : ''}
+${intn ? filaDato('Siguiente paso', `${intn[0]} ${esc(intn[1])}`) : ''}
+${enc.motivo && MOTIVO[enc.motivo] ? filaDato('Motivo', esc(MOTIVO[enc.motivo])) : ''}
+${filaDato('Atención del asesor', estrellas(enc.calificacion))}
+</table>
+${enc.comentario ? `<p style="margin:14px 0 0;padding:12px 14px;background:#f4f4f4;border-radius:10px;text-align:justify">«${esc(enc.comentario)}»</p>` : ''}`,
+        { texto: 'Ver la encuesta', url: `https://${dominio}/?encuesta=${enc.id}` },
+      );
+    }
+  }
+
+  // 3) Aviso a la administración, según Configuración (por defecto: cada encuesta).
   if (modo === 'cada' && !enc.aviso_admin_en) {
     const { data: reclamo } = await admin.from('agenda_encuestas_cliente').update({ aviso_admin_en: new Date().toISOString() }).eq('id', enc.id).is('aviso_admin_en', null).select('id').maybeSingle();
     if (reclamo) {
-      const correos = await destinatariosAdmin(admin, enc.empresa_id, ctx.config);
-      resultado.admin = await enviar(
+      const correos = await destinatariosSupervision(admin, enc.empresa_id, ctx.config, asesor?.supervisor_id ?? null);
+      resultado.admin += await enviar(
         admin, enc.empresa_id, enc.cita_id, correos,
         `${imp ? imp[0] : '⭐'} Nueva opinión de un cliente · Inmueble ${num}`,
         'Un cliente respondió la encuesta',
@@ -235,7 +280,7 @@ ${enc.motivo && MOTIVO[enc.motivo] ? filaDato('Motivo', esc(MOTIVO[enc.motivo]))
 ${filaDato('Atención del asesor', estrellas(enc.calificacion))}
 </table>
 ${enc.comentario ? `<p style="margin:14px 0 0;padding:12px 14px;background:#f4f4f4;border-radius:10px;text-align:justify">«${esc(enc.comentario)}»</p>` : ''}`,
-        { texto: 'Ver en la Bitácora', url: `https://${dominio}/` },
+        { texto: 'Ver la encuesta', url: `https://${dominio}/?encuesta=${enc.id}` },
       );
     }
   }
