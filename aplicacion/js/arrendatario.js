@@ -1,6 +1,8 @@
 import { supabase, hayConfiguracionSupabase } from './cliente-supabase.js';
 import { aplicarMarcaPublica } from './marca-publica.js';
 import './teclado-publico.js';
+import { estadoVisita, resumenVisita } from './visita-presentacion.js';
+import '../estilos/visita.css';
 
 // Acuerdo de horario de una visita a un inmueble arrendado. Esta página la usan DOS personas con
 // enlaces distintos: el arrendatario (/arrendatario/<token>) y el cliente que visita
@@ -188,6 +190,7 @@ function irSegunEnlace() {
     if (fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) elegirFechaFranja(fecha);
     document.getElementById('ar-card-dia')?.scrollIntoView({ behavior: 'smooth' });
   } else if (accion === 'pausa') {
+    document.getElementById('ar-pausa-detalles')?.setAttribute('open', '');
     document.getElementById('ar-card-pausa')?.scrollIntoView({ behavior: 'smooth' });
   }
 }
@@ -196,20 +199,13 @@ function irSegunEnlace() {
 function tarjetaVisita() {
   const c = state.cita;
   const i = state.inmueble;
-  return `
-    <div class="pu-card">
-      <h2 style="margin-top:0">${esArrendatario() ? `Visita programada en tu ${esc(state.tipo)}` : 'Tu visita al inmueble'}</h2>
-      <p style="font-size:13px">${i.direccion ? esc(i.direccion) : 'Inmueble ' + esc(i.numero)}${i.zona ? ' · ' + esc(i.zona) : ''}</p>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px">
-        <span class="pu-badge">📅 ${esc(fechaLarga(c.fecha))}</span>
-        <span class="pu-badge">🕒 ${esc(hora12(c.hora_inicio))} a ${esc(hora12(c.hora_fin))}</span>
-      </div>
-      ${state.asesor ? `<p style="margin-top:12px;margin-bottom:0">Asesor a cargo: <strong>${esc(state.asesor.nombre)}</strong>${state.asesor.celular ? ' · ' + esc(state.asesor.celular) : ''}</p>` : ''}
-    </div>`;
+  return resumenVisita({ estado: estadoVisita({ cita: c, reubicacion: state.reubicacion, propuesta: state.propuesta, arrendatario: esArrendatario() }),
+    numero: i.numero, direccion: i.direccion, zona: i.zona, fecha: fechaLarga(c.fecha),
+    hora: `${hora12(c.hora_inicio)} a ${hora12(c.hora_fin)}`, asesor: state.asesor });
 }
 
 function exito() {
-  return state.mensaje ? `<div class="pu-card" style="border-color:var(--pu-teal)"><strong>✓ ${esc(state.mensaje)}</strong></div>` : '';
+  return state.mensaje ? `<div class="pu-exito" role="status"><strong>${esc(state.mensaje)}</strong></div>` : '';
 }
 
 function errorBloque() {
@@ -220,11 +216,15 @@ const estiloSecundario = 'background:transparent;color:var(--pu-text);border:1.5
 
 const venceTxt = () => (state.reubicacionVence ? esc(state.reubicacionVence) : 'el plazo indicado en el correo');
 
+function plazoReubicacion() {
+  return `<div class="pu-plazo"><strong>Elige antes del ${venceTxt()}</strong><span>Si no eliges otra hora, la visita se cancela. No vayas a la hora anterior: ese horario ya quedó libre.</span></div>`;
+}
+
 function bloquePropuesta() {
   const p = state.propuesta;
-  const proximaHora = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px">
-      <span class="pu-badge">📅 ${esc(fechaLarga(p.fecha))}</span>
-      <span class="pu-badge">🕒 ${esc(hora12(p.hora_inicio))}</span>
+  const proximaHora = `<div class="pu-hora-propuesta">
+      <span>${esc(fechaLarga(p.fecha))}</span>
+      <strong>${esc(hora12(p.hora_inicio))}</strong>
     </div>`;
   if (p.propuesta_por_mi) {
     // El arrendatario no puede a la hora original: el cambio es obligatorio y tiene plazo.
@@ -251,7 +251,7 @@ function bloquePropuesta() {
       <h3 style="margin-top:0">Tu visita necesita una nueva hora</h3>
       <p>Quien vive en el inmueble no puede recibirte a la hora acordada. Te propone esta otra:</p>
       ${proximaHora}
-      <p><strong>Tienes hasta el ${venceTxt()} para elegir.</strong> Si no lo haces, la visita se cancela y el horario queda libre. No vayas al inmueble a la hora original: nadie podrá recibirte.</p>
+      ${plazoReubicacion()}
       ${errorBloque()}
       <button class="pu-main" type="button" id="ar-aceptar" ${state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Un momento…' : 'Aceptar esta hora'}</button>
       <button class="pu-main" type="button" id="ar-ir-proponer" style="${estiloSecundario}">Elegir otra hora</button>
@@ -285,8 +285,8 @@ function bloqueAcciones() {
       return `
     <div class="pu-card" style="border-color:var(--pu-teal)">
       <h3 style="margin-top:0">Tu visita necesita una nueva hora</h3>
-      <p>Quien vive en el inmueble no puede recibirte a la hora acordada. Escoge un horario disponible (ya tiene en cuenta la agenda del asesor): el cambio queda en firme al instante y te enviamos la confirmación por correo.</p>
-      <p><strong>Tienes hasta el ${venceTxt()} para elegir.</strong> Si no lo haces, la visita se cancela y el horario queda libre. No vayas al inmueble a la hora original: nadie podrá recibirte.</p>
+      <p>Elige entre los horarios disponibles. Al confirmar, la visita queda programada en la nueva hora.</p>
+      ${plazoReubicacion()}
       <button class="pu-main" type="button" id="ar-ir-proponer">Elegir nueva hora</button>
       <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario}">Ya no me interesa: cancelar mi visita</button>
     </div>`;
@@ -296,8 +296,8 @@ function bloqueAcciones() {
       <h3 style="margin-top:0">¿Necesitas cambiar tu visita?</h3>
       <p>${
         state.rentando
-          ? 'El inmueble está arrendado y ocupado: si propones otra hora, el arrendatario debe aceptarla y la visita no cambia hasta entonces. Si quien vive allí no puede recibirte, te escribiremos y tendrás un plazo para elegir otra hora; si no la eliges, la visita se cancela.'
-          : 'Elige otra hora disponible (ya tiene en cuenta la agenda del asesor). El cambio queda en firme al instante y te enviamos la confirmación por correo.'
+          ? 'Puedes proponer otra hora. Tu visita conserva su horario hasta que quien ocupa el inmueble acepte el cambio.'
+          : 'Elige otro horario disponible y confírmalo. El cambio queda listo al instante.'
       }</p>
       <button class="pu-main" type="button" id="ar-ir-proponer">${state.rentando ? 'Proponer otra hora' : 'Cambiar la hora'}</button>
       <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario}">Cancelar mi visita</button>
@@ -310,7 +310,7 @@ function bloqueAcciones() {
     <div class="pu-card">
       <h3 style="margin-top:0">¿No puedes recibir esta visita?</h3>
       ${state.reubicacion ? `<p class="pu-badge" style="margin:0 0 10px">Ya le pedimos a la persona interesada que elija otra hora (plazo: ${venceTxt()}).</p>` : ''}
-      <p>Dinos cuál de estas opciones es la tuya. En cualquiera de los tres casos <strong>le pedimos a la persona interesada que elija otra hora y le damos un plazo; si no la elige, la visita se cancela sola</strong>. Tú no tienes que hacer nada más.</p>
+      <p>Elige qué necesitas cambiar. Avisaremos al interesado para que elija otra hora dentro de un plazo. Si no responde, la visita se cancela.</p>
       <button class="pu-main" type="button" id="ar-ir-proponer">Puedo, pero a otra hora</button>
       ${base ? enlaceBoton(`${base}?accion=dia&fecha=${esc(state.cita.fecha)}`, 'No puedo ese día') : ''}
       ${base ? enlaceBoton(`${base}?accion=pausa`, 'No puedo recibir visitas por un tiempo') : ''}
@@ -350,7 +350,11 @@ function enlaceTodas() {
 }
 
 function vistaResumen() {
-  return `${tarjetaVisita()}${exito()}${enlaceTodas()}${bloqueAcciones()}${bloqueHorarioPermitido()}`;
+  if (!esArrendatario() && state.reubicacion) {
+    return `${exito()}<p class="pu-referencia">Inmueble ${esc(state.inmueble.numero)}${state.inmueble.direccion ? `: ${esc(state.inmueble.direccion)}` : ''}</p>${bloqueAcciones()}
+      <details class="pu-detalles" id="ar-horario-anterior"><summary>Ver horario anterior y asesor</summary>${tarjetaVisita()}</details>`;
+  }
+  return `${tarjetaVisita()}${exito()}${bloqueAcciones()}${enlaceTodas()}${esArrendatario() ? `<details id="ar-horario-habitual" class="pu-detalles"><summary>Horario habitual de visitas</summary>${bloqueHorarioPermitido()}</details>` : ''}`;
 }
 
 // ---- Vista del inmueble (arrendatario): todas sus visitas y sus franjas --------------------
@@ -370,7 +374,7 @@ function vistaInmueble() {
     ? state.citasInm
         .map(
           (c) =>
-            `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0"><span class="pu-badge">📅 ${esc(fechaLarga(c.fecha))}</span><span class="pu-badge">🕒 ${esc(hora12(c.hora_inicio))} a ${esc(hora12(c.hora_fin))}</span>${c.por_reubicar ? `<span class="pu-badge">Por cambiar de hora${c.vence ? ` · plazo del interesado: ${esc(c.vence)}` : ''}</span>` : ''}<a href="/arrendatario/${esc(c.token)}">Ver o cambiar esta visita</a></div>`,
+            `<div class="pu-visita-fila"><strong>${esc(fechaLarga(c.fecha))}</strong><span>${c.por_reubicar ? 'Horario anterior: ' : ''}${esc(hora12(c.hora_inicio))} a ${esc(hora12(c.hora_fin))}</span>${c.por_reubicar ? `<div class="pu-estado pu-estado-atencion"><strong>Esperando nueva hora</strong><span>El horario anterior está libre.${c.vence ? ` Plazo del interesado: ${esc(c.vence)}.` : ''}</span></div>` : '<span>Programada</span>'}<a href="/arrendatario/${esc(c.token)}">Ver o cambiar esta visita</a></div>`,
         )
         .join('')
     : `<p class="pu-vacio" style="margin:0">No tienes visitas programadas por ahora.</p>`;
@@ -429,18 +433,20 @@ function vistaInmueble() {
 
   return `
     <div class="pu-card">
-      <h2 style="margin-top:0">Tus visitas en tu ${esc(state.tipo)}</h2>
+      <p class="pu-referencia">Inmueble ${esc(i.numero)}</p>
+      <h2 style="margin-top:0">Tus próximas visitas</h2>
       <p style="font-size:13px">${i.direccion ? esc(i.direccion) : 'Inmueble ' + esc(i.numero)}${i.zona ? ' · ' + esc(i.zona) : ''}</p>
+      <p><a class="pu-ver-inmueble" href="#ar-card-dia">Cambiar mis horarios</a></p>
       ${lista}
     </div>
     ${exito()}
     <div class="pu-card" id="ar-card-dia">
-      <h3 style="margin-top:0">No puedo ese día</h3>
-      <p>Elige el día (o varios a la vez) y marca las franjas en las que <strong>sí</strong> (o <strong>no</strong>) puedes recibir. Le pedimos a cada persona con visita esos días que elija otra hora y le damos un plazo; <strong>si no la elige, su visita se cancela sola</strong>. Así no tienes que responder visita por visita.</p>
+      <h3 style="margin-top:0">Organiza tus horarios</h3>
+      <p>Elige uno o varios días y las horas en que puedes recibir visitas. Si alguna cita queda fuera, pediremos al interesado que elija otra hora.</p>
       ${strip}
       ${editor}
     </div>
-    ${bloquePausa()}`;
+    <details class="pu-detalles" id="ar-pausa-detalles" ${state.pausaDesde || state.pausaConfirmar ? 'open' : ''}><summary>Pausar todas las visitas por unos días</summary>${bloquePausa()}</details>`;
 }
 
 // «No puedo recibir visitas por un tiempo»: acción grande, así que pide confirmar en una pantalla que dice las consecuencias.
@@ -491,7 +497,7 @@ function vistaProponer() {
     ? `<div class="pu-fechas" id="ar-fechas">${fechas
         .map(
           (f) =>
-            `<div class="pu-fecha ${iso(f) === state.fechaSel ? 'activa' : ''}" data-fecha="${iso(f)}" role="button" tabindex="0"><span>${DIAS_CORTO[f.getDay()]}</span><strong>${f.getDate()}</strong><span>${MESES[f.getMonth()].slice(0, 3)}</span></div>`,
+            `<button type="button" class="pu-fecha ${iso(f) === state.fechaSel ? 'activa' : ''}" data-fecha="${iso(f)}" aria-pressed="${iso(f) === state.fechaSel}"><span>${DIAS_CORTO[f.getDay()]}</span><strong>${f.getDate()}</strong><span>${MESES[f.getMonth()].slice(0, 3)}</span></button>`,
         )
         .join('')}</div>`
     : `<p class="pu-vacio">No hay días permitidos configurados. Actualiza primero el horario en que se puede mostrar tu ${esc(state.tipo)}.</p>`;
@@ -501,11 +507,11 @@ function vistaProponer() {
     else if (!state.horas.length) slots = `<p class="pu-vacio">No hay horarios libres ese día. Prueba con otro día.</p>`;
     else
       slots = `<div class="pu-slots" id="ar-slots">${state.horas
-        .map((h) => `<div class="pu-slot ${h.hora_inicio === state.horaSel ? 'activo' : ''}" data-hora="${h.hora_inicio}" role="button" tabindex="0">${esc(hora12(h.hora_inicio))}</div>`)
+        .map((h) => `<button type="button" class="pu-slot ${h.hora_inicio === state.horaSel ? 'activo' : ''}" data-hora="${h.hora_inicio}" aria-pressed="${h.hora_inicio === state.horaSel}">${esc(hora12(h.hora_inicio))}</button>`)
         .join('')}</div>`;
   }
   return `
-    ${tarjetaVisita()}
+    <p class="pu-referencia">Inmueble ${esc(state.inmueble.numero)}${state.inmueble.direccion ? `: ${esc(state.inmueble.direccion)}` : ''}</p>
     <div class="pu-card">
       <h3 style="margin-top:0">${cambioDirecto() ? 'Elige la nueva hora de tu visita' : 'Elige la hora que propones'}</h3>
       <p>Solo aparecen horas en las que un asesor puede atender${esArrendatario() ? ` y que están dentro del horario permitido de tu ${esc(state.tipo)}` : ''}. ${cambioDirecto() ? 'Al confirmar, tu visita pasa a esa hora y te enviamos la confirmación por correo.' : esArrendatario() ? 'Al enviarla, la visita ya no queda en la hora original: la persona interesada deberá aceptar tu hora o elegir otra antes de un plazo; si no lo hace, la visita se cancela.' : 'El arrendatario deberá aceptarla; la visita no cambia hasta entonces.'}</p>
@@ -514,7 +520,7 @@ function vistaProponer() {
       ${errorBloque()}
       <button class="pu-main" type="button" id="ar-confirmar-proponer" ${!state.horaSel || state.ocupado ? 'disabled' : ''}>${state.ocupado ? (cambioDirecto() ? 'Cambiando…' : 'Enviando…') : state.horaSel ? `${cambioDirecto() ? 'Cambiar a' : 'Proponer'} ${esc(fechaLarga(state.fechaSel))}, ${esc(hora12(state.horaSel))}` : 'Elige un horario'}</button>
       <button class="pu-main" type="button" id="ar-volver" style="${estiloSecundario}">Volver</button>
-    </div>`;
+    </div><details id="ar-contexto-cambio" class="pu-detalles"><summary>Ver datos de la visita actual</summary>${tarjetaVisita()}</details>`;
 }
 
 function vistaCancelar() {
@@ -563,7 +569,9 @@ function render() {
   else if (state.vista === 'cancelada') html = vistaCancelada();
   else if (state.vista === 'inmueble') html = vistaInmueble();
   else html = vistaResumen();
-  raiz.innerHTML = html;
+  const abiertos = [...raiz.querySelectorAll('details[id][open]')].map(el => el.id);
+  raiz.innerHTML = `<div class="pu-flujo">${html}</div>`;
+  abiertos.forEach(id => document.getElementById(id)?.setAttribute('open', ''));
   cablear();
 }
 

@@ -7,9 +7,9 @@
 // También la llama enviar-correo-cita al agendar una visita en un inmueble Rentando (llamada interna con la
 // service role: el aviso al arrendatario sale solo, sin que el asesor tenga que acordarse del botón).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, enlaceInmueble, marcaCorreo, pieContacto } from '../_shared/marca-correo.ts';
+import { enlaceInmueble, marcaCorreo } from '../_shared/marca-correo.ts';
+import { correoVisita, enlaceVisita } from '../_shared/visita-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
-import { OPCIONES_ARRENDATARIO } from '../_shared/reubicacion.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -244,55 +244,27 @@ Deno.serve(async (req) => {
   // Botones para hablar con el asesor sin buscar su número (WhatsApp con mensaje listo y llamada).
   const celularDigitos = asesorCelular.replace(/\D/g, '');
   const celularWa = celularDigitos.length === 10 && celularDigitos.startsWith('3') ? '57' + celularDigitos : celularDigitos;
-  const botonesAsesor = celularWa.length >= 11
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 0"><tr><td align="center" style="padding:4px 0"><a href="https://wa.me/${celularWa}?text=${encodeURIComponent('Hola' + (asesorNombre ? ' ' + asesorNombre : '') + ', te escribo por las visitas a mi vivienda.')}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:999px;border:2px solid ${marca.principal}">💬 Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp</a></td></tr><tr><td align="center" style="padding:4px 0"><a href="tel:+${celularWa}" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:14px;padding:8px 18px">📞 Llamar al asesor</a></td></tr></table>`
-    : '';
   const enlaceSitio = enlaceInmueble(config, inmueble.numero_inmueble);
   const lugarTexto = [direccion, ciudad].filter(Boolean).join(', ').replace(/\.+$/, '');
   const remitenteNombre = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
 
-  const html = (destinatarioReal: string) => `<!doctype html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:28px 16px">
-  ${
-    modoPruebas
-      ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}</div>`
-      : ''
-  }
-  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
-    ${encabezadoImagen(marca, `Visita programada`, 'hogar')}
-    <div style="padding:28px 26px 20px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 6px">${varias ? `Tienes ${proximas.length} visitas programadas en tu ${sust.n}` : `Visita programada en tu ${sust.n}`} 🏠</h1>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer ${sust.el} que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo.</p>
-      <table style="width:100%;border-collapse:collapse">
-        ${proximas
-          .map(
-            (c) =>
-              `<tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">📅 ${c.id === cita.id && varias ? 'Nueva' : 'Visita'}</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(formatearFecha(c.fecha))} · ${escaparHtml(formatearHora(c.hora_inicio.slice(0, 5)))}<br><a href="${SITIO_URL}/arrendatario/${c.token_arrendatario}?accion=otra_hora" style="font-size:12.5px;font-weight:600;color:${marca.principal}">No puedo a esta hora</a></td></tr>`,
-          )
-          .join('')}
-        ${asesorNombre ? `<tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">👤 Asesor a cargo</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
-      </table>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:18px 0 10px">${OPCIONES_ARRENDATARIO.intro}</p>
-      <table style="width:100%;border-collapse:collapse">
-        <tr><td style="padding:8px 0"><a href="${SITIO_URL}/arrendatario/${cita.token_arrendatario}?accion=otra_hora" style="color:${marca.principal};font-weight:700;font-size:15px;text-decoration:none">① ${OPCIONES_ARRENDATARIO.otraHora.titulo}</a><br><span style="color:#6b6b6b;font-size:13px">${OPCIONES_ARRENDATARIO.otraHora.detalle}</span></td></tr>
-        <tr><td style="padding:8px 0"><a href="${enlacePortal}?accion=dia" style="color:${marca.principal};font-weight:700;font-size:15px;text-decoration:none">② ${OPCIONES_ARRENDATARIO.diaNoPuedo.titulo}</a><br><span style="color:#6b6b6b;font-size:13px">${OPCIONES_ARRENDATARIO.diaNoPuedo.detalle}</span></td></tr>
-        <tr><td style="padding:8px 0"><a href="${enlacePortal}?accion=pausa" style="color:${marca.principal};font-weight:700;font-size:15px;text-decoration:none">③ ${OPCIONES_ARRENDATARIO.pausa.titulo}</a><br><span style="color:#6b6b6b;font-size:13px">${OPCIONES_ARRENDATARIO.pausa.detalle}</span></td></tr>
-      </table>
-      <p style="color:#4d4d4d;text-align:justify;font-size:14px;line-height:1.6;margin:10px 0 0">${OPCIONES_ARRENDATARIO.consecuencia} Gracias por tu colaboración.</p>
-      <p style="margin:18px 0 6px;text-align:center"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:999px">👀 Ver mis visitas y mis horarios</a></p>
-      <p style="margin:10px 0 6px;text-align:center"><a href="${enlaceSitio}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:999px;border:2px solid ${marca.principal}">🏠 Ver el inmueble en nuestro sitio</a></p>
-      ${botonesAsesor}
-      <p style="color:#6b6b6b;font-size:12px;margin:10px 0 0">Este enlace es solo para ti, no lo compartas.${botonesAsesor ? '' : ' ¿Prefieres hablar? Llama o escríbele a tu asesor.'}</p>
-    </div>
-  </div>
-  <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(remitenteNombre)}</p>
-  ${pieContacto(marca)}
-</div>
-</body>
-</html>`;
+  const html = (destinatarioReal: string) => correoVisita(marca, {
+    titulo: varias ? `Tienes ${proximas.length} visitas programadas` : 'Tienes una visita programada',
+    preheader: `Inmueble ${inmueble.numero_inmueble}. Si puedes recibir las visitas, no necesitas responder.`,
+    modoPruebas, destinatarioReal,
+    cuerpo: `<p style="margin:0 0 12px">Hola${nombre ? ' ' + nombre : ''}. Si puedes recibir las visitas, <b>no tienes que hacer nada.</b></p>
+      <p style="margin:0"><b>Inmueble ${inmueble.numero_inmueble}</b><br>${escaparHtml(lugarTexto)}</p>`,
+    boton: { texto: 'Organizar mis visitas y horarios', url: enlacePortal },
+    despues: `<table role="presentation" width="100%" style="border-collapse:collapse">${proximas.map(c => `<tr><td style="padding:12px 0;border-top:1px solid #dde3e7">
+        <b>${escaparHtml(formatearFecha(c.fecha))}</b><br><span style="font-size:20px">${escaparHtml(formatearHora(c.hora_inicio.slice(0, 5)))}</span>
+        ${c.id === cita.id ? '<span style="font-size:12px"> (nueva)</span>' : ''}<br>
+        ${enlaceVisita(`${SITIO_URL}/arrendatario/${c.token_arrendatario}?accion=otra_hora`, 'Cambiar esta visita', marca)}</td></tr>`).join('')}</table>
+      <p style="margin:0 0 10px">Desde tu agenda puedes cambiar una hora, ajustar varios días o pausar visitas hasta por 14 días. Avisaremos a los interesados afectados para que elijan otro horario dentro de un plazo. Si no responden, la visita se cancela.</p>
+      ${asesorNombre ? `<p style="margin:0">Asesor: <b>${escaparHtml(asesorNombre)}</b></p>` : ''}
+      ${celularWa.length >= 11 ? enlaceVisita(`https://wa.me/${celularWa}`, 'Escribir al asesor', marca) + enlaceVisita(`tel:+${celularWa}`, 'Llamar al asesor', marca) : ''}
+      ${enlaceVisita(enlaceSitio, 'Ver la ficha del inmueble', marca)}
+      <p style="font-size:12px;margin:10px 0 0">Este enlace es personal. No lo compartas.</p>`,
+  });
 
   const transporte = nodemailer.createTransport({
     host: config.correo_smtp_host,

@@ -18,6 +18,8 @@ Léela después de `CLAUDE.md` y `docs/ESTADO-ACTUAL.md`. Sirve para decidir **d
 | Configuración (pestañas Equipo, Ciudades, Empresa, Correo, IA, Reuniones, Calendario, Importar, Accesos) | `administracion.js` (`abrirSubtab`, `marcaForm` = ajustes generales). Pestañas nuevas → módulo propio como `admin-ia-reuniones.js` |
 | Reserva pública del cliente (`/reservar`) | `reservar.js` |
 | Portal del arrendatario y página de visita (`/arrendatario`, `/visita`) | `arrendatario.js` + función `portal-visita` |
+| Resúmenes/estados de visitas y diseño público compartido | `visita-presentacion.js`, `estilos/visita.css`; vista previa en `tests/fixtures/visitas-preview.html` |
+| Plantilla compacta de confirmaciones, avisos al arrendatario y cambios | `supabase/functions/_shared/visita-correo.ts` (marca y modo pruebas se reciben del llamador) |
 | Encuesta (`/opinion`), informe del propietario (`/propietario`) | `opinion.js`, `propietario.js` |
 | Soporte / tickets | `soporte.js`, `tickets.js`, `soporte-comun/` (ver `docs/SOPORTE-PLATAFORMA.md`) |
 | Pendientes y portales inmobiliarios | `pendientes.js`, `portales-logica.js` |

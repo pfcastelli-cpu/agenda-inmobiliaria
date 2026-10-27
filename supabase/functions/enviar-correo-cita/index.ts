@@ -13,7 +13,8 @@
 // cita — así la función de cancelación (marcar-inmueble-no-disponible) puede
 // mandar un METHOD:CANCEL con el mismo UID sin tener que guardar nada extra.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo, pieContacto } from '../_shared/marca-correo.ts';
+import { marcaCorreo } from '../_shared/marca-correo.ts';
+import { correoVisita, enlaceVisita } from '../_shared/visita-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -75,29 +76,13 @@ function limpiarDireccion(direccion: string | null | undefined): string {
     .trim();
 }
 
-// Genera un botón de ancho completo con estilos en línea (compatible con
-// Gmail, Apple Mail, Outlook.com y clientes móviles) envuelto en una tabla
-// para que también se vea bien en Outlook de escritorio.
-function filaBoton(url: string, colorFondo: string, colorTexto: string, icono: string, texto: string, borde?: string): string {
-  return `
-      <tr><td style="padding:7px 0">
-        <table role="presentation" width="100%" align="center" cellpadding="0" cellspacing="0" border="0" style="max-width:380px;margin:0 auto"><tr>
-          <td align="center" bgcolor="${colorFondo}" style="border-radius:999px${borde ? `;border:1px solid ${borde}` : ''}">
-            <a href="${url}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:${colorTexto};text-decoration:none;border-radius:999px">
-              ${icono ? icono + '&nbsp;&nbsp;' : ''}${texto}
-            </a>
-          </td>
-        </tr></table>
-      </td></tr>`;
-}
 
 function filaDato(icono: string, etiqueta: string, valor: string): string {
   return `
       <tr>
-        <td style="padding:12px 14px 12px 0;vertical-align:middle;width:44px;border-bottom:1px solid #efefef"><div style="width:40px;height:40px;line-height:40px;text-align:center;border-radius:50%;background:#e3f8f7;font-size:19px">${icono}</div></td>
         <td style="padding:12px 0;vertical-align:middle;border-bottom:1px solid #efefef">
           <div style="font-size:13px;color:#6b6b6b;margin-bottom:2px">${etiqueta}</div>
-          <div style="font-size:16px;color:#1a2c45;font-weight:600;line-height:1.4">${valor}</div>
+          <div style="font-size:17px;font-weight:600;line-height:1.4">${valor}</div>
         </td>
       </tr>`;
 }
@@ -349,12 +334,6 @@ Deno.serve(async (req) => {
     ? `Tu visita cambió de hora — ${fechaTexto} a las ${horaTexto}`
     : `Confirmación de tu visita — ${fechaTexto} a las ${horaTexto}`;
 
-  const bannerPruebas = modoPruebas
-    ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
-        MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}
-      </div>`
-    : '';
-
   // Botones de acción: solo se muestran los que sí tienen a dónde apuntar.
   const tieneCoordenadas = latitud !== null && latitud !== undefined && longitud !== null && longitud !== undefined;
   const wazeUrl = tieneCoordenadas
@@ -372,73 +351,30 @@ Deno.serve(async (req) => {
   const whatsappUrl = celularLimpio ? `https://wa.me/${celularLimpio}?text=${encodeURIComponent(mensajeWhatsapp)}` : null;
   const llamarUrl = asesorCelular ? `tel:${asesorCelular.replace(/\s+/g, '')}` : null;
 
-  let filasBotones = '';
-  if (wazeUrl) filasBotones += filaBoton(wazeUrl, marca.principal, '#ffffff', '🚗', 'Cómo llegar con Waze');
-  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#ffffff', marca.principal, '🗺️', 'Cómo llegar con Google Maps', marca.principal);
-  if (whatsappUrl)
-    filasBotones += filaBoton(
-      whatsappUrl,
-      '#ffffff',
-      marca.principal,
-      '💬',
-      `Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp`,
-      marca.principal,
-    );
-  if (llamarUrl) filasBotones += filaBoton(llamarUrl, '#ffffff', marca.principal, '📞', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`, marca.principal);
-  // El cliente puede cambiar la hora o cancelar su visita él mismo, sin llamar a nadie.
-  if (cita.token_cliente) filasBotones += filaBoton(`https://citas.patrimonios.co/visita/${cita.token_cliente}`, '#ffffff', '#6b665c', '🗓️', 'Cambiar o cancelar mi visita', '#d9d5cc');
-
-  let filasDatos = filaDato('📅', 'Fecha', escaparHtml(fechaTexto));
-  filasDatos += filaDato('🕐', 'Hora', escaparHtml(horaTexto));
+  const enlaces = [[mapsUrl, 'Cómo llegar'], [wazeUrl, 'Abrir Waze'], [whatsappUrl, 'Escribir al asesor'], [llamarUrl, 'Llamar al asesor']]
+    .filter(([url]) => !!url).map(([url, texto]) => enlaceVisita(url!, texto!, marca)).join('');
+  let filasDatos = numeroInmueble ? filaDato('', 'Inmueble', escaparHtml(String(numeroInmueble))) : '';
+  filasDatos += filaDato('', 'Fecha', escaparHtml(fechaTexto));
+  filasDatos += filaDato('', 'Hora', escaparHtml(horaTexto));
   if (direccion) {
-    filasDatos += filaDato('📍', 'Dirección', `${escaparHtml(direccion)}${ciudad ? `, ${escaparHtml(ciudad)}` : ''}`);
+    filasDatos += filaDato('', 'Dirección', `${escaparHtml(direccion)}${ciudad ? `, ${escaparHtml(ciudad)}` : ''}`);
   }
   if (asesorNombre) {
     filasDatos += filaDato(
-      '👤',
+      '',
       'Tu asesor',
       `${escaparHtml(asesorNombre)}${asesorCelular ? ` · ${escaparHtml(asesorCelular)}` : ''}`,
     );
   }
 
-  const html = `<!doctype html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:28px 16px">
-  ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
-    ${encabezadoImagen(marca, `Tu visita quedó confirmada`, 'visita')}
-    <div style="padding:28px 26px 8px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 4px">${reagendada ? '¡Tu visita cambió de hora! 🔄' : '¡Tu visita quedó confirmada! 🎉'}</h1>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 20px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, ${reagendada ? 'esta es la nueva hora de tu cita:' : 'estos son los detalles de tu cita:'}</p>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
-        ${filasDatos}
-      </table>
-    </div>
-    ${
-      filasBotones
-        ? `<div style="padding:6px 26px 26px">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        ${filasBotones}
-      </table>
-    </div>`
-        : ''
-    }
-    <div style="background:#f4f4f4;padding:20px 28px;border-top:1px solid #efefef">
-      ${
-        inmuebleOcupado
-          ? `<p style="color:#4d4d4d;text-align:justify;font-size:12.5px;margin:0 0 10px"><strong>Importante:</strong> este inmueble está arrendado y ocupado actualmente. Si quien vive allí no puede recibirte a esa hora, te escribiremos para que elijas otra: tendrás un plazo para hacerlo y, si no eliges a tiempo, la visita se cancelará. Si recibes ese correo, no vayas a la hora original.</p>`
-          : ''
-      }
-      <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Si necesitas cambiar la hora o cancelar tu visita, usa el botón «Cambiar o cancelar mi visita» de arriba; si prefieres, comunícate directamente con tu asesor. También te dejamos la cita guardada en el archivo adjunto para que quede en el calendario de tu teléfono, con recordatorios 24, 2 y 1 hora antes.</p>
-    </div>
-  </div>
-  <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas')}</p>
-  ${pieContacto(marca)}
-</div>
-</body>
-</html>`;
+  const html = correoVisita(marca, {
+    titulo: reagendada ? 'Tu nuevo horario está confirmado' : 'Tu visita está confirmada',
+    preheader: `Inmueble ${numeroInmueble || ''}: ${fechaTexto}, ${horaTexto}. Consulta o cambia tu visita.`,
+    modoPruebas, destinatarioReal,
+    cuerpo: `<p style="margin:0 0 12px">Hola ${escaparHtml(cita.cliente_nombre)}. ${reagendada ? 'Este horario reemplaza al anterior.' : 'Estos son los datos de tu visita.'}</p><table role="presentation" width="100%" style="border-collapse:collapse">${filasDatos}</table>`,
+    boton: cita.token_cliente ? { texto: 'Ver, cambiar o cancelar mi visita', url: `https://citas.patrimonios.co/visita/${cita.token_cliente}` } : undefined,
+    despues: `${inmuebleOcupado ? '<p style="margin:0 0 12px"><b>Inmueble ocupado:</b> tu visita sigue confirmada. Si recibes un aviso para elegir otra hora, no vayas a la hora anterior. Revisa tu correo antes de salir.</p>' : ''}${enlaces}<p style="font-size:13px;margin:12px 0 0">Puedes añadir el archivo adjunto a tu calendario.</p>`,
+  });
 
   let password: string | null = null;
   try {

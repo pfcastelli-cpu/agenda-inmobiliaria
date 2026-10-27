@@ -2,6 +2,8 @@ import { agendaLlena, htmlListaEspera, unirseListaEspera } from './lista-espera-
 import { supabase, hayConfiguracionSupabase } from './cliente-supabase.js';
 import { aplicarMarcaPublica } from './marca-publica.js';
 import './teclado-publico.js';
+import { pasosReserva, resumenVisita, estadoVisita } from './visita-presentacion.js';
+import '../estilos/visita.css';
 
 const raiz = document.getElementById('pu-main');
 
@@ -539,8 +541,8 @@ function tarjetaInmueble() {
       <h2 style="margin-top:4px">${i.direccion_limpia || ubicacion || i.ciudad || 'Ubicación disponible con tu asesor'}</h2>
       ${ubicacion ? `<div style="font-size:13px;color:var(--pu-muted)">${ubicacion}</div>` : ''}
       ${i.enlace_ficha_completa ? `<a class="pu-ver-inmueble" href="${i.enlace_ficha_completa}" target="_blank" rel="noopener">Ver este inmueble en nuestro sitio</a>` : ''}
-      ${i.posible_ocupado ? `<div class="pu-aviso" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#fff4e5;color:#8a5200;font-size:13px">Este inmueble podría estar ocupado actualmente. Es posible que debamos reprogramar tu visita; tu asesor te confirmará antes de la cita.</div>` : ''}
-      ${i.visita_rapida ? `<div class="pu-aviso" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#fff4e5;color:#8a5200;font-size:13px">Esta visita es breve (~${i.duracion_minutos} min). Tu asesor puede tener otra cita cerca de esta hora, así que te pedimos ser puntual.</div>` : ''}
+      ${i.posible_ocupado ? `<p class="pu-nota">El inmueble puede estar ocupado. Si necesitamos cambiar la hora, te avisaremos por correo. Tu visita conserva su horario mientras no recibas ese aviso.</p>` : ''}
+      ${i.visita_rapida ? `<p class="pu-nota">Visita breve de aproximadamente ${i.duracion_minutos} minutos. Llega puntual para aprovecharla.</p>` : ''}
     </div>
   `;
 }
@@ -556,11 +558,11 @@ function selectorFechas() {
       ${state.fechas
         .map((f) => {
           const activa = fechaISO(f) === fechaISO(state.fechaSel);
-          return `<div class="pu-fecha ${activa ? 'activa' : ''}" data-fecha="${fechaISO(f)}" role="button" tabindex="0" aria-pressed="${activa ? 'true' : 'false'}">
+          return `<button type="button" class="pu-fecha ${activa ? 'activa' : ''}" data-fecha="${fechaISO(f)}" aria-pressed="${activa ? 'true' : 'false'}">
             <span>${DIAS[f.getDay()]}</span>
             <strong>${f.getDate()}</strong>
             <span>${MESES[f.getMonth()].slice(0, 3)}</span>
-          </div>`;
+          </button>`;
         })
         .join('')}
     </div>
@@ -574,20 +576,20 @@ function bannerAvisoHorarios() {
 
 function selectorHorarios() {
   if (state.cargandoSlots) {
-    return `<h3>Horarios disponibles</h3><div class="pu-spinner">Buscando horarios…</div>`;
+    return `<h3>Elige una hora</h3><div class="pu-spinner">Buscando horarios…</div>`;
   }
   if (!state.slots.length) {
-    return `<h3>Horarios disponibles</h3>${bannerAvisoHorarios()}<div class="pu-vacio">No hay horarios disponibles ese día. Elige otra fecha.</div>`;
+    return `<h3>Elige una hora</h3>${bannerAvisoHorarios()}<div class="pu-vacio">No hay horarios disponibles ese día. Elige otra fecha.</div>`;
   }
   return `
-    <h3>Horarios disponibles</h3>
+    <h3>Elige una hora</h3>
     ${bannerAvisoHorarios()}
     <div class="pu-slots" id="pu-slots">
       ${state.slots
         .map((s) => {
           const activo = state.slotSel && state.slotSel.hora_inicio === s.hora_inicio;
           const duracionMin = Math.round((new Date(`2000-01-01T${s.hora_fin}`) - new Date(`2000-01-01T${s.hora_inicio}`)) / 60000);
-          return `<div class="pu-slot ${activo ? 'activo' : ''}" data-hora="${s.hora_inicio}" role="button" tabindex="0" aria-pressed="${activo ? 'true' : 'false'}">${formatoHora(s.hora_inicio)}${s.tipo_slot === 'mismo_inmueble' ? `<br><small>${duracionMin} min</small>` : ''}</div>`;
+          return `<button type="button" class="pu-slot ${activo ? 'activo' : ''}" data-hora="${s.hora_inicio}" aria-pressed="${activo ? 'true' : 'false'}">${formatoHora(s.hora_inicio)}${s.tipo_slot === 'mismo_inmueble' ? `<small>${duracionMin} min</small>` : ''}</button>`;
         })
         .join('')}
     </div>
@@ -622,15 +624,16 @@ function formularioCliente() {
     : '';
 
   return `
-    <h3>Tus datos</h3>
+    <h3>Confirma tus datos</h3>
     <div class="pu-card">
+      <p class="pu-seleccion">${DIAS[state.fechaSel.getDay()]} ${state.fechaSel.getDate()} de ${MESES[state.fechaSel.getMonth()]} a las <strong>${formatoHora(state.slotSel.hora_inicio)}</strong></p>
       <label for="pu-nombre">Nombre completo</label>
-      <input id="pu-nombre" type="text" value="${state.cliente.nombre}" placeholder="Nombre y apellido" required ${mostrarVerificacion ? 'disabled' : ''}>
+      <input id="pu-nombre" type="text" autocomplete="name" value="${escaparHtml(state.cliente.nombre)}" placeholder="Nombre y apellido" required ${mostrarVerificacion ? 'disabled' : ''}>
       <label for="pu-telefono">Celular</label>
-      <input id="pu-telefono" type="tel" value="${state.cliente.telefono}" placeholder="Ej: 3001234567" required ${mostrarVerificacion ? 'disabled' : ''}>
+      <input id="pu-telefono" type="tel" autocomplete="tel" value="${escaparHtml(state.cliente.telefono)}" placeholder="Ej: 3001234567" required ${mostrarVerificacion ? 'disabled' : ''}>
       <label for="pu-email">Correo electrónico</label>
-      <input id="pu-email" type="email" value="${state.cliente.email}" placeholder="nombre@correo.com" required ${mostrarVerificacion ? 'disabled' : ''}>
-      <p style="margin:6px 0 0;font-size:12.5px">Allí te llegarán los datos de tu asesor, la dirección exacta y cómo llegar.</p>
+      <input id="pu-email" type="email" autocomplete="email" value="${escaparHtml(state.cliente.email)}" placeholder="nombre@correo.com" required ${mostrarVerificacion ? 'disabled' : ''}>
+      <p style="margin:6px 0 0;font-size:12.5px">Te enviaremos la confirmación, el asesor y las instrucciones para llegar.</p>
       ${avisoDuplicados}
       ${!mostrarVerificacion && state.errorMsg ? `<div class="pu-error">${state.errorMsg}</div>` : ''}
       ${
@@ -651,26 +654,25 @@ function formularioCliente() {
 
 function vistaInmueble() {
   return `
-    ${tarjetaInmueble()}
+    ${pasosReserva(state.slotSel ? 2 : state.fechaSel ? 1 : 0)}
+    <div class="pu-reserva-grid"><aside>${tarjetaInmueble()}</aside><section aria-label="Elige el horario de tu visita">
     ${selectorFechas()}
     ${selectorHorarios()}
     ${state.slotSel ? formularioCliente() : ''}
     <button class="pu-link" id="pu-volver" style="margin-top:10px">Buscar otro inmueble</button>
+    </section></div>
   `;
 }
 
 function vistaConfirmado() {
   const { fecha, hora } = state.confirmacion;
   return `
-    <div class="pu-confirmacion">
-      <div class="pu-icono">✓</div>
-      <h2>¡Visita confirmada!</h2>
-      <p>
-        Te esperamos el ${DIAS[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}
-        a las ${formatoHora(hora.hora_inicio)} para visitar el inmueble ${state.numero}${state.inmueble?.direccion_limpia ? ' (' + state.inmueble.direccion_limpia + ')' : ''}.
-      </p>
-      ${state.inmueble?.visita_rapida ? `<p style="color:#8a5200"><strong>Esta visita es breve (~${state.inmueble.duracion_minutos} min):</strong> tu asesor puede tener otra cita cerca de esta hora, así que te pedimos llegar puntual.</p>` : ''}
-      <p>Tu asesor se pondrá en contacto contigo antes de la visita. Si necesitas cambiar el horario, escríbele directamente.</p>
+    ${resumenVisita({ estado: estadoVisita(), numero: state.numero, direccion: state.inmueble?.direccion_limpia,
+      zona: state.inmueble?.ciudad, fecha: `${DIAS[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`, hora: formatoHora(hora.hora_inicio) })}
+    <div class="pu-card">
+      <h3>Ya puedes organizar tu visita</h3>
+      ${state.inmueble?.posible_ocupado ? `<p class="pu-nota">Tu visita sigue confirmada. Si recibes un aviso para elegir otra hora, el horario original dejará de estar disponible. Revisa tu correo antes de salir.</p>` : ''}
+      <p>Encontrarás los datos del asesor y el enlace para cambiar o cancelar en el correo de confirmación.</p>
       <button class="pu-link" id="pu-nueva">Agendar otra visita</button>
     </div>
   `;
@@ -688,7 +690,7 @@ function render() {
   else if (state.paso === 'inmueble') html = vistaInmueble();
   else if (state.paso === 'confirmado') html = vistaConfirmado();
   else if (state.paso === 'llena') html = `${tarjetaInmueble()}${htmlListaEspera(state.espera)}<button class="pu-link" id="pu-volver" style="margin-top:10px">Buscar otro inmueble</button>`;
-  raiz.innerHTML = html;
+  raiz.innerHTML = `<div class="pu-flujo ${state.paso === 'inmueble' ? 'pu-reserva' : ''}">${html}</div>`;
   cablear();
   if (state.scrollAviso) {
     state.scrollAviso = false;
@@ -771,6 +773,8 @@ function cablear() {
         state.avisoHorarios = '';
         state.slotSel = state.slots.find((s) => s.hora_inicio === el.dataset.hora);
         render();
+        document.getElementById('pu-nombre')?.focus({ preventScroll: true });
+        document.getElementById('pu-nombre')?.closest('.pu-card')?.scrollIntoView({ block: 'start' });
       });
     });
   }

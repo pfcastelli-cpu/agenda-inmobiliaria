@@ -1,0 +1,80 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vista previa de visitas</title>
+<link rel="stylesheet" href="/aplicacion/estilos/reservar.css"><link rel="stylesheet" href="/aplicacion/estilos/visita.css">
+<style>body{margin:0} .preview-controls{font:14px Arial;padding:12px 16px;background:#fff;border-bottom:1px solid #ddd;display:flex;gap:12px;flex-wrap:wrap;align-items:center}.preview-controls select{max-width:100%;padding:10px} iframe{width:100%;border:0;min-height:1200px}</style>
+</head><body>
+<nav class="preview-controls"><strong>Prueba local con datos ficticios</strong><label>Escenario <select id="escenario">
+<option value="reserva">Reserva de inmueble</option><option value="confirmada">Visita confirmada</option>
+<option value="reubicacion">Cliente: nueva hora requerida</option><option value="propuesta">Cliente: propuesta enviada</option>
+<option value="arrendatario">Arrendatario: agenda</option><option value="correo">Correo de nueva hora</option><option value="correo_confirmado">Correo de confirmación</option><option value="correo_arrendatario">Correo al arrendatario</option>
+</select></label></nav>
+<div id="pub-app"><header class="pu-head"><strong>Patrimonios Inmobiliarios</strong><span>Tu visita</span></header><main id="pu-main"></main></div>
+<script type="module">
+import reservaSource from '/aplicacion/js/reservar.js?raw';
+import portalSource from '/aplicacion/js/arrendatario.js?raw';
+import confirmadoSource from '/supabase/functions/enviar-correo-cita/index.ts?raw';
+import arrendatarioSource from '/supabase/functions/avisar-arrendatario/index.ts?raw';
+import { correoVisita, enlaceVisita } from '/supabase/functions/_shared/visita-correo.ts';
+import { marcaCorreo } from '/supabase/functions/_shared/marca-correo.ts';
+import { correoClienteNuevoHorario } from '/supabase/functions/_shared/reubicacion.ts';
+
+const hoy = new Date(); hoy.setDate(hoy.getDate() + 2);
+const iso = (f) => `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
+const fecha = iso(hoy), horas = ['09:00','09:30','10:00','10:30','11:00','14:00'].map(hora_inicio=>({hora_inicio,hora_fin:hora_inicio.slice(0,2)+':45',tipo_slot:'normal'}));
+// Extrae únicamente la expresión de plantilla real; SMTP y consultas no se ejecutan.
+function plantillaReal(fuente, fin, contexto) {
+  const expresion=fuente.slice(fuente.indexOf('  const html = ')+15,fuente.indexOf(fin)).replace('(destinatarioReal: string)','(destinatarioReal)');
+  const render=new Function(...Object.keys(contexto),`return ${expresion}`);
+  const salida=render(...Object.values(contexto)); return typeof salida==='function' ? salida('cliente@example.test') : salida;
+}
+let datos;
+window.previewApi = {
+  functions: { invoke: async (_nombre,{body}) => {
+    if (body.accion === 'primera_fecha') return {data:{ok:true,fecha}};
+    if (body.accion === 'horarios') return {data:{ok:true,horas}};
+    if (body.accion === 'obtener') return {data:{ok:true,...datos}};
+    if (['reagendar','responder'].includes(body.accion)) {
+      const inicio=body.hora||'10:00', minutos=Number(inicio.slice(0,2))*60+Number(inicio.slice(3,5))+45;
+      datos.reubicacion=false; datos.propuesta=null; datos.cita={...datos.cita,fecha:body.fecha||fecha,hora_inicio:inicio,hora_fin:`${String(Math.floor(minutos/60)).padStart(2,'0')}:${String(minutos%60).padStart(2,'0')}`};
+      return {data:{ok:true,cita:datos.cita}};
+    }
+    return {data:{ok:false,error:'Acción fuera de esta vista previa'}};
+  } },
+  rpc: async nombre => ({data: nombre === 'agenda_horarios_publicos_por_codigo' ? horas : [], error:null}),
+};
+// Ejecuta los renderizadores y eventos de producción, sustituyendo solo red y arranque.
+async function cargarModulo(src) {
+  src=src.slice(0,src.lastIndexOf('aplicarMarcaPublica();'))
+    .replace(/^import .*cliente-supabase.js';$/m,'const supabase=window.previewApi; const hayConfiguracionSupabase=()=>true;')
+    .replace(/^import .*marca-publica.js';$/m,'')
+    .replace(/^import .*lista-espera-publica.js';$/m,'const agendaLlena=()=>false; const htmlListaEspera=()=>"";')
+    .replace(/^import .*visita.css';$/m,'')
+    .replace(/from '\.\//g,`from '${location.origin}/aplicacion/js/`).replace(/import '\.\//g,`import '${location.origin}/aplicacion/js/`);
+  const blob=new Blob([src+'\nexport {state,render};'],{type:'text/javascript'});
+  const url=URL.createObjectURL(blob); const mod=await import(url); URL.revokeObjectURL(url); return mod;
+}
+const reserva=await cargarModulo(reservaSource), portal=await cargarModulo(portalSource);
+function mostrar() {
+  const tipo=document.querySelector('#escenario').value;
+  if(tipo.startsWith('correo')) {
+    const c=correoClienteNuevoHorario({nombre:'Ana',lugar:'Prana, Bogotá',visitaOriginal:'jueves 29 de octubre, 9:00 a. m.',vence:'miércoles 28 de octubre, 3:00 p. m.',sugerencia:'viernes 30 de octubre, 10:00 a. m.',enlace:'#prueba'});
+    document.querySelector('#pu-main').innerHTML='<iframe title="Correo de reprogramación"></iframe>';
+    const marca=marcaCorreo({nombre_comercial:'Patrimonios Inmobiliarios'}), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    let html=correoVisita(marca,{...c,modoPruebas:true,destinatarioReal:'cliente@example.test'});
+    if(tipo==='correo_confirmado') html=plantillaReal(confirmadoSource,'  let password:',{marca,correoVisita,reagendada:false,numeroInmueble:127,fechaTexto:'jueves 29 de octubre',horaTexto:'9:00 a. m.',modoPruebas:true,destinatarioReal:'cliente@example.test',cita:{cliente_nombre:'Ana',token_cliente:'ficticio'},escaparHtml:esc,inmuebleOcupado:true,enlaces:enlaceVisita('https://example.test/mapa','Cómo llegar',marca),filasDatos:'<tr><td style="padding:12px 0">Inmueble 127, Prana<br>Bogotá<br><b>Jueves 29 de octubre<br>9:00 a. m.</b></td></tr>'});
+    if(tipo==='correo_arrendatario') html=plantillaReal(arrendatarioSource,'  const transporte =',{marca,correoVisita,enlaceVisita,varias:true,proximas:[{id:1,fecha,hora_inicio:'09:00',token_arrendatario:'ficticio'},{id:2,fecha,hora_inicio:'11:00',token_arrendatario:'ficticio2'}],inmueble:{numero_inmueble:127},modoPruebas:true,nombre:'Ana',lugarTexto:'Prana, Bogotá',escaparHtml:esc,cita:{id:2},formatearFecha:f=>f,formatearHora:h=>h,SITIO_URL:'https://example.test',enlacePortal:'https://example.test/arrendatario/ficticio',asesorNombre:'Asesor de prueba',celularWa:'',enlaceSitio:'https://example.test/inmuebles/127'});
+    document.querySelector('iframe').srcdoc=html; return;
+  }
+  if(tipo==='reserva') {
+    Object.assign(reserva.state,{paso:'inmueble',numero:127,inmueble:{numero_inmueble:127,direccion_limpia:'Calle 146 # 15-41, Prana',ciudad:'Bogotá',barrio:'Cedritos',posible_ocupado:true},fechas:Array.from({length:7},(_,n)=>new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate()+n)),fechaSel:hoy,slots:horas,slotSel:null,cargandoSlots:false});
+    reserva.render(); return;
+  }
+  datos={rol:'cliente',tipo:'vivienda',hoy:fecha,rentando:true,cita:{fecha,hora_inicio:'09:00',hora_fin:'09:45',estado:'confirmada',vigente:true},inmueble:{numero:127,direccion:'Calle 146 # 15-41, Prana',zona:'Cedritos, Bogotá'},asesor:{nombre:'Asesor de prueba'},propuesta:null,reubicacion:tipo==='reubicacion',reubicacion_vence:'miércoles 28 de octubre, 3:00 p. m.'};
+  if(tipo==='propuesta') datos.propuesta={fecha,hora_inicio:'10:00',propuesta_por_mi:true,vence_horas:24};
+  if(tipo==='reubicacion') datos.propuesta={fecha,hora_inicio:'10:00',propuesta_por_mi:false};
+  Object.assign(portal.state,{paso:'principal',vista:'resumen',modo:'cita',rol:datos.rol,cita:datos.cita,inmueble:datos.inmueble,asesor:datos.asesor,propuesta:datos.propuesta,reubicacion:datos.reubicacion,reubicacionVence:datos.reubicacion_vence,rentando:true,hoy:fecha,mensaje:'',ocupado:false,errorForm:''});
+  if(tipo==='arrendatario') Object.assign(portal.state,{vista:'inmueble',modo:'inmueble',rol:'arrendatario',citasInm:[{...datos.cita,token:'ficticio',por_reubicar:false},{...datos.cita,hora_inicio:'11:00',hora_fin:'11:45',token:'ficticio2',por_reubicar:true,vence:datos.reubicacion_vence}]});
+  portal.render();
+}
+document.querySelector('#escenario').addEventListener('change',mostrar); mostrar();
+</script></body></html>

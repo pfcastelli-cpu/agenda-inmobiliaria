@@ -1,0 +1,69 @@
+/* Reserva y gestión de visitas: la fecha y la siguiente acción llevan la jerarquía. */
+#pub-app:has(.pu-flujo) main { max-width: 1000px; padding: 28px 24px 48px; }
+#pub-app .pu-flujo { max-width: 620px; margin-inline: auto; }
+#pub-app .pu-flujo button, #pub-app .pu-flujo input { font-family: inherit; }
+#pub-app .pu-flujo input { font-size: 16px; }
+#pub-app .pu-flujo .pu-card { border: 1px solid var(--pu-border); border-radius: 16px; padding: 24px; box-shadow: none; }
+#pub-app .pu-flujo h2 { margin: 0 0 8px; font-size: 28px; line-height: 1.2; letter-spacing: -.5px; }
+#pub-app .pu-flujo h3 { margin-top: 0; font-size: 21px; line-height: 1.3; }
+#pub-app .pu-flujo p { line-height: 1.55; }
+#pub-app .pu-flujo a { overflow-wrap: anywhere; }
+#pub-app .pu-flujo .pu-main { display: inline-flex; align-items: center; justify-content: center; padding: 14px 18px; text-align: center; text-decoration: none; min-height: 50px; border-radius: 10px; line-height: 1.35; }
+#pub-app .pu-flujo .pu-link { min-height: 48px; }
+#pub-app .pu-flujo :is(button, a, input, select, textarea, summary):focus-visible { outline: 3px solid var(--pu-teal); outline-offset: 3px; }
+#pub-app .pu-flujo .pu-fechas { scroll-snap-type: x proximity; padding-block: 6px 14px; }
+#pub-app .pu-flujo .pu-fecha { scroll-snap-align: start; min-width: 68px; border-radius: 10px; font-family: inherit; }
+#pub-app .pu-flujo .pu-fecha.activa { box-shadow: none; }
+#pub-app .pu-flujo .pu-slot { border-radius: 10px; font-family: inherit; }
+#pub-app .pu-flujo .pu-slots { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+#pub-app .pu-estado { padding: 16px; border-radius: 10px; margin-bottom: 22px; border-inline-start: 4px solid var(--pu-navy); background: color-mix(in srgb, var(--pu-navy) 6%, var(--pu-card)); }
+#pub-app .pu-estado strong { display: block; font-size: 18px; line-height: 1.3; }
+#pub-app .pu-estado span { display: block; font-size: 14px; margin-top: 5px; color: var(--pu-muted); }
+#pub-app .pu-estado-confirmada { border-color: var(--pu-teal); }
+#pub-app .pu-estado-atencion { border-style: solid; border-width: 1px 1px 1px 4px; border-color: var(--pu-navy); }
+#pub-app .pu-flujo .pu-referencia { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+#pub-app .pu-flujo .pu-ubicacion { margin: 0 0 16px; }
+#pub-app .pu-cuando { display: grid; gap: 4px; padding-block: 18px; border-block: 1px solid var(--pu-border); margin-top: 16px; }
+#pub-app .pu-cuando > span { color: var(--pu-muted); font-size: 13px; }
+#pub-app .pu-cuando strong { font-size: 18px; }
+#pub-app .pu-cuando b { font-size: 26px; line-height: 1.2; }
+#pub-app .pu-cuando-anterior strong, #pub-app .pu-cuando-anterior b { font-size: 14px; color: var(--pu-muted); font-weight: 400; text-decoration: line-through; }
+#pub-app .pu-asesor { display: grid; gap: 4px; padding-top: 16px; font-size: 14px; }
+#pub-app .pu-asesor > span { color: var(--pu-muted); }
+#pub-app .pu-asesor a { color: var(--pu-navy); min-height: 44px; display: inline-flex; align-items: center; }
+#pub-app .pu-plazo { border-inline-start: 3px solid var(--pu-navy); padding: 12px 16px; background: var(--pu-bg); margin-block: 16px; }
+#pub-app .pu-plazo strong, #pub-app .pu-plazo span { display: block; }
+#pub-app .pu-plazo span { margin-top: 5px; font-size: 14px; color: var(--pu-muted); }
+#pub-app .pu-hora-propuesta { padding: 16px; border: 2px solid var(--pu-teal); border-radius: 10px; display: grid; gap: 5px; margin: 16px 0; }
+#pub-app .pu-hora-propuesta strong { font-size: 22px; }
+#pub-app .pu-detalles { border-top: 1px solid var(--pu-border); padding-top: 12px; margin-top: 18px; }
+#pub-app .pu-detalles > summary { padding-block: 10px; cursor: pointer; font-weight: 600; min-height: 44px; }
+#pub-app .pu-visita-fila { padding-block: 16px; border-top: 1px solid var(--pu-border); display: grid; gap: 6px; }
+#pub-app .pu-visita-fila a { min-height: 44px; display: inline-flex; align-items: center; color: var(--pu-navy); }
+#pub-app .pu-visita-fila span { color: var(--pu-muted); font-size: 14px; }
+#pub-app .pu-visita-fila .pu-estado { margin: 4px 0; padding: 10px 12px; }
+#pub-app .pu-reserva { max-width: none; }
+#pub-app .pu-pasos { list-style: none; display: flex; gap: 24px; padding: 0; margin: 0 0 24px; border-bottom: 1px solid var(--pu-border); }
+#pub-app .pu-pasos li { display: flex; align-items: center; gap: 8px; color: var(--pu-muted); padding-bottom: 14px; font-size: 14px; }
+#pub-app .pu-pasos li[aria-current] { color: var(--pu-text); font-weight: 700; border-bottom: 3px solid var(--pu-teal); }
+#pub-app .pu-pasos li > span { display: inline-flex; width: 25px; height: 25px; align-items: center; justify-content: center; border: 1px solid var(--pu-border); border-radius: 50%; }
+#pub-app .pu-pasos li.completo > span { background: var(--pu-navy); color: var(--pu-card); }
+#pub-app .pu-reserva-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 28px; align-items: start; }
+#pub-app .pu-reserva-grid > aside { position: sticky; top: 20px; min-width: 0; }
+#pub-app .pu-reserva-grid > section { min-width: 0; }
+#pub-app .pu-flujo .pu-nota { border-inline-start: 3px solid var(--pu-teal); padding: 12px 16px; background: var(--pu-bg); color: var(--pu-text); font-size: 14px; margin-top: 16px; }
+#pub-app .pu-flujo .pu-seleccion { font-size: 16px; color: var(--pu-text); border-bottom: 1px solid var(--pu-border); padding-bottom: 16px; }
+#pub-app .pu-flujo .pu-exito { padding: 16px; border: 1px solid var(--pu-teal); border-radius: 10px; margin-bottom: 18px; }
+@media (max-width: 700px) {
+  #pub-app:has(.pu-flujo) main { padding: 20px 16px 36px; }
+  #pub-app .pu-reserva-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  #pub-app .pu-reserva-grid > aside { position: static; }
+  #pub-app .pu-flujo .pu-card { padding: 20px; }
+  #pub-app .pu-flujo h2 { font-size: 25px; }
+  #pub-app .pu-pasos { gap: 18px; }
+}
+@media (max-width: 360px) {
+  #pub-app .pu-flujo .pu-card { padding: 16px; }
+  #pub-app .pu-flujo .pu-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { #pub-app .pu-flujo * { scroll-behavior: auto !important; } }

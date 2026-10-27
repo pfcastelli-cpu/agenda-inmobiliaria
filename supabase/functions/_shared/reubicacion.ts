@@ -74,7 +74,7 @@ export interface CorreoListo {
   boton: { texto: string; url: string };
 }
 
-const P = 'margin:0 0 10px;text-align:justify';
+const P = 'margin:0 0 12px;text-align:left';
 const contactoAsesor = (a?: { nombre: string; celular?: string } | null) =>
   a?.nombre ? `<p style="${P}">¿Dudas? Escríbele o llama a tu asesor, <b>${esc(a.nombre)}</b>${a.celular ? ` (${esc(a.celular)})` : ''}.</p>` : '';
 
@@ -84,11 +84,10 @@ export function correoClienteNuevoHorario(d: DatosCorreoCliente): CorreoListo {
   return {
     asunto: `Tu visita necesita una nueva hora: elígela antes del ${d.vence}`,
     titulo: 'Necesitamos cambiar la hora de tu visita',
-    cuerpo: `<p style="${P}">Hola ${esc(d.nombre)}, quien vive en el inmueble${donde} no puede recibirte el <b>${esc(d.visitaOriginal)}</b>, y lamentamos el inconveniente. No depende de ti: necesitamos fijar otra hora.</p>
+    cuerpo: `<p style="${P}">Hola ${esc(d.nombre)}. Quien ocupa el inmueble${donde} no puede recibirte el <b>${esc(d.visitaOriginal)}</b>.</p>
 ${d.sugerencia ? `<p style="${P}">Te propone esta hora: <b>${esc(d.sugerencia)}</b>; puedes aceptarla o elegir otra que te quede mejor.</p>` : ''}<p style="${P}"><b>Qué debes hacer:</b> entra y elige una nueva hora antes del <b>${esc(d.vence)}</b></p>
-<p style="${P}">Ese horario ya quedó libre para otras personas, así que no vayas al inmueble a la hora original: nadie podrá recibirte.</p>
+<p style="${P}">El horario anterior ya quedó libre: no vayas al inmueble a la hora original.</p>
 <p style="${P}"><b>Si no eliges otra hora:</b> la visita se cancelará.</p>
-<p style="${P}">Si ya no te interesa el inmueble, no tienes que hacer nada más: la visita se cancelará sola en esa fecha.</p>
 ${contactoAsesor(d.asesor)}`,
     boton: { texto: 'Elegir nueva hora', url: d.enlace },
   };
