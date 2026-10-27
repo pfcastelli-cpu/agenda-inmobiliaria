@@ -188,7 +188,8 @@ Deno.serve(async (req) => {
   }
   const citaId = String(body.cita_id || '');
   const accion = String(body.accion || '');
-  const origen = body.origen === 'cliente' ? 'cliente' : 'asesor';
+  // 'vencimiento': el arrendatario no podía recibir la visita y el cliente no eligió nueva hora a tiempo (portal-visita / pg_cron).
+  const origen = body.origen === 'cliente' ? 'cliente' : body.origen === 'vencimiento' ? 'vencimiento' : 'asesor';
   if (!citaId) return json({ ok: false, error: 'Falta cita_id.' }, 400);
   if (accion !== 'movida' && accion !== 'cancelada') return json({ ok: false, error: 'Acción no reconocida.' }, 400);
 
@@ -227,7 +228,7 @@ Deno.serve(async (req) => {
 
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble')
+    .select('numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, sin_aviso_arrendatario')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
   if (!inmueble) return json({ ok: false, error: 'Inmueble no encontrado.' }, 404);
@@ -241,7 +242,8 @@ Deno.serve(async (req) => {
     .maybeSingle();
   const modoPruebas = config?.correo_modo_pruebas !== false;
   const marca = marcaCorreo(config);
-  const rentando = String(inmueble.estado_crm || '').trim().toLowerCase() === 'rentando';
+  // «Sin aviso al arrendatario»: el inmueble se trata como libre (el propietario maneja la venta en reserva).
+  const rentando = String(inmueble.estado_crm || '').trim().toLowerCase() === 'rentando' && inmueble.sin_aviso_arrendatario !== true;
   const sust = sustantivo(inmueble.tipo_inmueble);
   const horaIni = cita.hora_inicio.slice(0, 5);
   const horaFin = (cita.hora_fin || cita.hora_inicio).slice(0, 5);
@@ -392,7 +394,10 @@ Deno.serve(async (req) => {
       correos: correosCliente,
       asunto: `Visita cancelada — ${fechaTexto}`,
       titulo: porCliente ? 'Cancelaste tu visita' : 'Tu visita fue cancelada',
-      cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(cita.cliente_nombre)}, ${porCliente ? 'cancelamos' : 'te avisamos que se canceló'} tu visita del ${lineaVisita} ${esc(sust.el.startsWith('el ') ? 'al ' + sust.el.slice(3) : 'a ' + sust.el)}${lugar ? ` en ${esc(lugar)}` : ''}${porCliente ? '' : '. Lamentamos el inconveniente'}.</p>
+      cuerpo: origen === 'vencimiento'
+        ? `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(cita.cliente_nombre)}, cancelamos tu visita del ${lineaVisita} ${esc(sust.el.startsWith('el ') ? 'al ' + sust.el.slice(3) : 'a ' + sust.el)}${lugar ? ` en ${esc(lugar)}` : ''}: quien vive allí no podía recibirte a esa hora y no recibimos una nueva hora a tiempo. Lamentamos el inconveniente.</p>
+<p style="margin:0;text-align:justify">Ya se quitó del calendario de tu teléfono. Si sigues interesado, elige una nueva hora cuando quieras${asesor?.nombre ? ` o escríbele a tu asesor, ${esc(asesor.nombre)}` : ''}.</p>`
+        : `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(cita.cliente_nombre)}, ${porCliente ? 'cancelamos' : 'te avisamos que se canceló'} tu visita del ${lineaVisita} ${esc(sust.el.startsWith('el ') ? 'al ' + sust.el.slice(3) : 'a ' + sust.el)}${lugar ? ` en ${esc(lugar)}` : ''}${porCliente ? '' : '. Lamentamos el inconveniente'}.</p>
 <p style="margin:0;text-align:justify">Ya se quitó del calendario de tu teléfono. ${porCliente ? 'Cuando quieras, puedes elegir otro horario' : 'Puedes elegir otro horario'}${!porCliente && asesor?.nombre ? ` o escribirle a tu asesor, ${esc(asesor.nombre)}` : ''}.</p>`,
       boton: { texto: 'Agendar otro horario', url: `${SITIO_URL}/inmuebles/${inmueble.numero_inmueble}` },
       conIcsCancelacion: true,
@@ -419,7 +424,7 @@ Deno.serve(async (req) => {
       correos: [correo],
       asunto: `Visita cancelada en tu inmueble Nº ${inmueble.numero_inmueble}`,
       titulo: 'Se canceló una visita en tu inmueble',
-      cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(nombres.join(' y '))}, te avisamos que la visita del ${lineaVisita} a tu inmueble Nº ${esc(String(inmueble.numero_inmueble))}${lugar ? ` (${esc(lugar)})` : ''} fue cancelada${origen === 'cliente' ? ' por la persona interesada' : ''}.</p>
+      cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(nombres.join(' y '))}, te avisamos que la visita del ${lineaVisita} a tu inmueble Nº ${esc(String(inmueble.numero_inmueble))}${lugar ? ` (${esc(lugar)})` : ''} fue cancelada${origen === 'cliente' ? ' por la persona interesada' : origen === 'vencimiento' ? ' porque el arrendatario no podía recibirla y no se acordó una nueva hora a tiempo' : ''}.</p>
 <p style="margin:0;text-align:justify">No tienes que hacer nada. Si se agenda otra visita, te avisaremos.</p>`,
       boton: { texto: 'Ver el inmueble en nuestro sitio', url: enlaceInmueble(config, inmueble.numero_inmueble) },
       conIcsCancelacion: true,
@@ -433,7 +438,7 @@ Deno.serve(async (req) => {
       correos: correosArr,
       asunto: `Visita cancelada · ${fechaTexto}`,
       titulo: `Se canceló la visita a tu ${sust.n}`,
-      cuerpo: `<p style="margin:0 0 10px;text-align:justify">${saludoArr}la visita que estaba programada para ${lineaVisita}${lugar ? ` en ${esc(lugar)}` : ''} fue cancelada${origen === 'cliente' ? ' por la persona interesada' : ''}.</p>
+      cuerpo: `<p style="margin:0 0 10px;text-align:justify">${saludoArr}la visita que estaba programada para ${lineaVisita}${lugar ? ` en ${esc(lugar)}` : ''} fue cancelada${origen === 'cliente' ? ' por la persona interesada' : origen === 'vencimiento' ? ' porque la persona interesada no eligió una nueva hora a tiempo' : ''}.</p>
 <p style="margin:0;text-align:justify">No tienes que hacer nada. Gracias por tu colaboración.</p>`,
     });
   }

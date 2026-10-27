@@ -197,8 +197,6 @@ function tarjetaOpiniones() {
             <strong style="font-size:13px">${o.fuente === 'encuesta_cliente' ? 'Opinión de un cliente (encuesta)' : 'Nota del asesor'}</strong>
             <span style="font-size:12px;color:var(--pu-muted)">${o.fecha ? formatoFecha(o.fecha) : ''}</span>
           </div>
-          ${o.fuente === 'encuesta_cliente' ? '<p style="margin:4px 0 0;font-size:12px;color:var(--pu-muted)">Calificación de la atención del asesor</p>' : ''}
-          ${estrellas(o.calificacion)}
           ${badgesOpinion(o)}
           ${o.comentario ? `<p style="margin:6px 0 0;font-size:14px">${escapeHtml(o.comentario)}</p>` : ''}
         </div>`,

@@ -321,7 +321,7 @@ Deno.serve(async (req) => {
   if (cita.inmueble_id) {
     const { data: inmueble } = await admin
       .from('agenda_inmuebles')
-      .select('numero_inmueble, direccion, ciudad, barrio, latitud, longitud, estado_crm')
+      .select('numero_inmueble, direccion, ciudad, barrio, latitud, longitud, estado_crm, sin_aviso_arrendatario')
       .eq('id', cita.inmueble_id)
       .maybeSingle();
     if (inmueble) {
@@ -330,7 +330,8 @@ Deno.serve(async (req) => {
       latitud = inmueble.latitud;
       longitud = inmueble.longitud;
       numeroInmueble = inmueble.numero_inmueble;
-      inmuebleOcupado = String(inmueble.estado_crm || '').trim().toLowerCase() === 'rentando';
+      // Con «sin aviso al arrendatario» el inmueble se trata como uno libre: ni nota para el cliente ni aviso al arrendatario.
+      inmuebleOcupado = String(inmueble.estado_crm || '').trim().toLowerCase() === 'rentando' && inmueble.sin_aviso_arrendatario !== true;
     }
   }
   direccion = limpiarDireccion(direccion);
@@ -427,7 +428,7 @@ Deno.serve(async (req) => {
     <div style="background:#f4f4f4;padding:20px 28px;border-top:1px solid #efefef">
       ${
         inmuebleOcupado
-          ? `<p style="color:#4d4d4d;text-align:justify;font-size:12.5px;margin:0 0 10px"><strong>Importante:</strong> este inmueble está arrendado y ocupado actualmente. Si el arrendatario no puede recibirte a esa hora, podría proponerte otra: te escribiremos y tu visita solo cambia si tú aceptas el nuevo horario.</p>`
+          ? `<p style="color:#4d4d4d;text-align:justify;font-size:12.5px;margin:0 0 10px"><strong>Importante:</strong> este inmueble está arrendado y ocupado actualmente. Si quien vive allí no puede recibirte a esa hora, te escribiremos para que elijas otra: tendrás un plazo para hacerlo y, si no eliges a tiempo, la visita se cancelará. Si recibes ese correo, no vayas a la hora original.</p>`
           : ''
       }
       <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Si necesitas cambiar la hora o cancelar tu visita, usa el botón «Cambiar o cancelar mi visita» de arriba; si prefieres, comunícate directamente con tu asesor. También te dejamos la cita guardada en el archivo adjunto para que quede en el calendario de tu teléfono, con recordatorios 24, 2 y 1 hora antes.</p>

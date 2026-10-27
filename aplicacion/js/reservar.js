@@ -16,6 +16,7 @@ const state = {
   inmueble: null,
   fechas: [],
   fechaSel: null,
+  primeraFecha: null,
   slots: [],
   cargandoSlots: false,
   slotSel: null,
@@ -49,11 +50,17 @@ function numeroDesdeUrl() {
   return q ? Number(q) : null;
 }
 
-function proximasFechasHabiles(cantidad) {
+function proximasFechasHabiles(cantidad, desdeISO = null) {
   const out = [];
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const cursor = new Date(hoy);
+  // Si el inmueble tiene una primera fecha disponible (p. ej. «se puede mostrar desde»), el calendario empieza ahí.
+  if (desdeISO && /^\d{4}-\d{2}-\d{2}$/.test(desdeISO)) {
+    const [a, m, d] = desdeISO.split('-').map(Number);
+    const desde = new Date(a, m - 1, d);
+    if (desde > cursor) cursor.setTime(desde.getTime());
+  }
   while (out.length < cantidad) {
     if (cursor.getDay() !== 0) {
       out.push(new Date(cursor));
@@ -141,7 +148,16 @@ async function buscarInmueble(numero) {
   }
   state.inmueble = fila;
   state.numero = numero;
-  state.fechas = proximasFechasHabiles(14);
+  // Primera fecha con horarios (respeta «se puede mostrar desde», días y horas permitidos): así nadie tiene que adivinar el día.
+  let primeraFecha = null;
+  try {
+    const { data: pf } = await supabase.rpc('agenda_primera_fecha_publica', { p_numero_inmueble: numero, p_host: hostActual() });
+    primeraFecha = typeof pf === 'string' ? pf : null;
+  } catch {
+    /* si la base aún no tiene esa función, se usa el calendario de siempre */
+  }
+  state.primeraFecha = primeraFecha;
+  state.fechas = proximasFechasHabiles(14, primeraFecha);
   state.fechaSel = state.fechas[0];
   state.paso = 'inmueble';
   render();
@@ -163,7 +179,8 @@ async function horariosDelDia(fecha) {
   });
 }
 
-async function cargarHorarios() {
+// `aviso` se conserva después de recargar (por ejemplo «ese horario ya lo tomó otra persona»).
+async function cargarHorarios(aviso = '') {
   state.cargandoSlots = true;
   state.slotSel = null;
   render();
@@ -175,10 +192,45 @@ async function cargarHorarios() {
     render();
     return;
   }
-  state.errorMsg = '';
+  state.errorMsg = aviso;
   state.slots = slots;
+  state.slotsEn = Date.now();
   render();
 }
+
+// La ventana puede quedar abierta horas mientras la agenda cambia. Los horarios que se ven valen unos
+// minutos; pasado ese tiempo se consultan de nuevo antes de confirmar y al volver a la pestaña.
+const VIGENCIA_HORARIOS_MS = 60 * 1000;
+const AVISO_HORARIO_TOMADO = 'Ese horario acaba de ser tomado por otra persona. Te mostramos los que siguen libres.';
+const esChoqueDeHorario = (error) => /ya no est[aá] disponible|ya fue tomado/i.test(error?.message || '');
+
+// Devuelve true si el horario elegido sigue libre (o no había uno elegido). Si ya no está, deja el aviso
+// y la lista actualizada, y conserva los datos que la persona ya escribió.
+async function refrescarHorarios() {
+  if (!state.numero || !state.fechaSel) return true;
+  const elegido = state.slotSel?.hora_inicio || null;
+  const slots = await horariosDelDia(state.fechaSel);
+  if (slots === null) return true; // sin conexión para consultar: que decida el servidor al confirmar
+  state.slots = slots;
+  state.slotsEn = Date.now();
+  if (elegido && !slots.some((s) => s.hora_inicio === elegido)) {
+    state.errorMsg = `El horario de las ${formatoHora(elegido)} ya no está disponible porque la agenda cambió. Elige otro de los que siguen libres.`;
+    state.slotSel = null;
+    render();
+    return false;
+  }
+  if (elegido) state.slotSel = slots.find((s) => s.hora_inicio === elegido);
+  return true;
+}
+
+const horariosVencidos = () => !state.slotsEn || Date.now() - state.slotsEn > VIGENCIA_HORARIOS_MS;
+
+// Al volver a la pestaña tras un rato (ventana abierta, celular bloqueado) se actualizan los horarios.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || state.paso !== 'inmueble' || state.enviando || state.cargandoSlots) return;
+  if (Date.now() - (state.slotsEn || 0) <= 2 * VIGENCIA_HORARIOS_MS) return;
+  refrescarHorarios().then((sigue) => { if (sigue) render(); });
+});
 
 // Al abrir un inmueble, en vez de mostrarle al cliente "sin horarios" si justo hoy no hay
 // nada disponible, buscamos el primer día (de los próximos 14 hábiles) que sí tenga horarios
@@ -194,6 +246,7 @@ async function irAPrimerDiaConDisponibilidad() {
     if (slots && slots.length) {
       state.fechaSel = f;
       state.slots = slots;
+      state.slotsEn = Date.now();
       state.cargandoSlots = false;
       render();
       return;
@@ -325,6 +378,9 @@ async function confirmarCita() {
     return;
   }
 
+  // Si la ventana lleva rato abierta, confirma primero que el horario siga libre.
+  if (horariosVencidos() && !(await refrescarHorarios())) return;
+
   if (!state.duplicadosRevisados) {
     await revisarDuplicados();
     if (state.duplicados.length) {
@@ -350,10 +406,10 @@ async function confirmarCita() {
   });
   state.enviando = false;
   if (error) {
-    state.errorMsg = mensajeAmigable(error, 'No se pudo agendar la visita. Elige otro horario e inténtalo de nuevo.');
+    const aviso = esChoqueDeHorario(error) ? AVISO_HORARIO_TOMADO : mensajeAmigable(error, 'No se pudo agendar la visita. Elige otro horario e inténtalo de nuevo.');
     state.duplicadosRevisados = false;
-    // El horario pudo dejar de estar disponible; recargamos la lista.
-    cargarHorarios();
+    // El horario pudo dejar de estar disponible; recargamos la lista y conservamos el aviso.
+    cargarHorarios(aviso);
     return;
   }
   // Se dispara sin esperar la respuesta: si el correo falla no debe bloquear
@@ -376,6 +432,8 @@ async function confirmarCita() {
 // verifica que el celular/correo coincidan antes de tocar nada).
 async function cambiarCita() {
   if (!state.duplicadoMismoInmueble || !state.slotSel) return;
+
+  if (horariosVencidos() && !(await refrescarHorarios())) return;
 
   const correoListo = await asegurarCorreoVerificado('cambiar');
   if (!correoListo) return;
@@ -412,10 +470,9 @@ async function cambiarCita() {
   });
   state.enviando = false;
   if (error) {
-    state.errorMsg = mensajeAmigable(error, 'No se pudo cambiar la cita. Elige otro horario e inténtalo de nuevo.');
+    const aviso = esChoqueDeHorario(error) ? AVISO_HORARIO_TOMADO : mensajeAmigable(error, 'No se pudo cambiar la cita. Elige otro horario e inténtalo de nuevo.');
     state.duplicadosRevisados = false;
-    cargarHorarios();
-    render();
+    cargarHorarios(aviso);
     return;
   }
   supabase.functions.invoke('enviar-correo-cita', { body: { cita_id: data, reagendada: true } }).catch(() => {});
@@ -470,8 +527,12 @@ function tarjetaInmueble() {
 }
 
 function selectorFechas() {
+  const hoyISO = fechaISO(new Date());
+  const aviso = state.primeraFecha && state.primeraFecha > hoyISO
+    ? `<p class="pu-vacio" style="margin:0 0 8px;font-size:13px">Las visitas a este inmueble se pueden agendar desde el <strong>${state.primeraFecha.slice(8, 10)}/${state.primeraFecha.slice(5, 7)}/${state.primeraFecha.slice(0, 4)}</strong>; ya te mostramos esa fecha.</p>` : '';
   return `
     <h3>Elige un día</h3>
+    ${aviso}
     <div class="pu-fechas" id="pu-fechas">
       ${state.fechas
         .map((f) => {

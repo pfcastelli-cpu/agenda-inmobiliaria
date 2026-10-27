@@ -9,6 +9,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, enlaceInmueble, marcaCorreo, pieContacto } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
+import { OPCIONES_ARRENDATARIO } from '../_shared/reubicacion.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -151,9 +152,12 @@ Deno.serve(async (req) => {
 
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, token_arrendatario')
+    .select('numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, token_arrendatario, sin_aviso_arrendatario')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
+  if (inmueble?.sin_aviso_arrendatario === true) {
+    return json({ ok: true, enviado: false, motivo: 'Este inmueble está marcado para no avisar al arrendatario.' });
+  }
   if (!inmueble || String(inmueble.estado_crm || '').trim().toLowerCase() !== 'rentando') {
     return json({ ok: true, enviado: false, motivo: 'Este inmueble no está rentando; no se informa al arrendatario.' });
   }
@@ -224,7 +228,7 @@ Deno.serve(async (req) => {
   const hoyBogota = new Date().toLocaleString('sv-SE', { timeZone: 'America/Bogota' }).slice(0, 10);
   const { data: proximasRaw } = await admin
     .from('agenda_citas')
-    .select('id, fecha, hora_inicio')
+    .select('id, fecha, hora_inicio, token_arrendatario')
     .eq('inmueble_id', cita.inmueble_id)
     .eq('tipo_cita', 'visita_cliente')
     .neq('estado', 'cancelada')
@@ -232,7 +236,7 @@ Deno.serve(async (req) => {
     .order('fecha', { ascending: true })
     .order('hora_inicio', { ascending: true });
   const proximas = (proximasRaw || []).slice(0, 12);
-  if (!proximas.some((c) => c.id === cita.id)) proximas.push({ id: cita.id, fecha: cita.fecha, hora_inicio: cita.hora_inicio });
+  if (!proximas.some((c) => c.id === cita.id)) proximas.push({ id: cita.id, fecha: cita.fecha, hora_inicio: cita.hora_inicio, token_arrendatario: cita.token_arrendatario });
   const varias = proximas.length > 1;
   const asunto = `Visitas programadas en tu ${sust.n} · Inmueble ${inmueble.numero_inmueble}`;
   const nombre = escaparHtml(arrendatario?.nombre || '');
@@ -255,17 +259,23 @@ Deno.serve(async (req) => {
     ${encabezadoImagen(marca, `Visita programada`, 'hogar')}
     <div style="padding:28px 26px 20px">
       <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 6px">${varias ? `Tienes ${proximas.length} visitas programadas en tu ${sust.n}` : `Visita programada en tu ${sust.n}`} 🏠</h1>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer ${sust.el} que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo: si algún día u hora no te sirve, tú nos dices cuándo sí puedes.</p>
+      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 18px">Hola${nombre ? ' ' + nombre : ''}, una persona interesada quiere conocer ${sust.el} que ocupas${lugarTexto ? ` en ${escaparHtml(lugarTexto)}` : ''}. Queremos respetar tu tiempo.</p>
       <table style="width:100%;border-collapse:collapse">
         ${proximas
           .map(
             (c) =>
-              `<tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">📅 ${c.id === cita.id && varias ? 'Nueva' : 'Visita'}</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(formatearFecha(c.fecha))} · ${escaparHtml(formatearHora(c.hora_inicio.slice(0, 5)))}</td></tr>`,
+              `<tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">📅 ${c.id === cita.id && varias ? 'Nueva' : 'Visita'}</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(formatearFecha(c.fecha))} · ${escaparHtml(formatearHora(c.hora_inicio.slice(0, 5)))}<br><a href="${SITIO_URL}/arrendatario/${c.token_arrendatario}?accion=otra_hora" style="font-size:12.5px;font-weight:600;color:${marca.principal}">No puedo a esta hora</a></td></tr>`,
           )
           .join('')}
         ${asesorNombre ? `<tr><td style="padding:8px 0;color:#4d4d4d;font-size:13px">👤 Asesor a cargo</td><td style="padding:8px 0;color:${marca.principal};font-size:15px;font-weight:600">${escaparHtml(asesorNombre)}${asesorCelular ? ' · ' + escaparHtml(asesorCelular) : ''}</td></tr>` : ''}
       </table>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:18px 0 0">¿Algún día u hora no te sirve? Con el botón de abajo ves todas tus visitas y marcas, para el día que quieras, las franjas en las que <b>sí puedes</b> recibir (hasta ${3}, por ejemplo de 2 horas) o en las que <b>no puedes</b>. Nosotros pedimos a cada persona que elija un nuevo turno dentro de esas franjas, así no tienes que responder visita por visita. Si no haces nada, las visitas se mantienen a la hora indicada. Gracias por tu colaboración.</p>
+      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:18px 0 10px">${OPCIONES_ARRENDATARIO.intro}</p>
+      <table style="width:100%;border-collapse:collapse">
+        <tr><td style="padding:8px 0"><a href="${SITIO_URL}/arrendatario/${cita.token_arrendatario}?accion=otra_hora" style="color:${marca.principal};font-weight:700;font-size:15px;text-decoration:none">① ${OPCIONES_ARRENDATARIO.otraHora.titulo}</a><br><span style="color:#6b6b6b;font-size:13px">${OPCIONES_ARRENDATARIO.otraHora.detalle}</span></td></tr>
+        <tr><td style="padding:8px 0"><a href="${enlacePortal}?accion=dia" style="color:${marca.principal};font-weight:700;font-size:15px;text-decoration:none">② ${OPCIONES_ARRENDATARIO.diaNoPuedo.titulo}</a><br><span style="color:#6b6b6b;font-size:13px">${OPCIONES_ARRENDATARIO.diaNoPuedo.detalle}</span></td></tr>
+        <tr><td style="padding:8px 0"><a href="${enlacePortal}?accion=pausa" style="color:${marca.principal};font-weight:700;font-size:15px;text-decoration:none">③ ${OPCIONES_ARRENDATARIO.pausa.titulo}</a><br><span style="color:#6b6b6b;font-size:13px">${OPCIONES_ARRENDATARIO.pausa.detalle}</span></td></tr>
+      </table>
+      <p style="color:#4d4d4d;text-align:justify;font-size:14px;line-height:1.6;margin:10px 0 0">${OPCIONES_ARRENDATARIO.consecuencia} Gracias por tu colaboración.</p>
       <p style="margin:18px 0 6px;text-align:center"><a href="${enlacePortal}" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 26px;border-radius:999px">👀 Ver mis visitas y mis horarios</a></p>
       <p style="margin:10px 0 6px;text-align:center"><a href="${enlaceSitio}" target="_blank" style="display:inline-block;color:${marca.principal};text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:999px;border:2px solid ${marca.principal}">🏠 Ver el inmueble en nuestro sitio</a></p>
       <p style="color:#6b6b6b;font-size:12px;margin:10px 0 0">Este enlace es solo para ti, no lo compartas. ¿Prefieres hablar? Llama o escríbele a tu asesor.</p>

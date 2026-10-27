@@ -22,6 +22,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, marcaCorreo, type MarcaCorreo, emojiTitulo, pieContacto } from '../_shared/marca-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
+import { calcularVencimiento, correoClienteNuevoHorario, correoClienteRecordatorio, formatearMomento, MAX_DIAS_PAUSA, requiereLlamada, type MotivoReubicacion } from '../_shared/reubicacion.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -122,7 +123,7 @@ async function cargarContexto(admin: Admin, token: string) {
   const { data: cita } = await admin
     .from('agenda_citas')
     .select(
-      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente, reubicacion_pendiente_desde',
+      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente, reubicacion_pendiente_desde, reubicacion_vence_en, reubicacion_motivo',
     )
     .or(`token_arrendatario.eq.${token},token_cliente.eq.${token}`)
     .maybeSingle();
@@ -130,7 +131,7 @@ async function cargarContexto(admin: Admin, token: string) {
   const rol: Rol = cita.token_arrendatario === token ? 'arrendatario' : 'cliente';
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos, token_arrendatario')
+    .select('id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos, token_arrendatario, sin_aviso_arrendatario')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
   if (!inmueble) return null;
@@ -247,7 +248,7 @@ async function correosArrendatario(admin: Admin, empresaId: string, numeroInmueb
 async function registrarAccion(
   admin: Admin,
   c: { cita: { id: string | null; empresa_id: string }; inmueble: { id: string } },
-  accion: 'horario_actualizado' | 'cita_cancelada' | 'propuesta_creada' | 'propuesta_aceptada' | 'propuesta_rechazada' | 'ventanas_guardadas' | 'ventanas_borradas' | 'cita_reubicada',
+  accion: 'horario_actualizado' | 'cita_cancelada' | 'propuesta_creada' | 'propuesta_aceptada' | 'propuesta_rechazada' | 'ventanas_guardadas' | 'ventanas_borradas' | 'cita_reubicada' | 'pausa_visitas' | 'visita_vencida',
   detalle: Record<string, unknown>,
 ) {
   try {
@@ -292,6 +293,21 @@ async function slotsDelDia(admin: Admin, cita: { empresa_id: string; inmueble_id
   });
 }
 
+// Primer día (desde hoy, hasta 60 días) en que hay al menos un horario libre: así nadie tiene que adivinar la fecha.
+async function primeraFechaConHorarios(admin: Admin, cita: { empresa_id: string; inmueble_id: string }, diasPermitidos: number[] | null, hoy: string) {
+  for (let n = 0; n <= 60; n++) {
+    const fecha = sumarDias(hoy, n);
+    const dow = new Date(fecha + 'T12:00:00Z').getUTCDay() || 7;
+    if (diasPermitidos && diasPermitidos.length && !diasPermitidos.includes(dow)) {
+      // Un día fuera del horario semanal solo puede tener turnos si el arrendatario abrió franjas ese día.
+      const { count } = await admin.from('agenda_inmueble_ventanas').select('id', { count: 'exact', head: true }).eq('inmueble_id', cita.inmueble_id).eq('fecha', fecha).eq('tipo', 'disponible');
+      if (!count) continue;
+    }
+    if ((await slotsDelDia(admin, cita, fecha)).length) return fecha;
+  }
+  return null;
+}
+
 // Devuelve el horario completo (asesor incluido) si ese día/hora de verdad se puede, o null.
 async function slotValido(
   admin: Admin,
@@ -318,7 +334,7 @@ async function slotValido(
 // la marca como expirada y devuelve null.
 async function propuestaPendiente(
   admin: Admin,
-  cita: { id: string; fecha: string; hora_inicio: string; estado: string },
+  cita: { id: string; fecha: string; hora_inicio: string; estado: string; reubicacion_vence_en?: string | null },
   ahora: { fecha: string; hora: string },
 ) {
   const { data: p } = await admin
@@ -328,7 +344,10 @@ async function propuestaPendiente(
     .eq('estado', 'pendiente')
     .maybeSingle();
   if (!p) return null;
-  const vencida = Date.now() - new Date(p.creado_en).getTime() > HORAS_VIGENCIA_PROPUESTA * 3600_000;
+  // Con un cambio obligatorio en curso, la propuesta vale hasta el vencimiento de la visita; si no, 48 h.
+  const vencida = cita.reubicacion_vence_en
+    ? Date.now() > new Date(cita.reubicacion_vence_en).getTime()
+    : Date.now() - new Date(p.creado_en).getTime() > HORAS_VIGENCIA_PROPUESTA * 3600_000;
   const citaCambio = p.cita_fecha !== cita.fecha || p.cita_hora.slice(0, 5) !== cita.hora_inicio.slice(0, 5);
   const citaPasada = cita.fecha < ahora.fecha || (cita.fecha === ahora.fecha && cita.hora_inicio.slice(0, 5) <= ahora.hora);
   if (vencida || citaCambio || citaPasada || cita.estado === 'cancelada' || p.fecha < ahora.fecha) {
@@ -342,7 +361,7 @@ async function propuestaPendiente(
 async function cargarInmueblePorToken(admin: Admin, token: string) {
   const { data } = await admin
     .from('agenda_inmuebles')
-    .select('id, empresa_id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos, token_arrendatario')
+    .select('id, empresa_id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos, token_arrendatario, sin_aviso_arrendatario')
     .eq('token_arrendatario', token)
     .maybeSingle();
   return data;
@@ -361,11 +380,33 @@ async function avisarAsesor(admin: Admin, empresaId: string, citaId: string | nu
 // Marca como "por reubicar" las visitas de esa fecha que quedaron fuera de las franjas del arrendatario, avisa a sus
 // clientes (cada uno elige un turno dentro de las franjas, sin pedir permiso otra vez) y al asesor. Quita la marca a las
 // que ya caben. Devuelve cuántas quedaron por reubicar.
+// Marca una visita como «pendiente de nuevo horario» con su plazo (ver _shared/reubicacion.ts). Devuelve el vencimiento en ms.
+async function marcarReubicacion(admin: Admin, cita: { id: string; fecha: string; hora_inicio: string }, motivo: MotivoReubicacion): Promise<number> {
+  const inicioMs = new Date(`${cita.fecha}T${cita.hora_inicio.slice(0, 5)}:00-05:00`).getTime(); // Colombia no tiene horario de verano
+  const venceMs = calcularVencimiento(Date.now(), inicioMs);
+  await admin
+    .from('agenda_citas')
+    .update({
+      reubicacion_pendiente_desde: new Date().toISOString(),
+      reubicacion_vence_en: new Date(venceMs).toISOString(),
+      reubicacion_motivo: motivo,
+      reubicacion_recordada_en: null,
+      reubicacion_recordada2_en: null,
+    })
+    .eq('id', cita.id)
+    .eq('estado', 'confirmada');
+  return venceMs;
+}
+
+// Quita la marca de «pendiente de nuevo horario» (el cliente eligió, la cita se canceló o ya no aplica).
+const LIMPIAR_REUBICACION = { reubicacion_pendiente_desde: null, reubicacion_vence_en: null, reubicacion_motivo: null, reubicacion_recordada_en: null, reubicacion_recordada2_en: null };
+
 async function reubicarAfectadas(
   admin: Admin,
   inm: { id: string; empresa_id: string; numero_inmueble: number; direccion: string | null },
   fecha: string,
   ahora: { fecha: string; hora: string },
+  motivo: MotivoReubicacion = 'dia_no_disponible',
 ) {
   const { data: franjas } = await admin.from('agenda_inmueble_ventanas').select('tipo, desde, hasta').eq('inmueble_id', inm.id).eq('fecha', fecha);
   const hm = (t: string) => t.slice(0, 5);
@@ -379,7 +420,7 @@ async function reubicarAfectadas(
     .eq('tipo_cita', 'visita_cliente')
     .neq('estado', 'cancelada');
   const direccion = limpiarDireccion(inm.direccion);
-  const aviso: Array<{ id: string; asesor_id: string | null; hora: string; cliente: string }> = [];
+  const aviso: Array<{ id: string; asesor_id: string | null; hora: string; cliente: string; vence: string; llamar: boolean }> = [];
   let afectadasTotal = 0;
   for (const c of citas || []) {
     const ini = hm(c.hora_inicio);
@@ -390,19 +431,21 @@ async function reubicarAfectadas(
     const afectada = choca || fuera;
     if (afectada) afectadasTotal++;
     if (afectada && !c.reubicacion_pendiente_desde) {
-      await admin.from('agenda_citas').update({ reubicacion_pendiente_desde: new Date().toISOString() }).eq('id', c.id).is('reubicacion_pendiente_desde', null);
-      aviso.push({ id: c.id, asesor_id: c.asesor_id, hora: ini, cliente: c.cliente_nombre });
-      await enviarCorreos(admin, c.empresa_id, c.id, 'cliente', correosDe(c.cliente_email).slice(0, 1), `Necesitamos cambiar la hora de tu visita · Inmueble ${inm.numero_inmueble}`, (extra) =>
-        plantillaCorreo({
-          titulo: 'Elige una nueva hora para tu visita',
-          cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(c.cliente_nombre)}, el inmueble que vas a visitar${direccion ? ` (${esc(direccion)})` : ''} está ocupado y quien lo habita no podrá recibirte el <b>${esc(formatearFecha(fecha))}, ${esc(formatearHora(ini))}</b>.</p>
-<p style="margin:0 0 10px;text-align:justify">Tu visita sigue en esa hora hasta que elijas otra. Entra y escoge un horario disponible (ya tiene en cuenta la agenda del asesor): el cambio queda en firme al instante. Si prefieres no cambiar, también puedes cancelarla desde ahí.</p>`,
-          boton: { texto: 'Elegir nueva hora', url: `${SITIO_URL}/visita/${c.token_cliente}` },
-          ...extra,
-        }),
+      const venceMs = await marcarReubicacion(admin, { id: c.id, fecha, hora_inicio: c.hora_inicio }, motivo);
+      const inicioMs = new Date(`${fecha}T${ini}:00-05:00`).getTime();
+      aviso.push({ id: c.id, asesor_id: c.asesor_id, hora: ini, cliente: c.cliente_nombre, vence: formatearMomento(venceMs), llamar: requiereLlamada(Date.now(), inicioMs) });
+      const correo = correoClienteNuevoHorario({
+        nombre: c.cliente_nombre,
+        lugar: direccion,
+        visitaOriginal: formatearMomento(inicioMs),
+        vence: formatearMomento(venceMs),
+        enlace: `${SITIO_URL}/visita/${c.token_cliente}`,
+      });
+      await enviarCorreos(admin, c.empresa_id, c.id, 'cliente', correosDe(c.cliente_email).slice(0, 1), correo.asunto, (extra) =>
+        plantillaCorreo({ titulo: correo.titulo, cuerpo: correo.cuerpo, boton: correo.boton, ...extra }),
       );
     } else if (!afectada && c.reubicacion_pendiente_desde) {
-      await admin.from('agenda_citas').update({ reubicacion_pendiente_desde: null }).eq('id', c.id);
+      await admin.from('agenda_citas').update(LIMPIAR_REUBICACION).eq('id', c.id);
     }
   }
   // Un solo correo por asesor con la lista de visitas que hay que reubicar.
@@ -413,16 +456,16 @@ async function reubicarAfectadas(
       admin, inm.empresa_id, lista[0].id, asesorId,
       `Visitas por reubicar · Inmueble ${inm.numero_inmueble} · ${formatearFecha(fecha)}`,
       'Visitas por reubicar',
-      `<p style="margin:0 0 10px;text-align:justify">El arrendatario del inmueble Nº ${esc(String(inm.numero_inmueble))} limitó los horarios del <b>${esc(formatearFecha(fecha))}</b>. Estas visitas tuyas quedaron fuera y ya se le pidió a cada cliente que elija otro turno dentro de las franjas disponibles:</p>
-<ul style="margin:0 0 10px;padding-left:20px">${lista.map((a) => `<li>${esc(formatearHora(a.hora))} · ${esc(a.cliente)}</li>`).join('')}</ul>
-<p style="margin:0;text-align:justify">Hasta que elijan, cada visita sigue en su hora original. En la agenda aparecen marcadas «Reubicación pendiente».</p>`,
+      `<p style="margin:0 0 10px;text-align:justify">El arrendatario del inmueble Nº ${esc(String(inm.numero_inmueble))} no puede recibir visitas el <b>${esc(formatearFecha(fecha))}</b>${motivo === 'pausa' ? ' (pausó las visitas por un tiempo)' : ''}. Estas visitas tuyas deben cambiar de hora y ya se le pidió a cada cliente que elija otra, con un plazo:</p>
+<ul style="margin:0 0 10px;padding-left:20px">${lista.map((a) => `<li>${esc(formatearHora(a.hora))} · ${esc(a.cliente)} · plazo hasta ${esc(a.vence)}${a.llamar ? ' · <b>llámalo hoy: falta menos de un día</b>' : ''}</li>`).join('')}</ul>
+<p style="margin:0;text-align:justify">Si un cliente no elige antes de su plazo, la visita se cancela sola y se avisa a todos. En la agenda aparecen marcadas «Reubicación pendiente».</p>`,
     );
   }
   return afectadasTotal;
 }
 
 async function manejarInmueble(admin: Admin, inm: NonNullable<Awaited<ReturnType<typeof cargarInmueblePorToken>>>, accion: string, body: Record<string, unknown>) {
-  const rentando = String(inm.estado_crm || '').trim().toLowerCase() === 'rentando';
+  const rentando = String(inm.estado_crm || '').trim().toLowerCase() === 'rentando' && inm.sin_aviso_arrendatario !== true;
   if (!rentando) return falla('Este inmueble ya no figura como arrendado. Comunícate con tu asesor.', 409);
   const ahora = ahoraBogota();
   const ctxAccion = { cita: { id: null as string | null, empresa_id: inm.empresa_id }, inmueble: { id: inm.id } };
@@ -430,7 +473,7 @@ async function manejarInmueble(admin: Admin, inm: NonNullable<Awaited<ReturnType
   if (accion === 'obtener') {
     const { data: citas } = await admin
       .from('agenda_citas')
-      .select('fecha, hora_inicio, hora_fin, token_arrendatario, reubicacion_pendiente_desde')
+      .select('fecha, hora_inicio, hora_fin, token_arrendatario, reubicacion_pendiente_desde, reubicacion_vence_en')
       .eq('inmueble_id', inm.id)
       .eq('tipo_cita', 'visita_cliente')
       .neq('estado', 'cancelada')
@@ -468,16 +511,23 @@ async function manejarInmueble(admin: Admin, inm: NonNullable<Awaited<ReturnType
           hora_fin: c.hora_fin.slice(0, 5),
           token: c.token_arrendatario,
           por_reubicar: !!c.reubicacion_pendiente_desde,
+          vence: c.reubicacion_pendiente_desde && c.reubicacion_vence_en ? formatearMomento(new Date(c.reubicacion_vence_en).getTime()) : null,
         })),
+      max_dias_pausa: MAX_DIAS_PAUSA,
       franjas: (franjas || []).map((f) => ({ fecha: f.fecha, tipo: f.tipo, desde: f.desde.slice(0, 5), hasta: f.hasta.slice(0, 5) })),
     });
   }
 
+  if (accion === 'primera_fecha') {
+    return json({ ok: true, fecha: await primeraFechaConHorarios(admin, { empresa_id: inm.empresa_id, inmueble_id: inm.id }, inm.dias_visita_permitidos, ahora.fecha) });
+  }
+
   if (accion === 'ventanas_guardar') {
-    const fecha = String(body.fecha || '');
+    // Una o varias fechas (cambio en bloque): las mismas franjas se aplican a todas.
+    const fechas = [...new Set((Array.isArray(body.fechas) && body.fechas.length ? body.fechas : [body.fecha]).map((f) => String(f || '')))].sort();
     const tipo = body.tipo === 'bloqueo' ? 'bloqueo' : body.tipo === 'disponible' ? 'disponible' : '';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !tipo) return falla('Elige la fecha y si es un bloqueo o una franja disponible.');
-    if (fecha < ahora.fecha || fecha > sumarDias(ahora.fecha, 60)) return falla('Elige una fecha dentro de los próximos 60 días.');
+    if (!fechas.length || fechas.length > 31 || fechas.some((f) => !/^\d{4}-\d{2}-\d{2}$/.test(f)) || !tipo) return falla('Elige al menos una fecha (máx. 31) y si es un bloqueo o una franja disponible.');
+    if (fechas.some((f) => f < ahora.fecha || f > sumarDias(ahora.fecha, 60))) return falla('Elige fechas dentro de los próximos 60 días.');
     const lista = Array.isArray(body.ventanas) ? (body.ventanas as Array<Record<string, unknown>>) : [];
     if (!lista.length || lista.length > MAX_FRANJAS_POR_DIA) return falla(`Indica entre 1 y ${MAX_FRANJAS_POR_DIA} franjas.`);
     const minutos = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
@@ -498,26 +548,140 @@ async function manejarInmueble(admin: Admin, inm: NonNullable<Awaited<ReturnType
     filas.sort((a, b) => (a.desde < b.desde ? -1 : 1));
     for (let i = 1; i < filas.length; i++) if (filas[i].desde < filas[i - 1].hasta) return falla('Las franjas no pueden cruzarse.');
 
-    await admin.from('agenda_inmueble_ventanas').delete().eq('inmueble_id', inm.id).eq('fecha', fecha);
+    await admin.from('agenda_inmueble_ventanas').delete().eq('inmueble_id', inm.id).in('fecha', fechas);
     const { error: errIns } = await admin
       .from('agenda_inmueble_ventanas')
-      .insert(filas.map((f) => ({ empresa_id: inm.empresa_id, inmueble_id: inm.id, fecha, tipo, desde: f.desde, hasta: f.hasta })));
+      .insert(fechas.flatMap((fecha) => filas.map((f) => ({ empresa_id: inm.empresa_id, inmueble_id: inm.id, fecha, tipo, desde: f.desde, hasta: f.hasta }))));
     if (errIns) return falla('No se pudieron guardar las franjas. Inténtalo de nuevo.', 500);
-    await registrarAccion(admin, ctxAccion, 'ventanas_guardadas', { fecha, tipo, franjas: filas });
-    const afectadas = await reubicarAfectadas(admin, inm, fecha, ahora);
-    return json({ ok: true, afectadas });
+    await registrarAccion(admin, ctxAccion, 'ventanas_guardadas', { fechas, tipo, franjas: filas });
+    let afectadas = 0;
+    for (const fecha of fechas) afectadas += await reubicarAfectadas(admin, inm, fecha, ahora);
+    return json({ ok: true, afectadas, fechas: fechas.length });
+  }
+
+  // «No puedo recibir visitas por un tiempo»: bloquea todos los días del rango (hasta MAX_DIAS_PAUSA). Las visitas que caen ahí
+  // quedan pendientes de nuevo horario (con plazo) y el cliente elige una fecha fuera de la pausa.
+  if (accion === 'pausar') {
+    const desde = String(body.desde || '');
+    const hasta = String(body.hasta || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta)) return falla('Indica desde qué día y hasta qué día no puedes recibir visitas.');
+    if (hasta < desde) return falla('El último día de la pausa no puede ser anterior al primero.');
+    if (desde < ahora.fecha || hasta > sumarDias(ahora.fecha, 60)) return falla('Elige fechas dentro de los próximos 60 días.');
+    const fechas: string[] = [];
+    for (let f = desde; f <= hasta; f = sumarDias(f, 1)) fechas.push(f);
+    if (fechas.length > MAX_DIAS_PAUSA) return falla(`La pausa puede durar hasta ${MAX_DIAS_PAUSA} días. Si necesitas más tiempo, comunícate con tu asesor.`);
+    await admin.from('agenda_inmueble_ventanas').delete().eq('inmueble_id', inm.id).in('fecha', fechas);
+    const { error: errIns } = await admin
+      .from('agenda_inmueble_ventanas')
+      .insert(fechas.map((fecha) => ({ empresa_id: inm.empresa_id, inmueble_id: inm.id, fecha, tipo: 'bloqueo', desde: '00:00', hasta: '23:59' })));
+    if (errIns) return falla('No se pudo pausar las visitas. Inténtalo de nuevo.', 500);
+    await registrarAccion(admin, ctxAccion, 'pausa_visitas', { desde, hasta });
+    let afectadas = 0;
+    for (const fecha of fechas) afectadas += await reubicarAfectadas(admin, inm, fecha, ahora, 'pausa');
+    return json({ ok: true, afectadas, dias: fechas.length });
   }
 
   if (accion === 'ventanas_borrar') {
-    const fecha = String(body.fecha || '');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return falla('Fecha inválida.');
-    await admin.from('agenda_inmueble_ventanas').delete().eq('inmueble_id', inm.id).eq('fecha', fecha);
-    await registrarAccion(admin, ctxAccion, 'ventanas_borradas', { fecha });
-    const afectadas = await reubicarAfectadas(admin, inm, fecha, ahora);
-    return json({ ok: true, afectadas });
+    const fechas = [...new Set((Array.isArray(body.fechas) && body.fechas.length ? body.fechas : [body.fecha]).map((f) => String(f || '')))].sort();
+    if (!fechas.length || fechas.length > 31 || fechas.some((f) => !/^\d{4}-\d{2}-\d{2}$/.test(f))) return falla('Fecha inválida.');
+    await admin.from('agenda_inmueble_ventanas').delete().eq('inmueble_id', inm.id).in('fecha', fechas);
+    await registrarAccion(admin, ctxAccion, 'ventanas_borradas', { fechas });
+    let afectadas = 0;
+    for (const fecha of fechas) afectadas += await reubicarAfectadas(admin, inm, fecha, ahora);
+    return json({ ok: true, afectadas, fechas: fechas.length });
   }
 
   return falla('Acción no reconocida.');
+}
+
+// ---- Vencimientos y recordatorios de las visitas «pendientes de nuevo horario» -------------------
+// Lo llama pg_cron cada 10 min (sql/026). No recibe nada ni toca nada que no esté vencido según la base, y cada paso deja una marca
+// para no repetirse, así que es seguro aunque alguien lo invoque de más.
+async function procesarReubicaciones(admin: Admin) {
+  const ahoraMs = Date.now();
+  const { data: pendientes } = await admin
+    .from('agenda_citas')
+    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, cliente_nombre, cliente_email, token_cliente, reubicacion_pendiente_desde, reubicacion_vence_en, reubicacion_recordada_en, reubicacion_recordada2_en')
+    .eq('estado', 'confirmada')
+    .eq('tipo_cita', 'visita_cliente')
+    .not('reubicacion_pendiente_desde', 'is', null)
+    .not('reubicacion_vence_en', 'is', null)
+    .limit(200);
+  let vencidas = 0;
+  let recordadas = 0;
+  for (const c of pendientes || []) {
+    const venceMs = new Date(c.reubicacion_vence_en as string).getTime();
+    const { data: inm } = await admin.from('agenda_inmuebles').select('id, numero_inmueble, direccion').eq('id', c.inmueble_id).maybeSingle();
+    if (!inm) continue;
+    const direccion = limpiarDireccion(inm.direccion);
+    const inicioMs = new Date(`${c.fecha}T${c.hora_inicio.slice(0, 5)}:00-05:00`).getTime();
+    const ctxAccion = { cita: { id: c.id as string | null, empresa_id: c.empresa_id }, inmueble: { id: inm.id } };
+
+    if (venceMs <= ahoraMs) {
+      // Se acabó el plazo y el cliente no eligió: la visita se cancela (condición en el UPDATE por si justo eligió).
+      const { data: cancelada } = await admin
+        .from('agenda_citas')
+        .update({ estado: 'cancelada', motivo_cancelacion: 'Cancelada automáticamente: no se eligió una nueva hora antes del plazo', cancelado_por: null, actualizado_en: new Date().toISOString() })
+        .eq('id', c.id)
+        .eq('estado', 'confirmada')
+        .eq('reubicacion_vence_en', c.reubicacion_vence_en)
+        .select('id')
+        .maybeSingle();
+      if (!cancelada) continue;
+      await admin.from('agenda_cita_propuestas').update({ estado: 'expirada', respondido_en: new Date().toISOString() }).eq('cita_id', c.id).eq('estado', 'pendiente');
+      await registrarAccion(admin, ctxAccion, 'visita_vencida', { fecha: c.fecha, hora: c.hora_inicio.slice(0, 5), vencio: c.reubicacion_vence_en });
+      // Cliente (con la cancelación en el calendario de su teléfono), propietario y arrendatario, por el correo de siempre.
+      await fetch(`${SUPABASE_URL}/functions/v1/notificar-cambio-cita`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY },
+        body: JSON.stringify({ cita_id: c.id, accion: 'cancelada', origen: 'vencimiento' }),
+      }).catch(() => {});
+      await avisarAsesor(
+        admin, c.empresa_id, c.id, c.asesor_id,
+        `Visita cancelada por vencimiento · Inmueble ${inm.numero_inmueble}`,
+        'Se canceló una visita: el cliente no eligió nueva hora',
+        `<p style="margin:0 0 10px;text-align:justify">La visita de <b>${esc(c.cliente_nombre)}</b> al inmueble Nº ${esc(String(inm.numero_inmueble))}${direccion ? ` (${esc(direccion)})` : ''}, que estaba para ${esc(formatearMomento(inicioMs))}, se canceló sola: el arrendatario no podía recibirla y el cliente no eligió una nueva hora antes de su plazo (${esc(formatearMomento(venceMs))}).</p><p style="margin:0;text-align:justify">Si el cliente sigue interesado, puede agendar de nuevo desde el sitio o puedes escribirle tú.</p>`,
+      );
+      vencidas++;
+      continue;
+    }
+
+    // Recordatorios: a mitad del plazo (si todavía faltan más de 2 h) y 2 h antes de que venza.
+    const desdeMs = new Date(c.reubicacion_pendiente_desde as string).getTime();
+    const faltaMs = venceMs - ahoraMs;
+    const toca1 = !c.reubicacion_recordada_en && ahoraMs >= desdeMs + (venceMs - desdeMs) / 2 && faltaMs > 2 * 3600_000;
+    const toca2 = !c.reubicacion_recordada2_en && faltaMs <= 2 * 3600_000;
+    if (!toca1 && !toca2) continue;
+    // Se marca primero (condicional): si dos corridas se cruzan, solo una envía.
+    const marca = new Date().toISOString();
+    const { data: marcada } = await admin
+      .from('agenda_citas')
+      .update(toca2 ? { reubicacion_recordada_en: c.reubicacion_recordada_en || marca, reubicacion_recordada2_en: marca } : { reubicacion_recordada_en: marca })
+      .eq('id', c.id)
+      .eq('estado', 'confirmada')
+      .is(toca2 ? 'reubicacion_recordada2_en' : 'reubicacion_recordada_en', null)
+      .select('id')
+      .maybeSingle();
+    if (!marcada) continue;
+    let asesor: { nombre: string; celular: string } | null = null;
+    if (c.asesor_id) {
+      const { data } = await admin.from('agenda_asesores').select('nombre, celular').eq('id', c.asesor_id).maybeSingle();
+      asesor = data;
+    }
+    const correo = correoClienteRecordatorio({
+      nombre: c.cliente_nombre,
+      lugar: direccion,
+      visitaOriginal: formatearMomento(inicioMs),
+      vence: formatearMomento(venceMs),
+      asesor,
+      enlace: `${SITIO_URL}/visita/${c.token_cliente}`,
+    });
+    await enviarCorreos(admin, c.empresa_id, c.id, 'cliente', correosDe(c.cliente_email).slice(0, 1), correo.asunto, (extra) =>
+      plantillaCorreo({ titulo: correo.titulo, cuerpo: correo.cuerpo, boton: correo.boton, ...extra }),
+    );
+    recordadas++;
+  }
+  return { vencidas, recordadas };
 }
 
 Deno.serve(async (req) => {
@@ -529,6 +693,16 @@ Deno.serve(async (req) => {
     body = await req.json();
   } catch {
     return falla('Cuerpo de la solicitud inválido.');
+  }
+  // Tarea programada (pg_cron): no usa token de ninguna parte.
+  if (body.accion === 'procesar_reubicaciones') {
+    try {
+      const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+      return json({ ok: true, ...(await procesarReubicaciones(admin)) });
+    } catch (e) {
+      console.error('portal-visita procesar_reubicaciones', e instanceof Error ? e.message : e);
+      return falla('No se pudieron procesar las visitas pendientes.', 500);
+    }
   }
   const token = String(body.token || '').trim();
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
@@ -554,11 +728,12 @@ Deno.serve(async (req) => {
     return falla('Este enlace no es válido o ya no está activo.', 404);
   }
   const { cita, inmueble, asesor, rol } = ctx;
-  const rentando = String(inmueble.estado_crm || '').trim().toLowerCase() === 'rentando';
+  // «Sin aviso al arrendatario» = el inmueble se comporta como uno libre: el cliente reagenda directo.
+  const rentando = String(inmueble.estado_crm || '').trim().toLowerCase() === 'rentando' && inmueble.sin_aviso_arrendatario !== true;
   const nombreInm = sustantivo(inmueble.tipo_inmueble);
   // El cliente puede ver, cancelar y (si no hay arrendatario adentro) reagendar su visita en cualquier inmueble;
   // todo lo demás (acuerdo de horario, horario permitido) solo existe mientras el inmueble está Rentando.
-  if (!rentando && !(rol === 'cliente' && ['obtener', 'horarios', 'cancelar', 'reagendar'].includes(accion))) {
+  if (!rentando && !(rol === 'cliente' && ['obtener', 'horarios', 'primera_fecha', 'cancelar', 'reagendar'].includes(accion))) {
     return falla('Este inmueble ya no figura como arrendado. Comunícate con tu asesor.', 409);
   }
 
@@ -604,6 +779,8 @@ Deno.serve(async (req) => {
         tipo: nombreInm,
         hoy: ahora.fecha,
         reubicacion: !!cita.reubicacion_pendiente_desde && citaVigente,
+        reubicacion_vence: cita.reubicacion_pendiente_desde && citaVigente && cita.reubicacion_vence_en ? formatearMomento(new Date(cita.reubicacion_vence_en).getTime()) : null,
+        reubicacion_motivo: cita.reubicacion_pendiente_desde && citaVigente ? cita.reubicacion_motivo : null,
         inmueble_token: rol === 'arrendatario' ? inmueble.token_arrendatario : undefined,
         cita: { fecha: cita.fecha, hora_inicio: horaCita, hora_fin: cita.hora_fin.slice(0, 5), estado: cita.estado, vigente: citaVigente },
         inmueble: {
@@ -625,10 +802,17 @@ Deno.serve(async (req) => {
               fecha: p.fecha,
               hora_inicio: p.hora_inicio.slice(0, 5),
               hora_fin: p.hora_fin.slice(0, 5),
-              vence_horas: Math.max(1, Math.round(HORAS_VIGENCIA_PROPUESTA - (Date.now() - new Date(p.creado_en).getTime()) / 3600_000)),
+              vence_horas: cita.reubicacion_vence_en
+                ? Math.max(1, Math.round((new Date(cita.reubicacion_vence_en).getTime() - Date.now()) / 3600_000))
+                : Math.max(1, Math.round(HORAS_VIGENCIA_PROPUESTA - (Date.now() - new Date(p.creado_en).getTime()) / 3600_000)),
             }
           : null,
       });
+    }
+
+    // ---------------------------------------------------------- primera_fecha
+    if (accion === 'primera_fecha') {
+      return json({ ok: true, fecha: await primeraFechaConHorarios(admin, cita, inmueble.dias_visita_permitidos, ahora.fecha) });
     }
 
     // --------------------------------------------------------------- horarios
@@ -685,22 +869,36 @@ Deno.serve(async (req) => {
           `Visita sin acuerdo de horario · Inmueble ${inmueble.numero_inmueble}`,
           'Esta visita necesita tu ayuda',
           `<p style="margin:0 0 10px;text-align:justify">La visita de <b>${esc(cita.cliente_nombre)}</b> al inmueble Nº ${esc(String(inmueble.numero_inmueble))} (${lineaVisita}) ya llegó al tope de ${MAX_PROPUESTAS} propuestas de horario entre el cliente y el arrendatario. No se permiten más propuestas desde los enlaces.</p>
-<p style="margin:0;text-align:justify">Si hay una propuesta pendiente se mantiene hasta que venza; si no hay acuerdo, la visita sigue en la hora original. Comunícate con ambos para cerrarla.</p>`,
+<p style="margin:0;text-align:justify">Si hay una propuesta pendiente se mantiene hasta que venza; si no hay acuerdo, la visita sigue en la hora original salvo que el arrendatario haya pedido el cambio (en ese caso se cancela al vencer el plazo). Comunícate con ambos para cerrarla.</p>`,
         );
       }
 
       const nuevaLinea = `<b>${esc(formatearFecha(fecha))}, ${esc(formatearHora(hora))}</b>`;
       if (rol === 'arrendatario') {
-        await avisarA(
-          'cliente',
-          `Propuesta de nuevo horario para tu visita · Inmueble ${inmueble.numero_inmueble}`,
-          'Te proponen otra hora para tu visita',
-          `<p style="margin:0 0 10px;text-align:justify">El inmueble que vas a visitar${direccion ? ` (${esc(direccion)})` : ''} está actualmente arrendado y ocupado, y el arrendatario no puede recibirte en el horario acordado.</p>
-<p style="margin:0 0 10px;text-align:justify">Tu visita sigue para ${lineaVisita}, pero propone esta otra hora:</p>
-<p style="margin:0 0 10px;font-size:16px;text-align:justify">${nuevaLinea}</p>
-<p style="margin:0;text-align:justify">Tu visita solo cambia si tú aceptas. Si no te sirve, puedes dejarla como está o proponer otra hora. La propuesta vence en ${HORAS_VIGENCIA_PROPUESTA} horas.</p>`,
-          'Ver la propuesta',
+        // «No puedo a esa hora» es un cambio OBLIGATORIO: la visita queda pendiente de nuevo horario, con plazo; el cliente
+        // acepta esta hora o elige otra, y si no hace ninguna de las dos antes del plazo la visita se cancela.
+        const venceMs = await marcarReubicacion(admin, cita, 'otra_hora');
+        const inicioMs = new Date(`${cita.fecha}T${horaCita}:00-05:00`).getTime();
+        const correo = correoClienteNuevoHorario({
+          nombre: cita.cliente_nombre,
+          lugar: direccion,
+          visitaOriginal: formatearMomento(inicioMs),
+          vence: formatearMomento(venceMs),
+          sugerencia: formatearMomento(new Date(`${fecha}T${hora}:00-05:00`).getTime()),
+          asesor,
+          enlace: enlaceDe('cliente'),
+        });
+        await enviarCorreos(admin, cita.empresa_id, cita.id, 'cliente', correosDe(cita.cliente_email).slice(0, 1), correo.asunto, (extra) =>
+          plantillaCorreo({ titulo: correo.titulo, cuerpo: correo.cuerpo, boton: correo.boton, ...extra }),
         );
+        if (requiereLlamada(Date.now(), inicioMs)) {
+          await avisarAsesor(
+            admin, cita.empresa_id, cita.id, cita.asesor_id,
+            `Llama hoy: visita que debe cambiar · Inmueble ${inmueble.numero_inmueble}`,
+            'Esta visita necesita tu llamada',
+            `<p style="margin:0 0 10px;text-align:justify">El arrendatario no puede recibir la visita de <b>${esc(cita.cliente_nombre)}</b> (${lineaVisita}) y propuso otra hora. Como falta menos de un día, <b>llama hoy al cliente</b> para acordarla.</p><p style="margin:0;text-align:justify">Ya le enviamos un correo con plazo hasta el ${esc(formatearMomento(venceMs))}; si no elige, la visita se cancela sola.</p>`,
+          );
+        }
       } else {
         await avisarA(
           'arrendatario',
@@ -724,6 +922,8 @@ Deno.serve(async (req) => {
       if (p.propuesto_por === rol) return falla('Esperando la respuesta de la otra persona.', 409);
 
       if (!aceptar) {
+        // Con un cambio obligatorio en curso el cliente no puede «dejar la hora original»: tiene que elegir otra o cancelar.
+        if (rol === 'cliente' && cita.reubicacion_pendiente_desde) return falla('Esta visita debe cambiar de hora: acepta la propuesta, elige otra hora o cancélala.', 409);
         await admin.from('agenda_cita_propuestas').update({ estado: 'rechazada', respondido_en: new Date().toISOString() }).eq('id', p.id).eq('estado', 'pendiente');
         await registrarAccion(admin, ctx, 'propuesta_rechazada', { por: rol });
         await avisarA(
@@ -758,7 +958,7 @@ Deno.serve(async (req) => {
           hora_inicio: elegido.hora_inicio,
           hora_fin: elegido.hora_fin,
           asesor_id: elegido.asesor_id,
-          reubicacion_pendiente_desde: null,
+          ...LIMPIAR_REUBICACION,
           actualizado_en: new Date().toISOString(),
         })
         .eq('id', cita.id)
@@ -767,6 +967,7 @@ Deno.serve(async (req) => {
         .eq('hora_inicio', cita.hora_inicio)
         .select('id')
         .maybeSingle();
+      if (errMover && /ya no está disponible/i.test(errMover.message)) return falla('Esa hora acaba de ser tomada por otra persona. Propón o elige otra.', 409);
       if (errMover || !movida) return falla('No se pudo confirmar el cambio. Actualiza la página e inténtalo de nuevo.', 409);
       await admin.from('agenda_cita_propuestas').update({ estado: 'aceptada', respondido_en: new Date().toISOString() }).eq('id', p.id);
       await registrarAccion(admin, ctx, 'propuesta_aceptada', { acepto: rol, de: { fecha: cita.fecha, hora: horaCita }, a: { fecha: p.fecha, hora: p.hora_inicio.slice(0, 5) } });
@@ -872,7 +1073,7 @@ Deno.serve(async (req) => {
           hora_inicio: elegido.hora_inicio,
           hora_fin: elegido.hora_fin,
           asesor_id: elegido.asesor_id,
-          reubicacion_pendiente_desde: null,
+          ...LIMPIAR_REUBICACION,
           actualizado_en: new Date().toISOString(),
         })
         .eq('id', cita.id)
@@ -881,6 +1082,7 @@ Deno.serve(async (req) => {
         .eq('hora_inicio', cita.hora_inicio)
         .select('id')
         .maybeSingle();
+      if (errMover && /ya no está disponible/i.test(errMover.message)) return falla('Ese horario acaba de ser tomado por otra persona. Elige otro.', 409);
       if (errMover || !movida) return falla('No se pudo cambiar la visita. Actualiza la página e inténtalo de nuevo.', 409);
       if (rentando) await registrarAccion(admin, ctx, 'cita_reubicada', { de: { fecha: cita.fecha, hora: horaCita }, a: { fecha, hora } });
       await admin

@@ -1,0 +1,60 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soporte v3: prueba local</title>
+<link rel="stylesheet" href="/aplicacion/estilos/agenda.css">
+<style>body{margin:0;background:#f5f7fa;font-family:Arial,sans-serif}.barra{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 16px;background:#1a2c45;color:#fff}</style>
+</head><body>
+<div class="barra"><strong>Vista previa del soporte (datos ficticios en memoria, no toca Supabase)</strong>
+  <span style="display:flex;gap:12px;align-items:center"><button id="simular" type="button">Simular respuesta de soporte</button><span id="campana"></span></span></div>
+<div id="visita-app" style="max-width:760px;margin:auto;padding:16px">
+  <label>Rol <select id="rol"><option value="asesor">asesor</option><option value="administrador">administrador</option></select></label>
+  <main id="v-main" class="v-content"></main></div>
+<script type="module">
+import { renderTickets, reiniciarTickets, abrirTicket } from '/aplicacion/js/tickets.js';
+import { crearApiSoporte } from '/aplicacion/js/soporte-comun/api.js';
+import { montarCampana, EVENTO_AVISOS } from '/aplicacion/js/soporte-comun/campana.js';
+
+const ahora = () => new Date().toISOString();
+const antes = (h) => new Date(Date.now() - h * 3600000).toISOString();
+const YO = 'u1';
+const tickets = [
+  { id: 't1', numero: 1, empresa_id: 'e1', usuario_id: YO, usuario_nombre: 'Luis Jiménez', tipo: 'error', titulo: 'No me deja mover una cita', descripcion: 'Al mover la cita del inmueble 127 sale un error.', pagina: 'Agenda', estado: 'en_espera', prioridad: 'alta', asignado_nombre: 'Felipe', creado_en: antes(30), primera_respuesta_en: antes(28), vence_primera_en: antes(22), reabierto_n: 0, calificacion: null },
+  { id: 't2', numero: 2, empresa_id: 'e1', usuario_id: YO, usuario_nombre: 'Luis Jiménez', tipo: 'duda', titulo: 'Cómo cambio la ciudad de un inmueble', descripcion: '', pagina: 'Inmuebles', estado: 'resuelto', prioridad: 'normal', asignado_nombre: 'Felipe', creado_en: antes(60), primera_respuesta_en: antes(58), vence_primera_en: antes(36), reabierto_n: 0, calificacion: null },
+  { id: 't3', numero: 3, empresa_id: 'e1', usuario_id: 'u2', usuario_nombre: 'Ana Pérez', tipo: 'mejora', titulo: 'Filtro por ciudad', descripcion: 'Sería útil.', pagina: 'Inmuebles', estado: 'abierto', prioridad: 'normal', asignado_nombre: '', creado_en: antes(2), primera_respuesta_en: null, vence_primera_en: new Date(Date.now() + 22 * 3600000).toISOString(), reabierto_n: 0, calificacion: null },
+];
+const hilo = { t1: [{ autor: 'Felipe', tipo: 'soporte', texto: 'Ya lo revisamos. ¿Te sigue pasando si recargas la página?', creado_en: antes(28) }], t2: [{ autor: 'Felipe', tipo: 'soporte', texto: 'Entra a Inmuebles, abre el inmueble y cambia la ciudad en la ficha.', creado_en: antes(58) }], t3: [] };
+let avisos = [
+  { id: 'a1', tipo: 'respuesta', titulo: 'Respondieron tu ticket #1', cuerpo: 'Ya lo revisamos. ¿Te sigue pasando si recargas la página?', ticket_id: 't1', creada_en: antes(28), leida: false },
+  { id: 'a2', tipo: 'calificar', titulo: 'Tu ticket #2 quedó resuelto', cuerpo: 'Cuéntanos cómo te fue: califica la atención.', ticket_id: 't2', creada_en: antes(57), leida: false },
+  { id: 'a3', tipo: 'asignado', titulo: 'Felipe atiende tu ticket #1', cuerpo: 'No me deja mover una cita', ticket_id: 't1', creada_en: antes(29), leida: true },
+];
+const ok = (data) => ({ data, error: null });
+const supabase = {
+  auth: { getUser: async () => ({ data: { user: { id: YO } } }) },
+  from: () => { let estados = null; const q = { select: () => q, eq: () => q, order: () => q, limit: () => q, in: (_c, v) => { estados = v; return q; }, or: () => { estados = ['abierto', 'en_revision', 'en_espera']; q.sinCalificar = true; return q; }, then: (res) => res({ data: estados ? tickets.filter((t) => estados.includes(t.estado) || (q.sinCalificar && t.estado === 'resuelto' && !t.calificacion)) : tickets, error: null }) }; return q; },
+  rpc: async (nombre, a) => {
+    if (nombre === 'agenda_ticket_detalle') { const t = tickets.find((x) => x.id === a.p_id); return ok({ rol: t.usuario_id === YO ? 'solicitante' : 'empresa', mensajes: hilo[t.id], notas: [], eventos: t.estado === 'resuelto' ? [{ actor: 'Felipe', tipo: 'estado', detalle: { de: 'en_espera', a: 'resuelto' }, creado_en: antes(57) }] : [] }); }
+    if (nombre === 'agenda_ticket_responder') {
+      const t = tickets.find((x) => x.id === a.p_id);
+      if (a.p_texto) hilo[t.id].push({ autor: 'Luis Jiménez', tipo: 'solicitante', texto: a.p_texto, creado_en: ahora() });
+      t.estado = a.p_estado === 'resuelto' ? 'resuelto' : (t.estado === 'en_espera' || t.estado === 'resuelto') ? 'abierto' : t.estado;
+      return ok({ estado: t.estado });
+    }
+    if (nombre === 'agenda_ticket_calificar') { const t = tickets.find((x) => x.id === a.p_id); t.calificacion = a.p_puntos; t.calificacion_comentario = a.p_comentario; return ok(null); }
+    if (nombre === 'agenda_ticket_crear') { const t = { id: 't9', numero: 9, empresa_id: 'e1', usuario_id: YO, usuario_nombre: 'Yo', tipo: a.p_tipo, titulo: a.p_titulo, descripcion: a.p_descripcion, estado: 'abierto', prioridad: 'normal', creado_en: ahora(), primera_respuesta_en: null }; tickets.unshift(t); hilo.t9 = []; return ok({ id: 't9', numero: 9 }); }
+    if (nombre === 'agenda_ticket_metricas') return ok({ dias: 30, creados: 12, resueltos: 9, pendientes: 2, en_espera: 1, vencidos: 1, primera_respuesta_min: { mediana: 95, p90: 600, n: 10 }, resolucion_horas: { mediana: 20.5, p90: 70, n: 9 }, csat: { n: 4, promedio: 4.5, positivas_pct: 75, tasa_respuesta_pct: 44, distribucion: { 1: 0, 2: 0, 3: 1, 4: 1, 5: 2 } } });
+    if (nombre === 'agenda_soporte_acceso_estado') return ok({ acceso_hasta: null, auditoria: [] });
+    if (nombre === 'agenda_notificaciones_mias') return ok({ no_leidas: avisos.filter((x) => !x.leida).length, items: avisos });
+    if (nombre === 'agenda_notificaciones_marcar') { avisos.forEach((x) => { if ((!a.p_id && !a.p_ticket_id) || x.id === a.p_id || x.ticket_id === a.p_ticket_id) x.leida = true; }); return ok(null); }
+    if (nombre === 'agenda_ticket_mantenimiento') return ok({});
+    return { data: null, error: { message: 'rpc desconocida: ' + nombre } };
+  },
+  functions: { invoke: async () => ({ data: { ok: true }, error: null }) },
+};
+const api = crearApiSoporte(supabase);
+const escape = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pintar = () => renderTickets({ el: document.querySelector('#v-main'), supabase, empresaId: 'e1', rol: document.querySelector('#rol').value, escape, vistaAnterior: 'Agenda' });
+montarCampana({ contenedor: document.getElementById('campana'), api, onAbrir: (n) => { abrirTicket(n.ticket_id); pintar(); } });
+document.getElementById('rol').onchange = () => { reiniciarTickets(); pintar(); };
+document.getElementById('simular').onclick = () => { avisos.unshift({ id: 'a' + Date.now(), tipo: 'respuesta', titulo: 'Respondieron tu ticket #3', cuerpo: 'Gracias por la idea, la anotamos.', ticket_id: 't3', creada_en: ahora(), leida: false }); window.dispatchEvent(new Event(EVENTO_AVISOS)); };
+pintar();
+</script></body></html>

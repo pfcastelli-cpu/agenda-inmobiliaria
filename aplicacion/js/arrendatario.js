@@ -17,13 +17,22 @@ const state = {
   paso: 'cargando', // cargando | error | principal
   vista: 'resumen', // resumen | proponer | cancelar | cancelada | inmueble
   modo: 'cita', // cita (enlace de una visita) | inmueble (enlace único del arrendatario con todas sus visitas)
-  reubicacion: false, // el cliente debe elegir otro turno porque el arrendatario limitó ese día
+  reubicacion: false, // el cliente debe elegir otro hora (obligatorio) porque el arrendatario no puede recibirlo
+  reubicacionVence: null, // texto del plazo: «jueves 29 de octubre, 3:00 p. m.»
   inmuebleToken: null,
+  // pausa de visitas (arrendatario, modo inmueble)
+  pausaDesde: '',
+  pausaHasta: '',
+  pausaConfirmar: false,
+  maxDiasPausa: 14,
   // modo inmueble
   citasInm: [],
   franjas: [],
   maxFranjas: 3,
   franjaFecha: null,
+  franjaFechas: [], // días elegidos cuando se cambia en bloque
+  franjaMulti: false,
+  primeraFecha: null, // primera fecha con horarios, para no obligar a adivinar el día
   franjaTipo: 'disponible',
   franjaRangos: [],
   token: null,
@@ -112,10 +121,12 @@ function aplicarDatos(d) {
     state.citasInm = d.citas || [];
     state.franjas = d.franjas || [];
     state.maxFranjas = d.max_franjas || 3;
+    state.maxDiasPausa = d.max_dias_pausa || 14;
     return;
   }
   state.modo = 'cita';
   state.reubicacion = !!d.reubicacion;
+  state.reubicacionVence = d.reubicacion_vence || null;
   state.inmuebleToken = d.inmueble_token || null;
   state.rol = d.rol;
   state.rentando = d.rentando !== false;
@@ -126,7 +137,8 @@ function aplicarDatos(d) {
   state.asesor = d.asesor;
   state.propuesta = d.propuesta;
   if (d.rol === 'arrendatario') {
-    state.diasSel = [...(d.inmueble.dias_permitidos || [])];
+    // Sin días configurados el sistema ofrece todos los días: se muestra así (✓ en todos), no como si ninguno se pudiera.
+    state.diasSel = d.inmueble.dias_permitidos?.length ? [...d.inmueble.dias_permitidos] : [1, 2, 3, 4, 5, 6, 7];
     state.desde = d.inmueble.desde || '';
     state.hasta = d.inmueble.hasta || '';
   }
@@ -158,6 +170,26 @@ async function cargar() {
     state.errorMsg = e.message || 'Este enlace no funciona o ya venció. Pídele a tu asesor que te lo envíe de nuevo.';
   }
   render();
+  irSegunEnlace();
+}
+
+// Los botones del correo traen ?accion=: abren directo la opción que la persona eligió.
+function irSegunEnlace() {
+  if (state.paso !== 'principal') return;
+  const params = new URLSearchParams(window.location.search);
+  const accion = params.get('accion');
+  if (!accion) return;
+  if (state.modo === 'cita') {
+    if (accion === 'otra_hora' && esArrendatario() && state.cita?.vigente && !state.propuesta) irA('proponer');
+    return;
+  }
+  if (accion === 'dia') {
+    const fecha = params.get('fecha');
+    if (fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) elegirFechaFranja(fecha);
+    document.getElementById('ar-card-dia')?.scrollIntoView({ behavior: 'smooth' });
+  } else if (accion === 'pausa') {
+    document.getElementById('ar-card-pausa')?.scrollIntoView({ behavior: 'smooth' });
+  }
 }
 
 // ---- Vistas ----------------------------------------------------------------------------
@@ -186,6 +218,8 @@ function errorBloque() {
 
 const estiloSecundario = 'background:transparent;color:var(--pu-text);border:1.5px solid var(--pu-border);margin-top:10px';
 
+const venceTxt = () => (state.reubicacionVence ? esc(state.reubicacionVence) : 'el plazo indicado en el correo');
+
 function bloquePropuesta() {
   const p = state.propuesta;
   const proximaHora = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px">
@@ -193,6 +227,16 @@ function bloquePropuesta() {
       <span class="pu-badge">🕒 ${esc(hora12(p.hora_inicio))}</span>
     </div>`;
   if (p.propuesta_por_mi) {
+    // El arrendatario no puede a la hora original: el cambio es obligatorio y tiene plazo.
+    if (esArrendatario() && state.reubicacion) {
+      return `
+      <div class="pu-card">
+        <h3 style="margin-top:0">Esperando respuesta de la persona interesada</h3>
+        <p style="margin-bottom:0">Le enviamos tu propuesta. Ella debe aceptarla o elegir otra hora <strong>antes del ${venceTxt()}</strong>; si no lo hace, <strong>la visita se cancela sola</strong> y no tendrás que hacer nada más.</p>
+        ${proximaHora}
+        <button class="pu-main" type="button" id="ar-ir-proponer" style="${estiloSecundario.replace('margin-top:10px', 'margin-top:0')}">Cambiar mi propuesta</button>
+      </div>`;
+    }
     return `
       <div class="pu-card">
         <h3 style="margin-top:0">Esperando respuesta</h3>
@@ -201,13 +245,26 @@ function bloquePropuesta() {
         <button class="pu-main" type="button" id="ar-ir-proponer" style="${estiloSecundario.replace('margin-top:10px', 'margin-top:0')}">Cambiar mi propuesta</button>
       </div>`;
   }
+  if (!esArrendatario() && state.reubicacion) {
+    return `
+    <div class="pu-card" style="border-color:var(--pu-teal)">
+      <h3 style="margin-top:0">Tu visita necesita una nueva hora</h3>
+      <p>Quien vive en el inmueble no puede recibirte a la hora acordada. Te propone esta otra:</p>
+      ${proximaHora}
+      <p><strong>Tienes hasta el ${venceTxt()} para elegir.</strong> Si no lo haces, la visita se cancela y el horario queda libre. No vayas al inmueble a la hora original: nadie podrá recibirte.</p>
+      ${errorBloque()}
+      <button class="pu-main" type="button" id="ar-aceptar" ${state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Un momento…' : 'Aceptar esta hora'}</button>
+      <button class="pu-main" type="button" id="ar-ir-proponer" style="${estiloSecundario}">Elegir otra hora</button>
+      <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario}">Cancelar mi visita</button>
+    </div>`;
+  }
   return `
     <div class="pu-card" style="border-color:var(--pu-teal)">
       <h3 style="margin-top:0">${esArrendatario() ? 'La persona interesada propone otra hora' : 'Te proponen otra hora para tu visita'}</h3>
       <p style="margin-bottom:0">${
         esArrendatario()
           ? 'Si aceptas, la visita pasa a esta hora y queda en firme.'
-          : 'El inmueble está arrendado y ocupado, y el arrendatario no puede recibirte en la hora acordada. La visita solo cambia si aceptas.'
+          : 'El inmueble está arrendado y ocupado. La visita solo cambia si aceptas.'
       }</p>
       ${proximaHora}
       ${errorBloque()}
@@ -223,14 +280,15 @@ function bloqueAcciones() {
   }
   if (state.propuesta) return bloquePropuesta();
   if (!esArrendatario()) {
-    // El cliente puede cambiar o cancelar su visita. Con arrendatario adentro, el cambio de hora es un acuerdo.
+    // Cambio obligatorio: el arrendatario no puede a esa hora. El cliente elige otra antes del plazo o la visita se cancela.
     if (state.reubicacion) {
       return `
     <div class="pu-card" style="border-color:var(--pu-teal)">
-      <h3 style="margin-top:0">Elige una nueva hora para tu visita</h3>
-      <p>Quien habita el inmueble no podrá recibirte a esa hora. Escoge un horario disponible (ya tiene en cuenta la agenda del asesor): el cambio queda en firme al instante y te enviamos la confirmación por correo. Mientras no elijas, tu visita sigue en la hora original.</p>
+      <h3 style="margin-top:0">Tu visita necesita una nueva hora</h3>
+      <p>Quien vive en el inmueble no puede recibirte a la hora acordada. Escoge un horario disponible (ya tiene en cuenta la agenda del asesor): el cambio queda en firme al instante y te enviamos la confirmación por correo.</p>
+      <p><strong>Tienes hasta el ${venceTxt()} para elegir.</strong> Si no lo haces, la visita se cancela y el horario queda libre. No vayas al inmueble a la hora original: nadie podrá recibirte.</p>
       <button class="pu-main" type="button" id="ar-ir-proponer">Elegir nueva hora</button>
-      <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario}">Cancelar mi visita</button>
+      <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario}">Ya no me interesa: cancelar mi visita</button>
     </div>`;
     }
     return `
@@ -238,32 +296,39 @@ function bloqueAcciones() {
       <h3 style="margin-top:0">¿Necesitas cambiar tu visita?</h3>
       <p>${
         state.rentando
-          ? 'El inmueble está arrendado y ocupado: si propones otra hora, el arrendatario debe aceptarla y la visita no cambia hasta entonces. Si el arrendatario necesita otra hora, te escribiremos con una propuesta y solo cambia si tú aceptas.'
+          ? 'El inmueble está arrendado y ocupado: si propones otra hora, el arrendatario debe aceptarla y la visita no cambia hasta entonces. Si quien vive allí no puede recibirte, te escribiremos y tendrás un plazo para elegir otra hora; si no la eliges, la visita se cancela.'
           : 'Elige otra hora disponible (ya tiene en cuenta la agenda del asesor). El cambio queda en firme al instante y te enviamos la confirmación por correo.'
       }</p>
       <button class="pu-main" type="button" id="ar-ir-proponer">${state.rentando ? 'Proponer otra hora' : 'Cambiar la hora'}</button>
       <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario}">Cancelar mi visita</button>
     </div>`;
   }
+  // Arrendatario: tres opciones, cada una con un resultado distinto, y la consecuencia dicha de frente.
+  const base = state.inmuebleToken ? `/arrendatario/${esc(state.inmuebleToken)}` : '';
+  const enlaceBoton = (href, texto) => `<a class="pu-main" href="${href}" style="display:flex;align-items:center;justify-content:center;min-height:48px;box-sizing:border-box;text-align:center;text-decoration:none;${estiloSecundario}">${texto}</a>`;
   return `
     <div class="pu-card">
-      <h3 style="margin-top:0">¿No puedes recibir la visita a esa hora?</h3>
-      <p>Propón otra hora disponible (ya tiene en cuenta la agenda del asesor). La persona interesada recibe tu propuesta y, <strong>cuando la acepte, la visita queda en firme</strong>. Hasta entonces sigue en la hora original.</p>
-      <button class="pu-main" type="button" id="ar-ir-proponer">Proponer otra hora</button>
-      <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario}">Cancelar la visita</button>
+      <h3 style="margin-top:0">¿No puedes recibir esta visita?</h3>
+      ${state.reubicacion ? `<p class="pu-badge" style="margin:0 0 10px">Ya le pedimos a la persona interesada que elija otra hora (plazo: ${venceTxt()}).</p>` : ''}
+      <p>Dinos cuál de estas opciones es la tuya. En cualquiera de los tres casos <strong>le pedimos a la persona interesada que elija otra hora y le damos un plazo; si no la elige, la visita se cancela sola</strong>. Tú no tienes que hacer nada más.</p>
+      <button class="pu-main" type="button" id="ar-ir-proponer">Puedo, pero a otra hora</button>
+      ${base ? enlaceBoton(`${base}?accion=dia&fecha=${esc(state.cita.fecha)}`, 'No puedo ese día') : ''}
+      ${base ? enlaceBoton(`${base}?accion=pausa`, 'No puedo recibir visitas por un tiempo') : ''}
+      <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario};font-size:13px">Cancelar solo esta visita</button>
     </div>`;
 }
 
 function bloqueHorarioPermitido() {
   if (!esArrendatario()) return '';
   const dias = [1, 2, 3, 4, 5, 6, 7]
-    .map((d) => `<button type="button" class="pu-option ${state.diasSel.includes(d) ? 'activa' : ''}" data-dia="${d}">${DIAS_LARGO[d]}</button>`)
+    .map((d) => `<button type="button" class="pu-option ${state.diasSel.includes(d) ? 'activa' : ''}" data-dia="${d}" aria-pressed="${state.diasSel.includes(d)}">${state.diasSel.includes(d) ? '✓' : '✕'} ${DIAS_LARGO[d]}</button>`)
     .join('');
   return `
     <div class="pu-card">
       <h3 style="margin-top:0">Cuándo se puede mostrar tu ${esc(state.tipo)}</h3>
       <p>Estos días y horas se usan para <strong>todas las visitas futuras</strong>. El sistema los combina con la jornada de los asesores, así que solo se ofrecen horarios en los que hay un asesor libre.</p>
       <h3 class="pu-question">Días</h3>
+      <p class="pu-vacio" style="margin:0 0 6px;font-size:13px">✓ = se puede mostrar ese día · ✕ = no se muestra</p>
       <div class="pu-options" id="ar-dias">${dias}</div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
         <div style="flex:1;min-width:130px"><label for="ar-desde">Desde</label><input id="ar-desde" type="time" min="06:00" max="21:00" step="1800" value="${esc(state.desde)}"></div>
@@ -289,9 +354,12 @@ function vistaResumen() {
 }
 
 // ---- Vista del inmueble (arrendatario): todas sus visitas y sus franjas --------------------
+const esPausa = (f) => f.tipo === 'bloqueo' && f.desde === '00:00' && f.hasta >= '23:59';
+
 function textoFranjaDia(fecha) {
   const del = state.franjas.filter((f) => f.fecha === fecha);
   if (!del.length) return '';
+  if (del.some(esPausa)) return 'No recibes visitas ese día (pausa)';
   const tipo = del[0].tipo === 'disponible' ? 'Solo puedes' : 'No puedes';
   return `${tipo}: ${del.map((f) => `${hora12(f.desde)} a ${hora12(f.hasta)}`).join(', ')}`;
 }
@@ -302,7 +370,7 @@ function vistaInmueble() {
     ? state.citasInm
         .map(
           (c) =>
-            `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0"><span class="pu-badge">📅 ${esc(fechaLarga(c.fecha))}</span><span class="pu-badge">🕒 ${esc(hora12(c.hora_inicio))} a ${esc(hora12(c.hora_fin))}</span>${c.por_reubicar ? '<span class="pu-badge">Por reubicar</span>' : ''}<a href="/arrendatario/${esc(c.token)}">Ver o cambiar esta visita</a></div>`,
+            `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0"><span class="pu-badge">📅 ${esc(fechaLarga(c.fecha))}</span><span class="pu-badge">🕒 ${esc(hora12(c.hora_inicio))} a ${esc(hora12(c.hora_fin))}</span>${c.por_reubicar ? `<span class="pu-badge">Por cambiar de hora${c.vence ? ` · plazo del interesado: ${esc(c.vence)}` : ''}</span>` : ''}<a href="/arrendatario/${esc(c.token)}">Ver o cambiar esta visita</a></div>`,
         )
         .join('')
     : `<p class="pu-vacio" style="margin:0">No tienes visitas programadas por ahora.</p>`;
@@ -313,17 +381,26 @@ function vistaInmueble() {
     f.setDate(f.getDate() + n);
     fechas.push(f);
   }
-  const strip = `<div class="pu-fechas" id="ar-fechas-franja">${fechas
-    .map((f) => {
-      const tiene = state.franjas.some((x) => x.fecha === iso(f));
-      const hay = state.citasInm.some((x) => x.fecha === iso(f));
-      return `<div class="pu-fecha ${iso(f) === state.franjaFecha ? 'activa' : ''}" data-fecha="${iso(f)}" role="button" tabindex="0"><span>${DIAS_CORTO[f.getDay()]}</span><strong>${f.getDate()}</strong><span>${MESES[f.getMonth()].slice(0, 3)}${tiene ? ' ●' : hay ? ' ·' : ''}</span></div>`;
-    })
-    .join('')}</div>
-    <p class="pu-vacio" style="margin:6px 0 0;font-size:12px">● ya tiene franjas · · tiene visitas</p>`;
+  const multi = state.franjaMulti;
+  const elegida = (f) => (multi ? state.franjaFechas.includes(iso(f)) : iso(f) === state.franjaFecha);
+  const strip = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px">
+      <button type="button" class="pu-option ${multi ? 'activa' : ''}" id="ar-multi" aria-pressed="${multi}">${multi ? '✓' : '○'} Cambiar varios días a la vez</button>
+      ${multi ? `<button type="button" class="pu-option" id="ar-multi-habiles">Elegir lunes a viernes</button><button type="button" class="pu-option" id="ar-multi-limpiar">Quitar selección</button>` : ''}
+    </div>
+    <div class="pu-fechas" id="ar-fechas-franja">${fechas
+      .map((f) => {
+        const tiene = state.franjas.some((x) => x.fecha === iso(f));
+        const hay = state.citasInm.some((x) => x.fecha === iso(f));
+        const sel = elegida(f);
+        return `<div class="pu-fecha ${sel ? 'activa' : ''}" data-fecha="${iso(f)}" role="button" tabindex="0" aria-pressed="${sel}"><span>${sel ? '✓ ' : ''}${DIAS_CORTO[f.getDay()]}</span><strong>${f.getDate()}</strong><span>${MESES[f.getMonth()].slice(0, 3)}${tiene ? ' ●' : hay ? ' ·' : ''}</span></div>`;
+      })
+      .join('')}</div>
+    <p class="pu-vacio" style="margin:6px 0 0;font-size:12px">✓ = día elegido · ● ya tiene franjas · · tiene visitas</p>`;
 
+  const diasElegidos = multi ? [...state.franjaFechas].sort() : state.franjaFecha ? [state.franjaFecha] : [];
   let editor = '';
-  if (state.franjaFecha) {
+  if (diasElegidos.length) {
     const disponible = state.franjaTipo === 'disponible';
     const rangos = state.franjaRangos
       .map(
@@ -331,19 +408,23 @@ function vistaInmueble() {
           `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:8px 0"><div style="flex:1;min-width:120px"><label>Desde</label><input type="time" min="06:00" max="21:00" step="900" data-rango="${k}" data-lado="desde" value="${esc(r.desde)}"></div><div style="flex:1;min-width:120px"><label>Hasta</label><input type="time" min="06:00" max="21:00" step="900" data-rango="${k}" data-lado="hasta" value="${esc(r.hasta)}"></div>${state.franjaRangos.length > 1 ? `<button type="button" class="pu-main" data-quitar-rango="${k}" style="${estiloSecundario.replace('margin-top:10px', 'margin-top:0')};width:auto">Quitar</button>` : ''}</div>`,
       )
       .join('');
+    const titulo = diasElegidos.length === 1 ? esc(fechaLarga(diasElegidos[0])) : `${diasElegidos.length} días elegidos`;
+    const guardadoUnico = diasElegidos.length === 1 ? textoFranjaDia(diasElegidos[0]) : '';
+    const hayGuardadas = state.franjas.some((f) => diasElegidos.includes(f.fecha));
     editor = `
-      <h3 class="pu-question">${esc(fechaLarga(state.franjaFecha))}</h3>
-      ${textoFranjaDia(state.franjaFecha) ? `<p style="margin:0 0 8px"><strong>Hoy tienes guardado:</strong> ${esc(textoFranjaDia(state.franjaFecha))}</p>` : ''}
+      <h3 class="pu-question">${titulo}</h3>
+      ${diasElegidos.length > 1 ? `<p style="margin:0 0 8px;font-size:13px">${esc(diasElegidos.map((d) => fechaLarga(d)).join(' · '))}</p>` : ''}
+      ${guardadoUnico ? `<p style="margin:0 0 8px"><strong>Hoy tienes guardado:</strong> ${esc(guardadoUnico)}</p>` : ''}
       <div class="pu-options" id="ar-tipo-franja">
-        <button type="button" class="pu-option ${disponible ? 'activa' : ''}" data-tipo="disponible">Solo puedo en estas franjas</button>
-        <button type="button" class="pu-option ${!disponible ? 'activa' : ''}" data-tipo="bloqueo">No puedo en estas franjas</button>
+        <button type="button" class="pu-option ${disponible ? 'activa' : ''}" data-tipo="disponible" aria-pressed="${disponible}">${disponible ? '✓' : '○'} Solo puedo en estas franjas</button>
+        <button type="button" class="pu-option ${!disponible ? 'activa' : ''}" data-tipo="bloqueo" aria-pressed="${!disponible}">${!disponible ? '✓' : '○'} No puedo en estas franjas</button>
       </div>
-      <p style="margin:8px 0 0;font-size:13px">${disponible ? `Ese día solo se ofrecerán visitas dentro de ${state.maxFranjas === 1 ? 'la franja' : `hasta ${state.maxFranjas} franjas`} (por ejemplo, de 2 horas). Dentro de cada franja pueden atenderse varias personas, una tras otra.` : 'En esas franjas no se ofrecerá ninguna visita.'}</p>
+      <p style="margin:8px 0 0;font-size:13px">${disponible ? `${diasElegidos.length > 1 ? 'Esos días' : 'Ese día'} solo se ofrecerán visitas dentro de ${state.maxFranjas === 1 ? 'la franja' : `hasta ${state.maxFranjas} franjas`} (por ejemplo, de 2 horas). Dentro de cada franja pueden atenderse varias personas, una tras otra.` : 'En esas franjas no se ofrecerá ninguna visita.'}</p>
       ${rangos}
       ${state.franjaRangos.length < state.maxFranjas ? `<button type="button" class="pu-main" id="ar-mas-rango" style="${estiloSecundario}">Agregar otra franja</button>` : ''}
       ${errorBloque()}
-      <button class="pu-main" type="button" id="ar-guardar-franjas" ${state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Guardando…' : 'Guardar franjas de este día'}</button>
-      ${state.franjas.some((f) => f.fecha === state.franjaFecha) ? `<button class="pu-main" type="button" id="ar-borrar-franjas" style="${estiloSecundario}" ${state.ocupado ? 'disabled' : ''}>Quitar las franjas de este día</button>` : ''}`;
+      <button class="pu-main" type="button" id="ar-guardar-franjas" ${state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Guardando…' : diasElegidos.length > 1 ? `Guardar en los ${diasElegidos.length} días` : 'Guardar franjas de este día'}</button>
+      ${hayGuardadas ? `<button class="pu-main" type="button" id="ar-borrar-franjas" style="${estiloSecundario}" ${state.ocupado ? 'disabled' : ''}>${diasElegidos.length > 1 ? 'Quitar las franjas de estos días' : 'Quitar las franjas de este día'}</button>` : ''}`;
   }
 
   return `
@@ -353,11 +434,41 @@ function vistaInmueble() {
       ${lista}
     </div>
     ${exito()}
-    <div class="pu-card">
-      <h3 style="margin-top:0">¿Algún día no puedes? Dinos cuándo sí</h3>
-      <p>Elige el día y marca las franjas en las que <strong>sí</strong> (o <strong>no</strong>) puedes recibir. Le pedimos a cada persona con visita ese día que elija un nuevo turno dentro de tus franjas; así no tienes que responder visita por visita.</p>
+    <div class="pu-card" id="ar-card-dia">
+      <h3 style="margin-top:0">No puedo ese día</h3>
+      <p>Elige el día (o varios a la vez) y marca las franjas en las que <strong>sí</strong> (o <strong>no</strong>) puedes recibir. Le pedimos a cada persona con visita esos días que elija otra hora y le damos un plazo; <strong>si no la elige, su visita se cancela sola</strong>. Así no tienes que responder visita por visita.</p>
       ${strip}
       ${editor}
+    </div>
+    ${bloquePausa()}`;
+}
+
+// «No puedo recibir visitas por un tiempo»: acción grande, así que pide confirmar en una pantalla que dice las consecuencias.
+function bloquePausa() {
+  const afectadas = state.citasInm.filter((c) => state.pausaDesde && state.pausaHasta && c.fecha >= state.pausaDesde && c.fecha <= state.pausaHasta).length;
+  const dias = state.pausaDesde && state.pausaHasta ? Math.round((fechaDe(state.pausaHasta) - fechaDe(state.pausaDesde)) / 86400000) + 1 : 0;
+  const rango = state.pausaDesde && state.pausaHasta ? (state.pausaDesde === state.pausaHasta ? esc(fechaLarga(state.pausaDesde)) : `del ${esc(fechaLarga(state.pausaDesde))} al ${esc(fechaLarga(state.pausaHasta))}`) : '';
+  if (state.pausaConfirmar) {
+    return `
+    <div class="pu-card" id="ar-card-pausa" style="border-color:#b3261e">
+      <h3 style="margin-top:0">¿Pausar las visitas ${rango}?</h3>
+      <p>Durante ${dias === 1 ? 'ese día' : `esos ${dias} días`} no se ofrecerá ningún horario para tu ${esc(state.tipo)}.</p>
+      <p>${afectadas ? `Hay <strong>${afectadas} ${afectadas === 1 ? 'visita' : 'visitas'}</strong> en esas fechas: le pedimos a cada persona que elija otra hora fuera de la pausa y le damos un plazo. <strong>Si no la elige, su visita se cancela sola.</strong>` : 'No tienes visitas programadas en esas fechas.'}</p>
+      ${errorBloque()}
+      <button class="pu-main" type="button" id="ar-pausa-si" style="background:#b3261e;color:#fff" ${state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Pausando…' : 'Sí, pausar las visitas'}</button>
+      <button class="pu-main" type="button" id="ar-pausa-volver" style="${estiloSecundario}" ${state.ocupado ? 'disabled' : ''}>Volver</button>
+    </div>`;
+  }
+  return `
+    <div class="pu-card" id="ar-card-pausa">
+      <h3 style="margin-top:0">No puedo recibir visitas por un tiempo</h3>
+      <p>Pausa las visitas hasta por ${state.maxDiasPausa} días seguidos (por ejemplo, por un viaje o una remodelación). Si necesitas más tiempo, habla con tu asesor.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px"><label for="ar-pausa-desde">Desde</label><input id="ar-pausa-desde" type="date" min="${esc(state.hoy)}" value="${esc(state.pausaDesde)}"></div>
+        <div style="flex:1;min-width:140px"><label for="ar-pausa-hasta">Hasta</label><input id="ar-pausa-hasta" type="date" min="${esc(state.pausaDesde || state.hoy)}" value="${esc(state.pausaHasta)}"></div>
+      </div>
+      ${errorBloque()}
+      <button class="pu-main" type="button" id="ar-pausa-revisar">Revisar y pausar</button>
     </div>`;
 }
 
@@ -365,7 +476,7 @@ function fechasCandidatas() {
   const permitidos = esArrendatario() ? state.inmueble.dias_permitidos || [] : [];
   const out = [];
   for (let n = 0; n < DIAS_A_MOSTRAR; n++) {
-    const f = fechaDe(state.hoy);
+    const f = fechaDe(state.primeraFecha || state.hoy);
     f.setDate(f.getDate() + n);
     const dow = f.getDay() || 7;
     if (permitidos.length && !permitidos.includes(dow)) continue;
@@ -397,7 +508,7 @@ function vistaProponer() {
     ${tarjetaVisita()}
     <div class="pu-card">
       <h3 style="margin-top:0">${cambioDirecto() ? 'Elige la nueva hora de tu visita' : 'Elige la hora que propones'}</h3>
-      <p>Solo aparecen horas en las que un asesor puede atender${esArrendatario() ? ` y que están dentro del horario permitido de tu ${esc(state.tipo)}` : ''}. ${cambioDirecto() ? 'Al confirmar, tu visita pasa a esa hora y te enviamos la confirmación por correo.' : `${esArrendatario() ? 'La persona interesada' : 'El arrendatario'} deberá aceptarla; la visita no cambia hasta entonces.`}</p>
+      <p>Solo aparecen horas en las que un asesor puede atender${esArrendatario() ? ` y que están dentro del horario permitido de tu ${esc(state.tipo)}` : ''}. ${cambioDirecto() ? 'Al confirmar, tu visita pasa a esa hora y te enviamos la confirmación por correo.' : esArrendatario() ? 'Al enviarla, la visita ya no queda en la hora original: la persona interesada deberá aceptar tu hora o elegir otra antes de un plazo; si no lo hace, la visita se cancela.' : 'El arrendatario deberá aceptarla; la visita no cambia hasta entonces.'}</p>
       ${strip}
       ${slots}
       ${errorBloque()}
@@ -413,7 +524,7 @@ function vistaCancelar() {
       <h3 style="margin-top:0">${esArrendatario() ? '¿Cancelar esta visita?' : '¿Cancelar tu visita?'}</h3>
       <p>${
         esArrendatario()
-          ? 'Avisaremos a la persona interesada para que busque otro horario. Si solo necesitas otra hora, mejor usa "Proponer otra hora".'
+          ? 'Esta visita se cancela y avisaremos a la persona interesada para que agende otra. Si solo necesitas otra hora, vuelve y usa "Puedo, pero a otra hora": así ella elige una nueva hora sin perder su turno.'
           : `Avisaremos al propietario${state.rentando ? ' y al arrendatario' : ''} y la visita se quitará del calendario de tu teléfono. Si solo necesitas otra hora, mejor cámbiala.`
       }</p>
       <label for="ar-motivo">Motivo (opcional)</label>
@@ -490,7 +601,9 @@ async function confirmarProponer() {
     }
     await llamar('proponer', { fecha: state.fechaSel, hora: state.horaSel });
     await recargar();
-    state.mensaje = `Enviamos tu propuesta (${fechaLarga(state.propuesta?.fecha || state.fechaSel)}, ${hora12(state.propuesta?.hora_inicio || state.horaSel)}). La visita solo cambia cuando ${esArrendatario() ? 'la persona interesada' : 'el arrendatario'} la acepte.`;
+    state.mensaje = esArrendatario()
+      ? `Enviamos tu propuesta (${fechaLarga(state.propuesta?.fecha || state.fechaSel)}, ${hora12(state.propuesta?.hora_inicio || state.horaSel)}). La persona interesada debe aceptarla o elegir otra hora${state.reubicacionVence ? ` antes del ${state.reubicacionVence}` : ' en el plazo que le dimos'}; si no lo hace, la visita se cancela sola.`
+      : `Enviamos tu propuesta (${fechaLarga(state.propuesta?.fecha || state.fechaSel)}, ${hora12(state.propuesta?.hora_inicio || state.horaSel)}). La visita solo cambia cuando el arrendatario la acepte.`;
   } catch (e) {
     state.errorForm = e.message;
     state.ocupado = false;
@@ -542,6 +655,37 @@ async function confirmarCancelar() {
   render();
 }
 
+// Pausa de visitas: primero se revisa (pantalla de confirmación con las consecuencias) y solo entonces se ejecuta.
+function revisarPausa() {
+  state.errorForm = '';
+  state.mensaje = '';
+  if (!state.pausaDesde || !state.pausaHasta) { state.errorForm = 'Elige desde qué día y hasta qué día.'; return render(); }
+  if (state.pausaHasta < state.pausaDesde) { state.errorForm = 'El último día no puede ser anterior al primero.'; return render(); }
+  const dias = Math.round((fechaDe(state.pausaHasta) - fechaDe(state.pausaDesde)) / 86400000) + 1;
+  if (dias > state.maxDiasPausa) { state.errorForm = `La pausa puede durar hasta ${state.maxDiasPausa} días. Si necesitas más tiempo, habla con tu asesor.`; return render(); }
+  state.pausaConfirmar = true;
+  render();
+}
+
+async function confirmarPausa() {
+  state.ocupado = true;
+  state.errorForm = '';
+  render();
+  try {
+    const d = await llamar('pausar', { desde: state.pausaDesde, hasta: state.pausaHasta });
+    await recargar();
+    state.mensaje = `Pausamos las visitas del ${fechaLarga(state.pausaDesde)} al ${fechaLarga(state.pausaHasta)}.${d.afectadas ? ` Le pedimos a ${d.afectadas === 1 ? 'la persona con una visita' : `las ${d.afectadas} personas con visita`} en esas fechas que elija${d.afectadas === 1 ? '' : 'n'} otra hora; si no lo hace${d.afectadas === 1 ? '' : 'n'} a tiempo, la visita se cancela sola.` : ' No tenías visitas programadas en esas fechas.'}`;
+    state.pausaDesde = '';
+    state.pausaHasta = '';
+    state.pausaConfirmar = false;
+  } catch (e) {
+    state.errorForm = e.message;
+  }
+  state.ocupado = false;
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 async function guardarHorario() {
   state.errorForm = '';
   state.mensaje = '';
@@ -568,6 +712,14 @@ async function guardarHorario() {
   if (state.mensaje) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function alternarFechaFranja(fecha) {
+  state.errorForm = '';
+  state.mensaje = '';
+  state.franjaFechas = state.franjaFechas.includes(fecha) ? state.franjaFechas.filter((f) => f !== fecha) : [...state.franjaFechas, fecha];
+  if (state.franjaFechas.length && !state.franjaRangos.length) state.franjaRangos = [{ desde: '08:00', hasta: '10:00' }];
+  render();
+}
+
 function elegirFechaFranja(fecha) {
   state.franjaFecha = fecha;
   state.errorForm = '';
@@ -592,15 +744,27 @@ async function guardarFranjas() {
       return render();
     }
   }
+  const fechasElegidas = state.franjaMulti ? [...state.franjaFechas].sort() : [state.franjaFecha];
+  if (!fechasElegidas.length || !fechasElegidas[0]) {
+    state.errorForm = 'Elige al menos un día.';
+    return render();
+  }
   state.ocupado = true;
   render();
   try {
-    const d = await llamar('ventanas_guardar', { fecha: state.franjaFecha, tipo: state.franjaTipo, ventanas: state.franjaRangos });
+    const d = await llamar('ventanas_guardar', { fechas: fechasElegidas, tipo: state.franjaTipo, ventanas: state.franjaRangos });
     const fecha = state.franjaFecha;
+    const rangos = state.franjaRangos;
+    const tipo = state.franjaTipo;
     await recargar();
-    state.franjaFecha = fecha;
-    elegirFechaFranja(fecha);
-    state.mensaje = `Guardamos tus franjas del ${fechaLarga(fecha)}.${d.afectadas ? ` Hay ${d.afectadas === 1 ? 'una visita' : `${d.afectadas} visitas`} fuera de ellas: ya le pedimos a ${d.afectadas === 1 ? 'esa persona' : 'esas personas'} que elija${d.afectadas === 1 ? '' : 'n'} otro turno dentro de tus franjas.` : ' Ninguna visita tuya queda fuera de ellas.'}`;
+    if (state.franjaMulti) {
+      state.franjaRangos = rangos;
+      state.franjaTipo = tipo;
+    } else {
+      state.franjaFecha = fecha;
+      elegirFechaFranja(fecha);
+    }
+    state.mensaje = `Guardamos tus franjas ${fechasElegidas.length > 1 ? `de ${fechasElegidas.length} días` : `del ${fechaLarga(fecha)}`}.${d.afectadas ? ` Hay ${d.afectadas === 1 ? 'una visita' : `${d.afectadas} visitas`} fuera de ellas: ya le pedimos a ${d.afectadas === 1 ? 'esa persona' : 'esas personas'} que elija${d.afectadas === 1 ? '' : 'n'} otro turno dentro de tus franjas.` : ' Ninguna visita tuya queda fuera de ellas.'}`;
   } catch (e) {
     state.errorForm = e.message;
   }
@@ -614,11 +778,12 @@ async function borrarFranjas() {
   state.ocupado = true;
   render();
   try {
+    const fechasElegidas = state.franjaMulti ? [...state.franjaFechas].sort() : [state.franjaFecha];
     const fecha = state.franjaFecha;
-    await llamar('ventanas_borrar', { fecha });
+    await llamar('ventanas_borrar', { fechas: fechasElegidas });
     await recargar();
-    elegirFechaFranja(fecha);
-    state.mensaje = `Quitamos las franjas del ${fechaLarga(fecha)}.`;
+    if (!state.franjaMulti) elegirFechaFranja(fecha);
+    state.mensaje = fechasElegidas.length > 1 ? `Quitamos las franjas de ${fechasElegidas.length} días.` : `Quitamos las franjas del ${fechaLarga(fechasElegidas[0])}.`;
   } catch (e) {
     state.errorForm = e.message;
   }
@@ -634,8 +799,23 @@ function irA(vista) {
   state.fechaSel = null;
   state.horas = null;
   state.horaSel = null;
+  state.primeraFecha = null;
   render();
   window.scrollTo({ top: 0 });
+  if (vista === 'proponer') abrirEnPrimeraFecha();
+}
+
+// Al abrir «elegir hora», se salta solo a la primera fecha con horarios libres (respeta «citas desde», días permitidos y franjas).
+async function abrirEnPrimeraFecha() {
+  try {
+    const d = await llamar('primera_fecha');
+    if (state.vista !== 'proponer' || !d.fecha) return;
+    state.primeraFecha = d.fecha;
+    state.fechaSel = d.fecha;
+    await cargarHoras();
+  } catch {
+    /* si falla, la persona puede elegir el día a mano */
+  }
 }
 
 function cablear() {
@@ -648,6 +828,15 @@ function cablear() {
   por('ar-aceptar')?.addEventListener('click', () => responder(true));
   por('ar-rechazar')?.addEventListener('click', () => responder(false));
   por('ar-guardar-horario')?.addEventListener('click', guardarHorario);
+  por('ar-pausa-desde')?.addEventListener('change', (e) => {
+    state.pausaDesde = e.target.value;
+    if (!state.pausaHasta || state.pausaHasta < state.pausaDesde) state.pausaHasta = state.pausaDesde;
+    render();
+  });
+  por('ar-pausa-hasta')?.addEventListener('change', (e) => { state.pausaHasta = e.target.value; });
+  por('ar-pausa-revisar')?.addEventListener('click', revisarPausa);
+  por('ar-pausa-volver')?.addEventListener('click', () => { state.pausaConfirmar = false; state.errorForm = ''; render(); });
+  por('ar-pausa-si')?.addEventListener('click', confirmarPausa);
   por('ar-guardar-franjas')?.addEventListener('click', guardarFranjas);
   por('ar-borrar-franjas')?.addEventListener('click', borrarFranjas);
   por('ar-mas-rango')?.addEventListener('click', () => {
@@ -672,7 +861,32 @@ function cablear() {
     });
   });
   document.querySelectorAll('#ar-fechas-franja .pu-fecha').forEach((el) => {
-    el.addEventListener('click', () => elegirFechaFranja(el.dataset.fecha));
+    el.addEventListener('click', () => (state.franjaMulti ? alternarFechaFranja(el.dataset.fecha) : elegirFechaFranja(el.dataset.fecha)));
+  });
+  por('ar-multi')?.addEventListener('click', () => {
+    state.franjaMulti = !state.franjaMulti;
+    state.errorForm = '';
+    state.mensaje = '';
+    state.franjaFechas = state.franjaMulti && state.franjaFecha ? [state.franjaFecha] : [];
+    if (state.franjaMulti && !state.franjaRangos.length) state.franjaRangos = [{ desde: '08:00', hasta: '10:00' }];
+    render();
+  });
+  por('ar-multi-habiles')?.addEventListener('click', () => {
+    const habiles = [];
+    for (let n = 0; n < DIAS_A_MOSTRAR; n++) {
+      const f = fechaDe(state.hoy);
+      f.setDate(f.getDate() + n);
+      const dow = f.getDay();
+      if (dow >= 1 && dow <= 5) habiles.push(iso(f));
+    }
+    state.franjaFechas = habiles;
+    if (!state.franjaRangos.length) state.franjaRangos = [{ desde: '08:00', hasta: '10:00' }];
+    state.errorForm = '';
+    render();
+  });
+  por('ar-multi-limpiar')?.addEventListener('click', () => {
+    state.franjaFechas = [];
+    render();
   });
   por('ar-motivo')?.addEventListener('input', (e) => { state.motivo = e.target.value; });
   por('ar-desde')?.addEventListener('change', (e) => { state.desde = e.target.value; });

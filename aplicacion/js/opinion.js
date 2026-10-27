@@ -149,7 +149,7 @@ function vistaFormulario() {
     <div class="pu-card">
       <h2>¿Cómo te pareció el inmueble?</h2>
       ${encabezadoInmueble()}
-      <p>Tu opinión le llega directo al propietario de este inmueble.</p>
+      <p>Tu opinión nos ayuda a mejorar la atención y a conocer mejor cada inmueble. Solo toma un minuto.</p>
 
       <h3 class="pu-question">1. ¿Qué impresión te dejó el inmueble?</h3>
       ${selectorOpciones('impresion', IMPRESION_OPCIONES, state.impresionSel)}
@@ -192,7 +192,7 @@ function vistaEnviado() {
     <div class="pu-confirmacion">
       <div class="pu-icono">✓</div>
       <h2>¡Gracias por tu opinión!</h2>
-      <p>Tu comentario le llega directo al propietario del inmueble.</p>
+      <p>Tu opinión nos ayuda a mejorar nuestro servicio.</p>
     </div>
   `;
 }

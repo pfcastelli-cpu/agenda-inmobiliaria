@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
     ${encabezadoImagen(marca, 'Tu opinión sobre la visita', 'opinion')}
     <div style="padding:28px 26px;text-align:center">
     <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 10px">¿Cómo te pareció el inmueble? 🏡</h1>
-    <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 22px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, gracias por visitar el inmueble. Toca la opción que mejor describa lo que sentiste y te llevamos a un formulario cortico con tu respuesta ya marcada. Tu opinión le llega directo al propietario.</p>
+    <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 22px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, gracias por visitar el inmueble. Toca la opción que mejor describa lo que sentiste y te llevamos a un formulario cortico con tu respuesta ya marcada. Tu opinión nos ayuda a mejorar nuestro servicio.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
       ${[
         ['me_gusto_mucho', '😍', 'Me gustó mucho'],

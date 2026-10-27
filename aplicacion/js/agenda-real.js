@@ -1,5 +1,8 @@
 import { supabase } from './cliente-supabase.js';
 import { renderPendientes, reiniciarPendientes } from './pendientes.js';
+import { renderTickets, reiniciarTickets, abrirTicket } from './tickets.js';
+import { crearApiSoporte } from './soporte-comun/api.js';
+import { montarCampana } from './soporte-comun/campana.js';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -18,6 +21,7 @@ import {
   Eye,
   History,
   House,
+  LifeBuoy,
   ListChecks,
   Mail,
   MapPinOff,
@@ -48,6 +52,7 @@ const icons = {
   Eye,
   History,
   House,
+  LifeBuoy,
   ListChecks,
   Mail,
   MapPinOff,
@@ -96,9 +101,28 @@ const addMesesISO = (iso, n) => {
 };
 const mesLabel = (iso) => new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(iso + 'T12:00:00Z'));
 
+// Campana de avisos de soporte (respuestas, ticket resuelto, recordatorios). Vive en el encabezado mientras haya sesión.
+let campanaSoporte = null;
+function montarCampanaSoporte(root) {
+  const cabecera = root.querySelector('.v-header');
+  if (!cabecera || campanaSoporte) return;
+  campanaSoporte = montarCampana({
+    contenedor: cabecera,
+    api: crearApiSoporte(supabase),
+    onAbrir: (aviso) => {
+      if (!aviso.ticket_id) return;
+      abrirTicket(aviso.ticket_id);
+      setView('soporte');
+    },
+  });
+}
+
 export function detenerAgendaReal() {
   iniciada = false;
   reiniciarPendientes();
+  reiniciarTickets();
+  campanaSoporte?.destruir();
+  campanaSoporte = null;
   contexto = null;
   inmueblesCache = null;
   todosInmueblesCache = null;
@@ -123,7 +147,7 @@ export function iniciarAgendaReal(acceso) {
   if (insignia) insignia.textContent = 'Datos reales';
   const pie = root.querySelector('.v-footnote');
   if (pie) pie.textContent = 'Datos reales · las citas y cancelaciones se guardan en Supabase';
-  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes', bitacora: 'Bitácora', pendientes: 'Pendientes' };
+  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes', bitacora: 'Bitácora', pendientes: 'Pendientes', soporte: 'Soporte' };
   root.querySelectorAll('[data-view]').forEach((b) => {
     const textoIcono = b.querySelector('i');
     const etiqueta = ETIQUETAS_NAV[b.dataset.view] || '';
@@ -139,6 +163,8 @@ export function iniciarAgendaReal(acceso) {
     if (b.dataset.view === 'bitacora') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
     // Pendientes lo ve todo el equipo; la base de datos decide cuáles le salen a cada uno.
     if (b.dataset.view === 'pendientes') b.hidden = false;
+    // Soporte (tickets): lo ve todo el equipo.
+    if (b.dataset.view === 'soporte') b.hidden = false;
   });
 
   state.view = 'agenda';
@@ -148,6 +174,7 @@ export function iniciarAgendaReal(acceso) {
   state.cliente = '';
   state.telefono = '';
   state.correo = '';
+  montarCampanaSoporte(root);
 
   if (iniciada) {
     render();
@@ -497,7 +524,11 @@ function setView(view) {
 }
 
 let renderSeq = 0;
+const NOMBRES_VISTA = { agenda: 'Agenda', interna: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes', bitacora: 'Bitácora', pendientes: 'Pendientes', reserva: 'Reservar cita', exito: 'Reservar cita' };
+let vistaAnteriorSoporte = 'agenda';
+
 async function render() {
+  if (state.view !== 'soporte') vistaAnteriorSoporte = state.view;
   nav();
   const mi = ++renderSeq;
   // Cada pintado trabaja sobre un contenedor nuevo: si el usuario cambia de pestaña mientras otra todavía carga
@@ -513,6 +544,7 @@ async function render() {
     else if (state.view === 'informes') await renderInformes();
     else if (state.view === 'bitacora') await renderBitacora();
     else if (state.view === 'pendientes') await renderPendientes({ el: main(), supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, icon, refreshIcons });
+    else if (state.view === 'soporte') await renderTickets({ el: main(), supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, vistaAnterior: NOMBRES_VISTA[vistaAnteriorSoporte] || '' });
     else if (state.view === 'reserva') await renderReserva();
     else if (state.view === 'exito') renderExito();
   } catch (error) {
@@ -538,7 +570,7 @@ function citaCard(c) {
     <div class="v-row"><span class="v-avatar">${asesor ? escape(asesor.nombre.slice(0, 1)) : '?'}</span><span class="v-advisorname">${asesor ? escape(asesor.nombre) : 'Sin asesor'}${asesor && asesor.tipo_vinculacion === 'freelance' ? ' · freelance' : ''}</span></div>
     ${inmueble ? `<a class="v-link" href="${linkPublico(inmueble.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver inmueble</a>` : ''}
     ${c.estado === 'completada' ? (c.feedback_cliente ? `<p class="v-muted" style="margin-top:8px;font-size:12.5px">Comentario del cliente: ${escape(c.feedback_cliente)}</p>` : '') : `<div class="v-actions"><button data-completar="${c.id}">Realizada</button><button data-mover="${c.id}">Mover</button><button class="v-danger" data-cancelar="${c.id}">Cancelar</button></div>`}
-    ${inmueble && esRentando(inmueble) && c.estado !== 'cancelada' && c.tipo_cita === 'visita_cliente' ? `<div class="v-actions" style="margin-top:8px"><button data-avisar-arrendatario="${c.id}">${icon('mail')}${c.arrendatario_avisado_en ? 'Reenviar aviso al arrendatario' : 'Informar al arrendatario'}</button></div>${c.arrendatario_avisado_en ? `<p class="v-muted" style="font-size:12.5px;margin-top:4px">Arrendatario informado el ${new Date(c.arrendatario_avisado_en).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}</p>` : ''}` : ''}
+    ${inmueble && avisaArrendatario(inmueble) && c.estado !== 'cancelada' && c.tipo_cita === 'visita_cliente' ? `<div class="v-actions" style="margin-top:8px"><button data-avisar-arrendatario="${c.id}">${icon('mail')}${c.arrendatario_avisado_en ? 'Reenviar aviso al arrendatario' : 'Informar al arrendatario'}</button></div>${c.arrendatario_avisado_en ? `<p class="v-muted" style="font-size:12.5px;margin-top:4px">Arrendatario informado el ${new Date(c.arrendatario_avisado_en).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}</p>` : ''}` : ''}
     ${state.moveId === c.id ? `<div class="v-cancelbox">${esCaptacion ? '<p style="margin:0 0 8px;font-weight:600">Esta es una cita de captación con prioridad total.</p>' : ''}<label class="v-field">Nueva fecha<input type="date" id="v-mover-fecha" class="v-input" value="${state.moveFecha}"></label><label class="v-field">Nueva hora<input type="time" id="v-mover-hora" class="v-input" value="${state.moveHora}"></label>${state.moveError ? `<p class="v-error">${escape(state.moveError)}</p>` : ''}<div class="v-actions"><button class="v-primary" data-confirmarmover="${c.id}">Guardar nuevo horario</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
     ${state.cancelId === c.id ? `<div class="v-cancelbox">${esCaptacion ? 'Esta es una cita de captación con prioridad total. ' : ''}¿Cancelar esta ${esInterna ? 'actividad' : 'visita'}? Se libera el horario.<div class="v-actions"><button class="v-danger" data-confirmarcancelar="${c.id}">Sí, cancelar ${esInterna ? 'la actividad' : 'la visita'}</button><button data-mantener="${c.id}">No, mantener ${esInterna ? 'la actividad' : 'la visita'}</button></div></div>` : ''}
     ${state.completarId === c.id ? `<div class="v-cancelbox"><label class="v-field">¿Qué dijo el cliente? (para el informe al propietario)<textarea id="v-feedback-texto" class="v-input" rows="3" placeholder="Ej: le gustó mucho, va a decidir con su familia…"></textarea></label><div class="v-actions"><button class="v-primary" data-guardarrealizada="${c.id}">Guardar y marcar como realizada</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
@@ -648,6 +680,8 @@ async function renderAgendaMes(barraAcciones, selectorVista) {
 // horario de la empresa (así nunca queda sin citas por un horario olvidado); el horario especial es opcional y,
 // si existe, se respeta. Al agendar se le avisa al arrendatario por correo.
 const esRentando = (inm) => String(inm?.estado_crm || '').trim().toLowerCase() === 'rentando';
+// Si el propietario maneja la venta en reserva (sin_aviso_arrendatario) no se avisa ni se negocia con el arrendatario.
+const avisaArrendatario = (inm) => esRentando(inm) && inm?.sin_aviso_arrendatario !== true;
 const tieneRestriccionHorario = (inm) => Boolean((inm.dias_visita_permitidos && inm.dias_visita_permitidos.length) || inm.hora_visita_desde || inm.hora_visita_hasta || citasDesdeFutura(inm));
 
 // "Citas desde": inmueble que aún no se entrega; las visitas solo se agendan a partir de esa fecha (null = ya).
@@ -667,9 +701,10 @@ function restriccionEditor(inm) {
   const dias = inm.dias_visita_permitidos || [];
   return `<form id="v-restriccion-form" data-inmueble="${inm.id}" style="margin:10px 0 16px;padding:14px;border:1px solid var(--v-line);border-radius:12px;background:var(--v-tint)">
     <div class="v-sectiontitle" style="margin-bottom:8px">${icon('clock-3')}Restricción de horario para #${inm.numero_inmueble}</div>
-    ${esRentando(inm) ? '<p class="v-note" style="margin-bottom:10px"><strong>Inmueble rentando:</strong> si no pones ningún horario aquí, se ofrece todo el horario de la empresa y se le avisa al arrendatario de cada visita. Pon un horario solo si el arrendatario lo pidió.</p>' : ''}<p class="v-muted" style="font-size:14px;margin-bottom:10px">Limita en qué días y en qué franja horaria se puede agendar una visita a este inmueble. Deja los días sin marcar y las horas vacías para no aplicar ninguna restricción.</p>
-    <label class="v-field" style="margin-bottom:12px;max-width:260px">Citas desde (opcional)<input type="date" class="v-input" name="citas_desde" value="${inm.citas_desde || ''}"></label>
-    <p class="v-muted" style="font-size:14px;margin:-6px 0 12px">Para un inmueble que todavía no han entregado: se podrán agendar visitas solo a partir de esta fecha. Vacío = se agenda desde ya, como siempre.</p>
+    ${esRentando(inm) ? `<p class="v-note" style="margin-bottom:10px"><strong>Inmueble rentando:</strong> si no pones ningún horario aquí, se ofrece todo el horario de la empresa y se le avisa al arrendatario de cada visita. Pon un horario solo si el arrendatario lo pidió.</p>
+    <label class="v-check" style="margin-bottom:12px;align-items:flex-start"><input type="checkbox" name="sin_aviso" ${inm.sin_aviso_arrendatario ? 'checked' : ''}> <span><strong>No avisar al arrendatario</strong> (el propietario maneja la venta en reserva). No recibirá correos de las visitas ni podrá proponer horas; el cliente cambia su visita directamente. Tú coordinas el ingreso con el propietario.</span></label>` : ''}<p class="v-muted" style="font-size:14px;margin-bottom:10px">Limita en qué días y en qué franja horaria se puede agendar una visita a este inmueble. Deja los días sin marcar y las horas vacías para no aplicar ninguna restricción.</p>
+    <label class="v-field" style="margin-bottom:12px;max-width:260px">Se puede mostrar desde (fecha, opcional)<input type="date" class="v-input" name="citas_desde" value="${inm.citas_desde || ''}"></label>
+    <p class="v-muted" style="font-size:14px;margin:-6px 0 12px">Para un inmueble que todavía no han entregado: no se podrán agendar visitas antes de esta fecha, y quien quiera reservar verá directamente la primera fecha disponible. Vacío = se agenda desde ya, como siempre.</p>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${DIAS_CORTOS_LUN.map((d, i) => `<label class="v-check" style="text-transform:capitalize"><input type="checkbox" name="dia" value="${i + 1}" ${dias.includes(i + 1) ? 'checked' : ''}> ${d}</label>`).join('')}</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <label class="v-field" style="flex:1;min-width:140px">Desde<input type="time" class="v-input" name="hora_desde" value="${inm.hora_visita_desde ? hora(inm.hora_visita_desde) : ''}"></label>
@@ -711,7 +746,8 @@ function inmuebleCard(inm) {
       <div class="v-prow-sub">${escape(inm.ciudad)}${inm.barrio ? ' · ' + escape(inm.barrio) : ''}${inm.habitaciones ? ' · ' + inm.habitaciones + ' hab.' : ''} · ${precio}</div>
       ${avisoUbicacion(inm)}
     </div>
-    <div class="v-prow-horario">${icon('clock-3')} ${esRentando(inm) ? '<strong>Rentando</strong> · ' : ''}${esRentando(inm) && !tieneRestriccionHorario(inm) ? 'Horario completo de la empresa (sin restricción)' : escape(restriccionResumen(inm))} <button type="button" class="v-link" data-restriccion="${inm.id}">Editar</button></div>
+    <div class="v-prow-horario">${icon('clock-3')} ${esRentando(inm) ? '<strong>Rentando</strong> · ' : ''}${esRentando(inm) && inm.sin_aviso_arrendatario ? '<strong>Sin aviso al arrendatario</strong> · ' : ''}${esRentando(inm) && !tieneRestriccionHorario(inm) ? 'Horario completo de la empresa (sin restricción)' : escape(restriccionResumen(inm))} <button type="button" class="v-link" data-restriccion="${inm.id}">Editar</button></div>
+    <div class="v-prow-horario">${icon('calendar-days')} ${citasDesdeFutura(inm) ? `<strong>Se puede mostrar desde el ${escape(fechaDia(inm.citas_desde))}</strong> (antes no se agendan visitas)` : 'Se puede mostrar desde hoy'} <button type="button" class="v-link" data-restriccion="${inm.id}">${citasDesdeFutura(inm) ? 'Cambiar fecha' : 'Poner fecha de inicio'}</button></div>
     <div class="v-prow-asesor" title="${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor asignado en Sedi'}">${inm.asesor_comercializacion ? escape(inm.asesor_comercializacion) : 'Sin asesor en Sedi'}</div>
     <div class="v-prow-actions">
       <a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver ficha</a>
@@ -2272,15 +2308,22 @@ function adjuntarEventos(rootEl) {
         p_duracion_minutos: duracionMinutos,
         p_citas_desde: citasDesde,
       });
+      // La casilla solo existe en inmuebles rentando; si no está en el formulario no se toca la marca.
+      const casillaAviso = e.target.querySelector('[name=sin_aviso]');
+      const sinAviso = casillaAviso ? casillaAviso.checked : null;
+      const { error: errorAviso } = !error && sinAviso !== null
+        ? await supabase.rpc('agenda_inmueble_aviso_arrendatario', { p_inmueble_id: inmuebleId, p_sin_aviso: sinAviso })
+        : { error: null };
       boton.disabled = false;
-      if (error) {
-        state.errorRestriccion = 'No se pudo guardar: ' + error.message;
+      if (error || errorAviso) {
+        state.errorRestriccion = 'No se pudo guardar: ' + (error || errorAviso).message;
         renderInmuebles();
         return;
       }
       [inmueblesCache, todosInmueblesCache].forEach((cache) => {
         const fila = cache?.find((i) => i.id === inmuebleId);
         if (fila) {
+          if (sinAviso !== null) fila.sin_aviso_arrendatario = sinAviso;
           fila.dias_visita_permitidos = dias.length ? dias : null;
           fila.hora_visita_desde = horaDesde;
           fila.hora_visita_hasta = horaHasta;

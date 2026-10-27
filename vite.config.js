@@ -18,6 +18,8 @@ function reescrituraInmuebles() {
           req.url = '/opinion.html';
         } else if (req.url && /^\/(arrendatario|visita)\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/arrendatario.html';
+        } else if (req.url && /^\/soporte\/?(\?.*)?$/.test(req.url)) {
+          req.url = '/soporte.html';
         }
         next();
       });
@@ -43,6 +45,7 @@ export default defineConfig({
         propietario: resolve(__dirname, 'aplicacion/propietario.html'),
         opinion: resolve(__dirname, 'aplicacion/opinion.html'),
         arrendatario: resolve(__dirname, 'aplicacion/arrendatario.html'),
+        soporte: resolve(__dirname, 'aplicacion/soporte.html'),
       },
     },
   },

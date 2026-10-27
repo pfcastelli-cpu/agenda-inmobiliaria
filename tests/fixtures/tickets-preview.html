@@ -1,0 +1,33 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soporte (tickets): prueba local</title>
+<link rel="stylesheet" href="/aplicacion/estilos/agenda.css">
+<style>body{margin:0;background:#f5f7fa;font-family:Arial,sans-serif}</style>
+</head><body><div style="max-width:760px;margin:auto;padding:16px"><p>Vista previa local con datos ficticios en memoria: no toca Supabase ni envía correos.</p>
+<label>Rol <select id="rol"><option value="asesor">asesor</option><option value="administrador">administrador</option></select></label>
+<main id="v-main" class="v-content"></main></div>
+<script type="module">
+import { renderTickets, reiniciarTickets } from '/aplicacion/js/tickets.js';
+// Supabase de mentira (en memoria)
+let n = 2;
+let acceso = null;
+const tabla = [
+  { id: 't1', numero: 1, empresa_id: 'e1', usuario_id: 'u1', usuario_nombre: 'Luis Jiménez', tipo: 'error', titulo: 'No me deja mover una cita', descripcion: 'Al mover la cita del inmueble 127 sale un error.', pagina: 'Agenda', estado: 'abierto', respuesta: '', creado_en: new Date().toISOString() },
+  { id: 't2', numero: 2, empresa_id: 'e1', usuario_id: 'u2', usuario_nombre: 'Ana Pérez', tipo: 'mejora', titulo: 'Filtro por ciudad en Inmuebles', descripcion: '', pagina: 'Inmuebles', estado: 'resuelto', respuesta: 'Listo, ya está.', creado_en: new Date().toISOString() },
+];
+const supabase = {
+  from: () => { let estados = null; const q = { select: () => q, eq: () => q, order: () => q, limit: () => q, in: (_c, v) => { estados = v; return q; }, then: (ok) => ok({ data: estados ? tabla.filter((t) => estados.includes(t.estado)) : tabla, error: null }) }; return q; },
+  rpc: async (nombre, args) => {
+    if (nombre === 'agenda_ticket_crear') { n++; tabla.unshift({ id: 't' + n, numero: n, empresa_id: 'e1', usuario_id: 'u1', usuario_nombre: 'Yo', tipo: args.p_tipo, titulo: args.p_titulo, descripcion: args.p_descripcion, pagina: args.p_pagina, estado: 'abierto', respuesta: '', creado_en: new Date().toISOString() }); return { data: { id: 't' + n, numero: n }, error: null }; }
+    if (nombre === 'agenda_ticket_actualizar') { const t = tabla.find((x) => x.id === args.p_id); t.estado = args.p_estado; t.respuesta = args.p_respuesta ?? t.respuesta; return { data: null, error: null }; }
+    if (nombre === 'agenda_soporte_acceso_estado') return { data: { acceso_hasta: acceso, auditoria: [{ creado_en: new Date().toISOString(), actor: 'Felipe', tipo: 'soporte', accion: 'diagnostico_consultado' }] }, error: null };
+    if (nombre === 'agenda_soporte_acceso_otorgar') { acceso = new Date(Date.now() + args.p_horas * 3600000).toISOString(); return { data: acceso, error: null }; }
+    if (nombre === 'agenda_soporte_acceso_revocar') { acceso = null; return { data: null, error: null }; }
+    return { data: null, error: { message: 'rpc desconocida' } };
+  },
+  functions: { invoke: async () => ({ data: { ok: true }, error: null }) },
+};
+const escape = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pintar = () => renderTickets({ el: document.querySelector('#v-main'), supabase, empresaId: 'e1', rol: document.querySelector('#rol').value, escape, vistaAnterior: 'Agenda' });
+document.querySelector('#rol').onchange = () => { reiniciarTickets(); pintar(); };
+pintar();
+</script></body></html>

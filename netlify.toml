@@ -26,3 +26,8 @@
   from = "/arrendatario/*"
   to = "/arrendatario.html"
   status = 200
+
+[[redirects]]
+  from = "/soporte"
+  to = "/soporte.html"
+  status = 200
