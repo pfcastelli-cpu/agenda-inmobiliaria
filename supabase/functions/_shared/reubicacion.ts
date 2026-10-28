@@ -21,7 +21,7 @@ const MIN = 60_000;
 //   T >= 48 h: plazo = T / 2, entre 24 h y 7 días, y nunca después de (visita − 24 h).
 //   T <  48 h: plazo = el mayor entre T / 2 y 24 h, sin pasar de (visita − 2 h), con piso de 1 h para leer el correo.
 // Ejemplos: visita en 17 días → 7 días; en 3 días → 36 h; en 30 h → 24 h; mañana (20 h) → 10 h. Nunca después de que empiece la visita.
-export function calcularVencimiento(ahoraMs: number, inicioVisitaMs: number): number {
+export function calcularVencimientoBase(ahoraMs: number, inicioVisitaMs: number): number {
   const horasHasta = (inicioVisitaMs - ahoraMs) / H;
   let vence: number;
   if (horasHasta >= HORAS_CERCANA) {
@@ -33,6 +33,32 @@ export function calcularVencimiento(ahoraMs: number, inicioVisitaMs: number): nu
   }
   if (vence < ahoraMs + H) vence = ahoraMs + H;
   return Math.min(vence, inicioVisitaMs);
+}
+
+// Horario hábil de los vencimientos: nadie debería perder su visita porque el plazo terminó de madrugada. Hora de Bogotá (UTC−5, sin horario de verano).
+export const HORA_HABIL_DESDE = 8;
+export const HORA_HABIL_HASTA = 20;
+const HORAS_MIN_AL_ADELANTAR = 3; // al adelantar un vencimiento nocturno, que quede al menos este tiempo útil
+
+// Si el vencimiento cae fuera de 8:00–20:00, se pasa al 20:00 anterior (siempre que deje al menos 3 h de plazo) o, si no,
+// a las 8:00 siguientes (si todavía queda antes del límite). Si ninguna cabe (visita muy cercana), se deja como está.
+export function ajustarAHorarioHabil(venceMs: number, ahoraMs: number, limiteMs: number): number {
+  const local = new Date(venceMs - 5 * H);
+  const horaDecimal = local.getUTCHours() + local.getUTCMinutes() / 60;
+  if (horaDecimal >= HORA_HABIL_DESDE && horaDecimal <= HORA_HABIL_HASTA) return venceMs;
+  const medianoche = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) + 5 * H; // 00:00 Bogotá de ese día, en ms
+  const antes = horaDecimal > HORA_HABIL_HASTA ? medianoche + HORA_HABIL_HASTA * H : medianoche - 24 * H + HORA_HABIL_HASTA * H;
+  const despues = horaDecimal < HORA_HABIL_DESDE ? medianoche + HORA_HABIL_DESDE * H : medianoche + 24 * H + HORA_HABIL_DESDE * H;
+  if (antes >= ahoraMs + HORAS_MIN_AL_ADELANTAR * H) return antes;
+  if (despues <= limiteMs) return despues;
+  return venceMs;
+}
+
+export function calcularVencimiento(ahoraMs: number, inicioVisitaMs: number): number {
+  const base = calcularVencimientoBase(ahoraMs, inicioVisitaMs);
+  const horasHasta = (inicioVisitaMs - ahoraMs) / H;
+  const limite = inicioVisitaMs - (horasHasta >= HORAS_CERCANA ? MARGEN_VISITA_LEJANA_H : MARGEN_ANTES_DE_VISITA_H) * H;
+  return Math.min(ajustarAHorarioHabil(base, ahoraMs, limite), inicioVisitaMs);
 }
 
 // Cuánto antes del vencimiento va el último recordatorio: 24 h si el plazo es largo (2 días o más), 2 h si es corto.

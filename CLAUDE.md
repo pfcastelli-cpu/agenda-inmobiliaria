@@ -68,6 +68,7 @@ SaaS). Reemplaza un sistema legado en Google Calendar + Apps Script + Sheets. `P
 
 ## Dónde consultar detalles según la tarea
 - Cómo está armado el código, dónde va cada cambio y la regla «función nueva = módulo nuevo»: `docs/GUIA-DEL-CODIGO.md` (léela antes de abrir módulos grandes).
+- Lista de puesta en marcha para clientes reales de Patrimonios (estado revisado, qué falta, orden de salida): `docs/PUESTA-EN-MARCHA-PATRIMONIOS.md`.
 - Estado, trabajo en curso y siguiente paso: `docs/ESTADO-ACTUAL.md` (único resumen vigente).
 - Historia completa de lo construido, decisiones y pendientes largos: `docs/historico/CLAUDE-completo-2026-10-26.md`
   (copia íntegra del CLAUDE.md anterior; buscar por palabra clave, no leerla entera). Secciones útiles: «Acuerdo de horario en

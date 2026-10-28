@@ -1,14 +1,14 @@
 // Reglas y textos de «visita pendiente de nuevo horario»: node --test tests/reubicacion.test.mjs (Node 24, importa .ts directo)
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calcularVencimiento, horasUltimoRecordatorio, requiereLlamada, formatearMomento, correoClienteNuevoHorario, correoClienteRecordatorio, OPCIONES_ARRENDATARIO } from '../supabase/functions/_shared/reubicacion.ts';
+import { calcularVencimiento, calcularVencimientoBase, ajustarAHorarioHabil, horasUltimoRecordatorio, requiereLlamada, formatearMomento, correoClienteNuevoHorario, correoClienteRecordatorio, OPCIONES_ARRENDATARIO } from '../supabase/functions/_shared/reubicacion.ts';
 
 const H = 3_600_000;
 const t = (iso) => new Date(iso).getTime();
 
 test('plazo proporcional: la mitad del tiempo que falta, entre 24 h y 7 días', () => {
   const ahora = t('2026-10-26T15:00:00-05:00');
-  const horas = (h) => (calcularVencimiento(ahora, ahora + h * H) - ahora) / H;
+  const horas = (h) => (calcularVencimientoBase(ahora, ahora + h * H) - ahora) / H;
   assert.equal(horas(17 * 24), 168); // visita en 17 días: tope de 7 días
   assert.equal(horas(6 * 24), 72); // 6 días: la mitad
   assert.equal(horas(3 * 24), 36); // 3 días
@@ -19,10 +19,10 @@ test('plazo proporcional: la mitad del tiempo que falta, entre 24 h y 7 días', 
 
 test('el plazo nunca llega a la visita: 24 h antes si está lejos, 2 h antes si está cerca, piso de 1 h', () => {
   const ahora = t('2026-10-26T15:00:00-05:00');
-  assert.equal(calcularVencimiento(ahora, ahora + 10 * H), ahora + 5 * H);
-  assert.equal(calcularVencimiento(ahora, ahora + 2.5 * H), ahora + H); // piso: 1 h para leer el correo
-  assert.equal(calcularVencimiento(ahora, ahora + 30 * 60_000), ahora + 30 * 60_000); // visita en 30 min: nunca después de empezar
-  assert.ok(calcularVencimiento(ahora, ahora + 60 * H) <= ahora + 60 * H - 24 * H);
+  assert.equal(calcularVencimientoBase(ahora, ahora + 10 * H), ahora + 5 * H);
+  assert.equal(calcularVencimientoBase(ahora, ahora + 2.5 * H), ahora + H); // piso: 1 h para leer el correo
+  assert.equal(calcularVencimientoBase(ahora, ahora + 30 * 60_000), ahora + 30 * 60_000); // visita en 30 min: nunca después de empezar
+  assert.ok(calcularVencimientoBase(ahora, ahora + 60 * H) <= ahora + 60 * H - 24 * H);
 });
 
 test('el último recordatorio va 24 h antes si el plazo es largo y 2 h antes si es corto', () => {
@@ -79,4 +79,31 @@ test('las tres opciones del arrendatario existen y la consecuencia está dicha',
   assert.equal(OPCIONES_ARRENDATARIO.diaNoPuedo.titulo, 'No puedo ese día');
   assert.match(OPCIONES_ARRENDATARIO.pausa.titulo, /por un tiempo/);
   assert.match(OPCIONES_ARRENDATARIO.consecuencia, /se cancela sola/);
+});
+
+test('horario hábil: un vencimiento de madrugada se mueve al 20:00 anterior o a las 8:00 siguientes (8 a. m.–8 p. m. de Bogotá)', () => {
+  const ahora = t('2026-10-27T18:40:00-05:00');
+  const venceMadrugada = t('2026-10-28T02:35:00-05:00'); // el caso real de la prueba con Prana
+  const limite = t('2026-10-28T09:30:00-05:00');
+  // Enviado a las 6:40 p. m.: adelantar al 20:00 dejaría solo 1 h 20 min; mejor las 8:00 a. m. siguientes (cabe antes del límite).
+  assert.equal(ajustarAHorarioHabil(venceMadrugada, ahora, limite), t('2026-10-28T08:00:00-05:00'));
+  // Enviado a mediodía: el 20:00 anterior deja tiempo de sobra.
+  assert.equal(ajustarAHorarioHabil(venceMadrugada, t('2026-10-27T12:00:00-05:00'), limite), t('2026-10-27T20:00:00-05:00'));
+  assert.equal(ajustarAHorarioHabil(t('2026-10-28T15:00:00-05:00'), ahora, limite), t('2026-10-28T15:00:00-05:00')); // dentro del horario: igual
+});
+
+test('horario hábil: si adelantar deja menos de 3 h útiles, pasa a las 8 a. m. siguientes (si caben antes del límite)', () => {
+  const ahora = t('2026-10-27T19:30:00-05:00');
+  const vence = t('2026-10-27T22:00:00-05:00');
+  assert.equal(ajustarAHorarioHabil(vence, ahora, t('2026-10-29T12:00:00-05:00')), t('2026-10-28T08:00:00-05:00'));
+  // visita muy cercana: no cabe ninguna, se deja el vencimiento original
+  assert.equal(ajustarAHorarioHabil(vence, ahora, t('2026-10-28T06:00:00-05:00')), vence);
+});
+
+test('el vencimiento final nunca pasa del inicio de la visita ni cae de noche cuando hay margen', () => {
+  const ahora = t('2026-10-26T15:00:00-05:00');
+  const visita = ahora + 3 * 24 * H; // base = 36 h → 03:00 de la madrugada
+  const v = calcularVencimiento(ahora, visita);
+  assert.equal(v, t('2026-10-27T20:00:00-05:00'));
+  assert.ok(v <= visita);
 });
