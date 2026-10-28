@@ -532,6 +532,9 @@ function vistaError() {
   `;
 }
 
+// Mismo mensaje que el recuadro de los correos de visita (_shared/visita-correo.ts).
+const NOTA_PUNTUALIDAD = `<p class="pu-nota"><b>Llega a tiempo a tu visita.</b> Tu asesor tiene otra cita justo después y no puede esperar. Te sugerimos llegar unos minutos antes; si llegas tarde, la visita puede acortarse o no realizarse.</p>`;
+
 function tarjetaInmueble() {
   const i = state.inmueble;
   const ubicacion = [i.barrio, i.localidad, i.ciudad].filter(Boolean).join(', ');
@@ -543,6 +546,7 @@ function tarjetaInmueble() {
       ${i.enlace_ficha_completa ? `<a class="pu-ver-inmueble" href="${i.enlace_ficha_completa}" target="_blank" rel="noopener">Ver este inmueble en nuestro sitio</a>` : ''}
       ${i.posible_ocupado ? `<p class="pu-nota">El inmueble puede estar ocupado. Si necesitamos cambiar la hora, te avisaremos por correo. Tu visita conserva su horario mientras no recibas ese aviso.</p>` : ''}
       ${i.visita_rapida ? `<p class="pu-nota">Visita breve de aproximadamente ${i.duracion_minutos} minutos. Llega puntual para aprovecharla.</p>` : ''}
+      ${NOTA_PUNTUALIDAD}
     </div>
   `;
 }
@@ -673,6 +677,7 @@ function vistaConfirmado() {
       <h3>Ya puedes organizar tu visita</h3>
       ${state.inmueble?.posible_ocupado ? `<p class="pu-nota">Tu visita sigue confirmada. Si recibes un aviso para elegir otra hora, el horario original dejará de estar disponible. Revisa tu correo antes de salir.</p>` : ''}
       <p>Encontrarás los datos del asesor y el enlace para cambiar o cancelar en el correo de confirmación.</p>
+      ${NOTA_PUNTUALIDAD}
       <button class="pu-link" id="pu-nueva">Agendar otra visita</button>
     </div>
   `;

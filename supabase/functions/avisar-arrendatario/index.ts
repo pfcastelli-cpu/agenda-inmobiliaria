@@ -253,7 +253,8 @@ Deno.serve(async (req) => {
     preheader: `Inmueble ${inmueble.numero_inmueble}. Si puedes recibir las visitas, no necesitas responder.`,
     modoPruebas, destinatarioReal,
     cuerpo: `<p style="margin:0 0 12px">Hola${nombre ? ' ' + nombre : ''}. Si puedes recibir las visitas, <b>no tienes que hacer nada.</b></p>
-      <p style="margin:0"><b>Inmueble ${inmueble.numero_inmueble}</b><br>${escaparHtml(lugarTexto)}</p>`,
+      <p style="margin:0 0 12px"><b>Inmueble ${inmueble.numero_inmueble}</b><br>${escaparHtml(lugarTexto)}</p>
+      <p style="margin:0">El asesor llegará a la hora acordada y tiene otra cita después, por lo que no puede esperar. Ten el inmueble listo a esa hora.</p>`,
     boton: { texto: 'Organizar mis visitas y horarios', url: enlacePortal },
     despues: `<table role="presentation" width="100%" style="border-collapse:collapse">${proximas.map(c => `<tr><td style="padding:12px 0;border-top:1px solid #dde3e7">
         <b>${escaparHtml(formatearFecha(c.fecha))}</b><br><span style="font-size:20px">${escaparHtml(formatearHora(c.hora_inicio.slice(0, 5)))}</span>

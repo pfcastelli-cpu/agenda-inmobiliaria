@@ -14,7 +14,7 @@
 // mandar un METHOD:CANCEL con el mismo UID sin tener que guardar nada extra.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { marcaCorreo } from '../_shared/marca-correo.ts';
-import { correoVisita, enlaceVisita } from '../_shared/visita-correo.ts';
+import { correoVisita, enlaceVisita, TEXTO_PUNTUALIDAD } from '../_shared/visita-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -370,7 +370,7 @@ Deno.serve(async (req) => {
   const html = correoVisita(marca, {
     titulo: reagendada ? 'Tu nuevo horario está confirmado' : 'Tu visita está confirmada',
     preheader: `Inmueble ${numeroInmueble || ''}: ${fechaTexto}, ${horaTexto}. Consulta o cambia tu visita.`,
-    modoPruebas, destinatarioReal,
+    modoPruebas, destinatarioReal, puntualidad: true,
     cuerpo: `<p style="margin:0 0 12px">Hola ${escaparHtml(cita.cliente_nombre)}. ${reagendada ? 'Este horario reemplaza al anterior.' : 'Estos son los datos de tu visita.'}</p><table role="presentation" width="100%" style="border-collapse:collapse">${filasDatos}</table>`,
     boton: cita.token_cliente ? { texto: 'Ver, cambiar o cancelar mi visita', url: `https://citas.patrimonios.co/visita/${cita.token_cliente}` } : undefined,
     despues: `${inmuebleOcupado ? '<p style="margin:0 0 12px"><b>Inmueble ocupado:</b> tu visita sigue confirmada. Si recibes un aviso para elegir otra hora, no vayas a la hora anterior. Revisa tu correo antes de salir.</p>' : ''}${enlaces}<p style="font-size:13px;margin:12px 0 0">Puedes añadir el archivo adjunto a tu calendario.</p>`,
@@ -419,6 +419,7 @@ Deno.serve(async (req) => {
     numeroInmueble ? `Inmueble Nº ${numeroInmueble}` : null,
     direccionCompleta || null,
     asesorNombre ? `Asesor: ${asesorNombre}${asesorCelular ? ' · ' + asesorCelular : ''}` : null,
+    TEXTO_PUNTUALIDAD.calendario,
   ]
     .filter(Boolean)
     .join('\n');
