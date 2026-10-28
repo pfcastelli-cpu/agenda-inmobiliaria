@@ -22,6 +22,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { marcaCorreo, type MarcaCorreo } from '../_shared/marca-correo.ts';
 import { correoVisita } from '../_shared/visita-correo.ts';
+import { registrarFallo } from '../_shared/fallos.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 import { calcularVencimiento, horasUltimoRecordatorio, correoClienteNuevoHorario, correoClienteRecordatorio, formatearMomento, MAX_DIAS_PAUSA, requiereLlamada, type MotivoReubicacion } from '../_shared/reubicacion.ts';
 
@@ -124,7 +125,7 @@ async function cargarContexto(admin: Admin, token: string) {
   const { data: cita } = await admin
     .from('agenda_citas')
     .select(
-      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente, reubicacion_pendiente_desde, reubicacion_vence_en, reubicacion_motivo',
+      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente, reubicacion_pendiente_desde, reubicacion_vence_en, reubicacion_motivo, es_prueba',
     )
     .or(`token_arrendatario.eq.${token},token_cliente.eq.${token}`)
     .maybeSingle();
@@ -180,10 +181,19 @@ async function enviarCorreos(
   asunto: string,
   armar: (extra: { destinatarioReal: string; modoPruebas: boolean; remitente: string; marca: MarcaCorreo }) => string,
 ) {
-  if (!destinatarios.length) return;
   const cfg = await configCorreo(admin, empresaId);
   if (!cfg) return;
   const { config, password, modoPruebas } = cfg;
+  const destinoPruebas = correosDe(config.correo_pruebas_destino)[0];
+  if (modoPruebas && !destinoPruebas) {
+    await registrarFallo(admin,{empresaId,modulo:'correo',codigo:'CORREO_PRUEBAS_SIN_DESTINO',esPrueba:true});
+    return;
+  }
+  // Vista completa de pruebas aun cuando no exista un arrendatario con correo.
+  // El marcador solo se muestra en el cuerpo: SMTP recibe siempre el buzón de pruebas.
+  const destinos = destinatarios.length ? destinatarios : modoPruebas && tipo === 'arrendatario'
+    ? ['(este inmueble no tiene correo de arrendatario registrado)'] : [];
+  if (!destinos.length) return;
   const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
   const transporte = nodemailer.createTransport({
     host: config.correo_smtp_host,
@@ -191,8 +201,8 @@ async function enviarCorreos(
     secure: config.correo_smtp_seguridad === 'ssl',
     auth: { user: config.correo_smtp_usuario || config.correo_remitente_email, pass: password },
   });
-  for (const correo of destinatarios) {
-    const destino = modoPruebas ? config.correo_pruebas_destino || correo : correo;
+  for (const correo of destinos) {
+    const destino = modoPruebas ? destinoPruebas : correo;
     let estado: 'enviado' | 'fallido' = 'enviado';
     let detalle: string | null = null;
     try {
@@ -262,12 +272,13 @@ function resumenHorario(i: { dias_visita_permitidos: number[] | null; hora_visit
 }
 
 // ---- Horarios --------------------------------------------------------------------------
-async function slotsDelDia(admin: Admin, cita: { empresa_id: string; inmueble_id: string }, fecha: string) {
-  const { data, error } = await admin.rpc('agenda_sugerir_horarios', {
+async function slotsDelDia(admin: Admin, cita: { id?: string | null; empresa_id: string; inmueble_id: string }, fecha: string) {
+  const { data, error } = await admin.rpc('agenda_sugerir_horarios_portal', {
     p_empresa_id: cita.empresa_id,
     p_inmueble_id: cita.inmueble_id,
     p_fecha: fecha,
     p_intervalo_minutos: 30,
+    p_cita_origen_id: cita.id || null,
   });
   if (error) throw new Error(error.message);
   // Mismo criterio que la reserva pública: una fila por hora, la del asesor más prioritario.
@@ -674,6 +685,16 @@ async function procesarReubicaciones(admin: Admin) {
 }
 
 Deno.serve(async (req) => {
+  let contextoFallo: { empresaId: string; esPrueba: boolean } | null = null;
+  const falla = async (error: string, status = 400) => {
+    if (contextoFallo && (status >= 500 || status === 409)) {
+      await registrarFallo(admin, { ...contextoFallo, modulo:'portal-visita',
+        codigo: /hora.*no est.*disponible|hora.*tomada/i.test(error) ? 'PROPUESTA_NO_DISPONIBLE':'PORTAL_ERROR',
+        operacion: /^[a-z0-9_-]{1,80}$/.test(String(body?.accion||'')) ? String(body.accion) : '',
+        nivel: status >= 500 ? 'error':'aviso', httpStatus:status });
+    }
+    return json({ok:false,error},status);
+  };
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return falla('Método no permitido.', 405);
 
@@ -710,6 +731,7 @@ Deno.serve(async (req) => {
       try {
         return await manejarInmueble(admin, inmuebleDelToken, accion, body);
       } catch (e) {
+        contextoFallo = {empresaId:inmuebleDelToken.empresa_id,esPrueba:false};
         console.error('portal-visita inmueble', accion, e instanceof Error ? e.message : e);
         return falla('Algo salió mal. Inténtalo de nuevo en unos minutos.', 500);
       }
@@ -717,6 +739,7 @@ Deno.serve(async (req) => {
     return falla('Este enlace no es válido o ya no está activo.', 404);
   }
   const { cita, inmueble, asesor, rol } = ctx;
+  contextoFallo = {empresaId:cita.empresa_id,esPrueba:cita.es_prueba===true};
   // «Sin aviso al arrendatario» = el inmueble se comporta como uno libre: el cliente reagenda directo.
   const rentando = String(inmueble.estado_crm || '').trim().toLowerCase() === 'rentando' && inmueble.sin_aviso_arrendatario !== true;
   const nombreInm = sustantivo(inmueble.tipo_inmueble);
@@ -787,6 +810,7 @@ Deno.serve(async (req) => {
         asesor,
         propuesta: p
           ? {
+              id: p.id,
               propuesta_por_mi: p.propuesto_por === rol,
               fecha: p.fecha,
               hora_inicio: p.hora_inicio.slice(0, 5),
@@ -906,11 +930,11 @@ Deno.serve(async (req) => {
     if (accion === 'responder') {
       if (!citaVigente) return falla('Esta visita ya no se puede cambiar (ya pasó o fue cancelada).', 409);
       const aceptar = body.aceptar === true;
-      const p = await propuestaPendiente(admin, cita, ahora);
-      if (!p) return falla('Ya no hay una propuesta pendiente (venció o ya se respondió).', 409);
-      if (p.propuesto_por === rol) return falla('Esperando la respuesta de la otra persona.', 409);
 
       if (!aceptar) {
+        const p = await propuestaPendiente(admin, cita, ahora);
+        if (!p) return falla('Ya no hay una propuesta pendiente (venció o ya se respondió).', 409);
+        if (p.propuesto_por === rol) return falla('Esperando la respuesta de la otra persona.', 409);
         // Con un cambio obligatorio en curso el cliente no puede «dejar la hora original»: tiene que elegir otra o cancelar.
         if (rol === 'cliente' && cita.reubicacion_pendiente_desde) return falla('Esta visita debe cambiar de hora: acepta la propuesta, elige otra hora o cancélala.', 409);
         await admin.from('agenda_cita_propuestas').update({ estado: 'rechazada', respondido_en: new Date().toISOString() }).eq('id', p.id).eq('estado', 'pendiente');
@@ -926,54 +950,31 @@ Deno.serve(async (req) => {
         return json({ ok: true, resultado: 'rechazada' });
       }
 
-      // Aceptar: se vuelve a validar que ese horario siga libre y dentro de las reglas.
-      const elegido = await slotValido(admin, cita, p.fecha, p.hora_inicio.slice(0, 5));
-      if (!elegido) {
-        await admin.from('agenda_cita_propuestas').update({ estado: 'expirada', respondido_en: new Date().toISOString() }).eq('id', p.id).eq('estado', 'pendiente');
-        await avisarA(
-          otraParte,
-          `La hora propuesta ya no está disponible · Inmueble ${inmueble.numero_inmueble}`,
-          'Esa hora ya no está disponible',
-          `<p style="margin:0 0 10px;text-align:justify">La hora propuesta se ocupó antes de poder confirmarla. La visita sigue para ${lineaVisita}.</p><p style="margin:0;text-align:justify">Puedes proponer otra hora.</p>`,
-          'Proponer otra hora',
-        );
-        return falla('Esa hora ya no está disponible. Propón otra.', 409);
-      }
-      // Condición en el UPDATE: si alguien más cambió/canceló la cita entre tanto, no se pisa.
-      const { data: movida, error: errMover } = await admin
-        .from('agenda_citas')
-        .update({
-          fecha: p.fecha,
-          hora_inicio: elegido.hora_inicio,
-          hora_fin: elegido.hora_fin,
-          asesor_id: elegido.asesor_id,
-          ...LIMPIAR_REUBICACION,
-          actualizado_en: new Date().toISOString(),
-        })
-        .eq('id', cita.id)
-        .eq('estado', 'confirmada')
-        .eq('fecha', cita.fecha)
-        .eq('hora_inicio', cita.hora_inicio)
-        .select('id')
-        .maybeSingle();
-      if (errMover && /ya no está disponible/i.test(errMover.message)) return falla('Esa hora acaba de ser tomada por otra persona. Propón o elige otra.', 409);
-      if (errMover || !movida) return falla('No se pudo confirmar el cambio. Actualiza la página e inténtalo de nuevo.', 409);
-      await admin.from('agenda_cita_propuestas').update({ estado: 'aceptada', respondido_en: new Date().toISOString() }).eq('id', p.id);
+      // La base serializa la aceptación, valida el horario y mueve cita/propuesta juntas.
+      const propuestaId = body.propuesta_id == null ? null : String(body.propuesta_id);
+      if (propuestaId && !/^[0-9a-f-]{36}$/i.test(propuestaId)) return falla('Propuesta inválida.');
+      const {data:confirmacion,error:errAceptar} = await admin.rpc('agenda_propuesta_aceptar',{
+        p_cita_id:cita.id,p_rol:rol,p_propuesta_id:propuestaId,
+      });
+      if (errAceptar) return falla('No se pudo confirmar el cambio. Actualiza la página e inténtalo de nuevo.',500);
+      if (confirmacion.error) return falla(confirmacion.error,409);
+      if (confirmacion.resultado==='ya_aceptada') return json({ok:true,resultado:'ya_aceptada',cita:{...confirmacion.cita,estado:'confirmada',vigente:true}});
+      const p = confirmacion.propuesta;
+      const elegido = confirmacion.cita;
       await registrarAccion(admin, ctx, 'propuesta_aceptada', { acepto: rol, de: { fecha: cita.fecha, hora: horaCita }, a: { fecha: p.fecha, hora: p.hora_inicio.slice(0, 5) } });
 
       // En firme: el cliente recibe su confirmación de siempre (con la hora nueva), el
       // propietario su aviso y el arrendatario la suya. El asesor no recibe correo: ve la
       // cita en su agenda y en su calendario compartido.
       const cabeceras = { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY };
-      for (const f of ['enviar-correo-cita', 'enviar-correo-propietario']) {
-        fetch(`${SUPABASE_URL}/functions/v1/${f}`, { method: 'POST', headers: cabeceras, body: JSON.stringify({ cita_id: cita.id, sin_aviso_arrendatario: true, reagendada: true }) }).catch(() => {});
-      }
+      await Promise.allSettled(['enviar-correo-cita', 'enviar-correo-propietario'].map((f) =>
+        fetch(`${SUPABASE_URL}/functions/v1/${f}`, { method: 'POST', headers: cabeceras, body: JSON.stringify({ cita_id: cita.id, sin_aviso_arrendatario: true, reagendada: true }) })));
       const t = await correosArrendatario(admin, cita.empresa_id, inmueble.numero_inmueble);
       const nuevaLinea = `<b>${esc(formatearFecha(p.fecha))}, ${esc(formatearHora(p.hora_inicio.slice(0, 5)))}</b>${direccion ? ` en ${esc(direccion)}` : ''}`;
       await enviarCorreos(admin, cita.empresa_id, cita.id, 'arrendatario', t.correos, `Visita confirmada en nuevo horario · Inmueble ${inmueble.numero_inmueble}`, (extra) =>
         plantillaCorreo({
           titulo: 'La visita quedó en firme',
-          cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(t.nombre)}, ambas partes aceptaron el cambio. La visita quedó para ${nuevaLinea}.</p><p style="margin:0;text-align:justify">No tienes que hacer nada más.</p>`,
+          cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola${t.nombre ? ` ${esc(t.nombre)}` : ''}. Ambas partes aceptaron el cambio. La visita quedó para ${nuevaLinea}.</p><p style="margin:0;text-align:justify">No tienes que hacer nada más.</p>`,
           boton: { texto: 'Ver mi visita', url: enlaceDe('arrendatario') },
           ...extra,
         }),

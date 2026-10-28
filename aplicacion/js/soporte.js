@@ -4,6 +4,7 @@ import { COLOR_ESTADO, COLOR_PRIORIDAD, EMOJI_TIPO, ESTADOS_EQUIPO, PRIORIDADES,
 import { duracionMin, escapar as esc, estrellas, fechaHora as fecha, minutosParaSla } from './soporte-comun/formato.js';
 import { construirLinea, textoEvento } from './soporte-comun/linea-tiempo.js';
 import { montarCampana, EVENTO_AVISOS } from './soporte-comun/campana.js';
+import { montarFallos } from './fallos-sistema.js';
 
 // Consola de soporte de la plataforma (/soporte). La usan SOLO usuarios de soporte (tabla agenda_soporte_usuarios, sql/023):
 // ven los tickets de todas las empresas, conversan con quien los escribió, dejan notas internas, cambian estado, prioridad y
@@ -105,7 +106,7 @@ async function pintar() {
   } catch (e) {
     ui.error = e.message;
   }
-  raiz.innerHTML = `<h2>Tickets de todas las empresas</h2>
+  raiz.innerHTML = `<button type="button" id="soporte-fallos">Fallos del sistema</button><h2>Tickets de todas las empresas</h2>
     <p class="suave">«Acceso de ayuda» = la empresa autorizó a soporte a ver un diagnóstico de solo lectura por un tiempo limitado.</p>
     ${panelMetricas(ui.metricas)}
     <div class="fila">
@@ -122,6 +123,7 @@ async function pintar() {
     ${ui.mensaje ? `<div class="ok" role="status">${esc(ui.mensaje)}</div>` : ''}
     ${ui.tickets.length ? ui.tickets.map(tarjeta).join('') : '<p class="suave">No hay tickets con este filtro.</p>'}`;
   const recargar = () => { ui.mensaje = ''; ui.error = ''; pintar(); };
+  document.getElementById('soporte-fallos').onclick=()=>montarFallos({el:raiz,supabase,empresas:ui.empresas,volver:pintar});
   document.getElementById('f-estado').onchange = (e) => { ui.filtro = e.target.value; ui.abierto = null; recargar(); };
   document.getElementById('f-asignacion').onchange = (e) => { ui.asignacion = e.target.value; ui.abierto = null; recargar(); };
   document.getElementById('f-empresa').onchange = (e) => { ui.empresa = e.target.value; ui.abierto = null; recargar(); };

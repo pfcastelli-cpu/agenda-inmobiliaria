@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { fetchVigilado, iniciarRegistroFallos } from './fallos-cliente.js';
 
 // Se captura el hash de la URL ANTES de crear el cliente, porque supabase-js
 // (detectSessionInUrl) lo limpia apenas procesa un enlace de invitación o
@@ -19,6 +20,7 @@ export function hayConfiguracionSupabase() {
 
 export const supabase = hayConfiguracionSupabase()
   ? createClient(url, clavePublicable, {
+      global: { fetch: fetchVigilado },
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -26,3 +28,5 @@ export const supabase = hayConfiguracionSupabase()
       },
     })
   : null;
+
+iniciarRegistroFallos(supabase);

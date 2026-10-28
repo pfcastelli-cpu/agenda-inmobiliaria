@@ -6,6 +6,7 @@ import { COLOR_ESTADO, COLOR_PRIORIDAD, EMOJI_TIPO, ESTADOS_FINALES, ESTADOS_USU
 import { duracionMin, escapar as esc, estrellas, fechaCorta, fechaHora, minutosParaSla } from './soporte-comun/formato.js';
 import { construirLinea, textoEvento } from './soporte-comun/linea-tiempo.js';
 import { EVENTO_AVISOS } from './soporte-comun/campana.js';
+import { montarFallos } from './fallos-sistema.js';
 
 const ESTADOS_ADMIN = { en_espera: 'Esperando respuesta de quien escribió', en_revision: 'En revisión', resuelto: 'Resuelto', cerrado: 'Cerrado', descartado: 'Descartado' };
 
@@ -59,6 +60,7 @@ export async function renderTickets(ctx) {
 
   const b = ui.borrador;
   el.innerHTML = `<div class="v-top"><div><div class="v-eyebrow">Ayuda</div><h2>Soporte</h2></div></div>
+    ${esAdmin ? '<button type="button" class="v-btn v-quiet" id="tk-fallos">Fallos del sistema</button>' : ''}
     <p class="v-note">¿Algo no funciona, tienes una idea o una duda? Cuéntanoslo aquí y conversa con soporte dentro del mismo ticket. ${esAdmin ? 'Como administrador ves los tickets de todo el equipo y puedes responderlos.' : 'Solo tú y el administrador ven tus tickets. Los avisos te llegan a la campana y por correo.'}</p>
     ${metricas ? bloqueMetricas(metricas) : ''}
     <form id="tk-form" class="v-form" style="margin-top:14px;display:flex;flex-direction:column;gap:12px;max-width:640px">
@@ -101,6 +103,8 @@ export async function renderTickets(ctx) {
     }
     repintar();
   };
+
+  el.querySelector('#tk-fallos')?.addEventListener('click',()=>montarFallos({el,supabase,empresaId,volver:repintar}));
 
   // ---- acceso de ayuda (administrador)
   el.querySelectorAll('[data-acceso-horas]').forEach((btn) => {

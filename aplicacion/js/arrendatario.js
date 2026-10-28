@@ -287,6 +287,7 @@ function bloqueAcciones() {
       <h3 style="margin-top:0">Tu visita necesita una nueva hora</h3>
       <p>Elige entre los horarios disponibles. Al confirmar, la visita queda programada en la nueva hora.</p>
       ${plazoReubicacion()}
+      ${errorBloque()}
       <button class="pu-main" type="button" id="ar-ir-proponer">Elegir nueva hora</button>
       <button class="pu-main" type="button" id="ar-ir-cancelar" style="${estiloSecundario}">Ya no me interesa: cancelar mi visita</button>
     </div>`;
@@ -354,7 +355,7 @@ function vistaResumen() {
     return `${exito()}<p class="pu-referencia">Inmueble ${esc(state.inmueble.numero)}${state.inmueble.direccion ? `: ${esc(state.inmueble.direccion)}` : ''}</p>${bloqueAcciones()}
       <details class="pu-detalles" id="ar-horario-anterior"><summary>Ver horario anterior y asesor</summary>${tarjetaVisita()}</details>`;
   }
-  return `${tarjetaVisita()}${exito()}${bloqueAcciones()}${enlaceTodas()}${esArrendatario() ? `<details id="ar-horario-habitual" class="pu-detalles"><summary>Horario habitual de visitas</summary>${bloqueHorarioPermitido()}</details>` : ''}`;
+  return `${tarjetaVisita()}${exito()}${!state.propuesta && !esArrendatario() ? errorBloque() : ''}${bloqueAcciones()}${enlaceTodas()}${esArrendatario() ? `<details id="ar-horario-habitual" class="pu-detalles"><summary>Horario habitual de visitas</summary>${bloqueHorarioPermitido()}</details>` : ''}`;
 }
 
 // ---- Vista del inmueble (arrendatario): todas sus visitas y sus franjas --------------------
@@ -628,7 +629,7 @@ async function responder(aceptar) {
   state.errorForm = '';
   render();
   try {
-    await llamar('responder', { aceptar });
+    await llamar('responder', { aceptar, propuesta_id: state.propuesta?.id || null });
     await recargar();
     state.mensaje = aceptar
       ? `Listo: la visita quedó en firme para el ${fechaLarga(state.cita.fecha)} a las ${hora12(state.cita.hora_inicio).replace(/\.$/, '')}.`

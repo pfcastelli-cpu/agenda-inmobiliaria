@@ -1,0 +1,14 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prueba local de soporte</title>
+<style>body{font:16px Arial,sans-serif;margin:0;color:#303b45;background:#fff}main{padding:24px;max-width:1000px;margin:auto}.aviso{padding:12px 24px;background:#eef3f7}button{font:inherit;padding:12px}</style></head><body>
+<div class="aviso">Prueba local con datos ficticios. No modifica la base ni envía correos.</div><main id="raiz"></main>
+<script type="module">
+import { montarFallos } from '/aplicacion/js/fallos-sistema.js';
+const fecha=new Date().toISOString();
+const fallos=[{id:'f1',codigo:'PROPUESTA_NO_DISPONIBLE',modulo:'portal-visita',operacion:'responder',empresa_nombre:'Patrimonios Inmobiliarios',estado:'abierto',es_prueba:true,repeticiones:2,nivel:'aviso',http_status:409,primera_vez:fecha,ultima_vez:fecha,historial:[{estado:'abierto',nota:'Registro automático.',creado_en:fecha}]},
+{id:'f2',codigo:'CORREO_NO_ENVIADO',modulo:'correo',operacion:'cliente',empresa_nombre:'Empresa de ejemplo',estado:'resuelto',es_prueba:false,repeticiones:1,nivel:'error',primera_vez:fecha,ultima_vez:fecha,historial:[{estado:'resuelto',nota:'Configuración revisada y envío comprobado.',creado_en:fecha}]}];
+const api={rpc:async(nombre,p)=>{
+  if(nombre==='agenda_fallos_listar') {const items=fallos.filter(f=>(p.p_estado==='todos'||p.p_estado==='abiertos'&&f.estado!=='resuelto'||f.estado===p.p_estado)&&(p.p_pruebas==null||p.p_pruebas===f.es_prueba));return {data:{items,total:items.length}};}
+  const f=fallos.find(f=>f.id===p.p_id);f.estado=p.p_estado;f.historial.push({estado:p.p_estado,nota:p.p_nota,creado_en:new Date().toISOString()});return {data:null};
+}};
+const abrir=()=>montarFallos({el:document.querySelector('#raiz'),supabase:api,volver:()=>{document.querySelector('#raiz').innerHTML='<button id="abrir">Abrir fallos del sistema</button>';document.querySelector('#abrir').onclick=abrir;}});abrir();
+</script></body></html>

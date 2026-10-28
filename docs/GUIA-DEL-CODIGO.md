@@ -23,6 +23,7 @@ Léela después de `CLAUDE.md` y `docs/ESTADO-ACTUAL.md`. Sirve para decidir **d
 | Encuesta (`/opinion`), informe del propietario (`/propietario`) | `opinion.js`, `propietario.js` |
 | Soporte / tickets | `soporte.js`, `tickets.js`, `soporte-comun/` (ver `docs/SOPORTE-PLATAFORMA.md`) |
 | Pendientes y portales inmobiliarios | `pendientes.js`, `portales-logica.js` |
+| Fallos del sistema (registro, panel, estado) | `fallos-cliente.js` (errores de la página), `fallos-sistema.js` + `fallos-presentacion.js` (panel), función `registrar-fallo`, `_shared/fallos.ts`, SQL 039 |
 | Colores de marca | `paletas.js`, `marca-publica.js`; en correos `_shared/marca-correo.ts` |
 | Correos | funciones `enviar-*`, `avisar-*`, `notificar-cambio-cita` (todas leen `agenda_configuracion` para SMTP y `correo_modo_pruebas`) |
 
