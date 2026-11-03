@@ -1,8 +1,13 @@
-# Agenda de citas — Patrimonios Inmobiliarios
+# Agenda de citas - Patrimonios Inmobiliarios
 
-Instrucciones principales para Claude Code **y** Codex (`AGENTS.md` apunta aquí). Se mantiene corto a
-propósito. Antes de tocar nada lee también `docs/ESTADO-ACTUAL.md` (trabajo vigente) y corre
-`git status` + `git diff`.
+Fuente única de instrucciones para Claude Code y Codex (`AGENTS.md` apunta aquí).
+
+## Inicio de cada tarea
+- Leer este archivo y `docs/ESTADO-ACTUAL.md`.
+- Ejecutar `git status --short` y `git diff --stat`.
+- Abrir solo los archivos directamente relacionados con la tarea. No leer históricos,
+  guías completas ni módulos grandes por defecto.
+- Para una tarea concreta, preferir `rg` y rangos pequeños de líneas a volcar archivos enteros.
 
 ## Qué es
 Agenda de citas para asesores inmobiliarios (multi-ciudad, multi-asesor, pensada para venderse como
@@ -10,21 +15,26 @@ SaaS). Reemplaza un sistema legado en Google Calendar + Apps Script + Sheets. `P
 `LEEME-*.md` son bitácoras viejas (algunas describen una demo superada); no son fuente de verdad.
 
 ## Arquitectura esencial
-- Frontend: Vite + JS vanilla, sin framework. `aplicacion/` es la app real (login, agenda interna,
-  reserva pública, configuración). La raíz (`index.html`, `referencia-visual.html`) es una demo vieja: no tocar.
-- Backend: Supabase (project id `ykiuuxludyonkhywtmgu`): Postgres + RLS, Auth, Edge Functions en
-  `supabase/functions/`, Vault para secretos. Multi-empresa desde el día 1 (`agenda_empresas`, RLS por `empresa_id`).
-- Hosting: Netlify conectado a GitHub; cada push a `main` despliega a `citas.patrimonios.co`
-  (plan gratis con créditos: juntar cambios; usar `[skip netlify]` en el commit si solo cambian docs/.gs/.sql/funciones).
-- Patrón de `aplicacion/js/agenda-real.js`: objeto `state` global, `render()` despacha por `state.view`,
-  `nav()` resalta pestaña, visibilidad por rol (`contexto.rol`), iconos Lucide (`createIcons`/`icon()`),
-  `escape()` para texto en HTML, consultas directas con `supabase.from(...)` en paneles de administrador.
-  Clases CSS reutilizadas: `v-top`, `v-eyebrow`, `v-note`, `v-muted`, `v-empty`, `v-btn`, `v-primary`,
-  `v-quiet`, `v-field`, `v-input`, `v-error`, `v-filters`. Selects/fechas con `change`; texto libre con `input` + debounce.
-- Colores de marca: nunca fijos en CSS/HTML; usar variables `--empresa-*`/`--tema-*` (`aplicacion/js/paletas.js`)
-  y, en correos, `marcaCorreo()`.
-- Tablas anchas: clase `v-tabla-res` (con `<thead>`) para que salgan como tarjetas en celular.
-- Lo que el usuario sube o arma y no debe perder: guardarlo en BD (o al menos `localStorage`), no solo en variables del módulo.
+- Frontend real: Vite + JavaScript vanilla en `aplicacion/`. La raíz es una demo vieja: no tocar.
+- Backend: Supabase `ykiuuxludyonkhywtmgu`, Postgres, RLS, Auth, Vault y Edge Functions.
+- Multiempresa desde el día 1: filtrar por `empresa_id` y respetar RLS.
+- Hosting: Netlify despliega `main` en `citas.patrimonios.co`; agrupar cambios porque el plan tiene créditos.
+- Identidad visual: usar variables `--empresa-*`/`--tema-*` y `marcaCorreo()`, nunca colores fijos.
+- Datos creados o subidos por usuarios: persistirlos en BD o, como mínimo, `localStorage`.
+- Funcionalidad nueva: crear un módulo nuevo cuando corresponda; no inflar un módulo grande sin necesidad.
+- Detalles de UI y módulos: consultar `docs/GUIA-DEL-CODIGO.md` solo cuando la tarea los requiera.
+
+## Router rápido: pregunta -> primer lugar que revisar
+- Reserva pública, horarios, choque, correo de verificación -> `aplicacion/js/reservar.js` + RPC SQL de agenda.
+- Agenda interna, inmuebles, asesores, informes, bitácora -> `aplicacion/js/agenda-real.js`.
+- Visita, arrendatario, reubicación, nueva hora -> `aplicacion/js/arrendatario.js` + `portal-visita`.
+- Empresa, sedes, correo, IA, reuniones, accesos, importar -> `aplicacion/js/administracion.js` o módulo `admin-*.js`.
+- Encuesta, opinión, informe del propietario -> `opinion.js` / `propietario.js` + función `enviar-*` relacionada.
+- Soporte, tickets, notificaciones, fallos -> `tickets.js`, `soporte.js`, `soporte-comun/`, `fallos-*.js`.
+- Correos que no llegan o destinatario equivocado -> función `enviar-*`/`avisar-*` + `_shared/marca-correo.ts` + `correo_modo_pruebas`.
+- Dato que no guarda, permisos o cruce de citas -> `sql/` correspondiente, RPC, grants y RLS antes del frontend.
+- Diseño, colores o móvil -> `aplicacion/estilos/` + `paletas.js`/`marca-publica.js`.
+- Si la ruta no es evidente -> consultar la tabla completa de `docs/GUIA-DEL-CODIGO.md` por palabra clave.
 
 ## Reglas de seguridad (seguir siempre)
 - Todo lo que necesite la `service_role` (crear usuarios, cambiar contraseñas, leer Vault) va en una Edge
@@ -53,36 +63,17 @@ SaaS). Reemplaza un sistema legado en Google Calendar + Apps Script + Sheets. `P
 - Orden de salida cuando cambian imágenes de correos: primero push a `main` (Netlify publica `/correo/`), después desplegar funciones.
 - SQL: archivos en `sql/NNN-descripcion.sql`; si se aplica directo en Supabase, dejar el archivo de referencia.
 
-## Mapa de módulos
-- `aplicacion/js/`: `agenda-real.js` (agenda interna, inmuebles, equipo, informes, bitácora), `administracion.js`
-  (accesos, correo, calendario, importar, ciudades, config), `pendientes.js` + `portales-logica.js` (Pendientes/Portales),
-  `reservar.js` (reserva pública), `arrendatario.js` (portal `/arrendatario` y `/visita`), `opinion.js` (encuesta),
-  `propietario.js` (informe), `paletas.js` / `marca-publica.js` (marca), `tablas-moviles.js`, `sesion.js`,
-  `cliente-supabase.js`. `agenda-demo.js` es de la demo vieja.
-- `aplicacion/estilos/`: `agenda.css` (grande; rediseño y móvil al final), `acceso.css`, `administracion.css`, `reservar.css`.
-- `supabase/functions/`: correos (`enviar-correo-cita`, `-propietario`, `-informe-propietario`, `enviar-solicitud-propietario`,
-  `enviar-encuesta-cliente`, `avisar-arrendatario`, `notificar-cambio-cita`, `recuperar-contrasena`, `probar-correo-config`),
-  `gestion-accesos`, `portal-visita`, `marcar-inmueble-no-disponible`, `calendario-ics`; compartido en `_shared/marca-correo.ts`.
-- `sql/`: migraciones 001–015 (todas aplicadas). `sincronizacion/`: Apps Script (`sincronizar-inmuebles.gs`, `respaldo-drive.gs`, `vigilante-correos.gs`) — se despliegan a mano en Google, no desde este repo.
-- `correos/`: fotos y bocetos de correos; `correos/pruebas-enviadas/` son copias HTML de pruebas.
-
-## Dónde consultar detalles según la tarea
-- Cómo está armado el código, dónde va cada cambio y la regla «función nueva = módulo nuevo»: `docs/GUIA-DEL-CODIGO.md` (léela antes de abrir módulos grandes).
-- Lista de puesta en marcha para clientes reales de Patrimonios (estado revisado, qué falta, orden de salida): `docs/PUESTA-EN-MARCHA-PATRIMONIOS.md`.
-- Estado, trabajo en curso y siguiente paso: `docs/ESTADO-ACTUAL.md` (único resumen vigente).
-- Historia completa de lo construido, decisiones y pendientes largos: `docs/historico/CLAUDE-completo-2026-10-26.md`
-  (copia íntegra del CLAUDE.md anterior; buscar por palabra clave, no leerla entera). Secciones útiles: «Acuerdo de horario en
-  inmuebles arrendados», «Rediseño y marca por empresa», «Vigilante de correos», «Pendiente / próximos pasos».
-- Asuntos operativos ajenos al desarrollo (terminaciones en Sedi, vigilante de correos, respaldos, bot de WhatsApp):
-  `docs/OPERATIVO-FUERA-DE-DESARROLLO.md`.
-- Contacto, sedes y datos legales por empresa: `docs/CONTACTO-EMPRESA.md` (contrato, archivos, pruebas y orden de aplicación de SQL 016, pendiente).
-- Pruebas: toda cita de prueba lleva `es_prueba = true` y el nombre empieza por «[PRUEBA] »; cómo reconocerlas y limpiarlas: `docs/LIMPIAR-PRUEBAS.md`.
-- Cómo mejorar sin riesgo cuando haya clientes reales (entorno de pruebas, respaldos, orden de salida): `docs/MEJORAS-EN-PRODUCCION.md`.
-- Estilo de correos: `supabase/functions/_shared/marca-correo.ts`; historia visual en la viñeta del 26-oct del histórico.
+## Documentación bajo demanda
+- Diseño y ubicación de cambios: `docs/GUIA-DEL-CODIGO.md`.
+- Salida a clientes reales: `docs/PUESTA-EN-MARCHA-PATRIMONIOS.md` y `docs/MEJORAS-EN-PRODUCCION.md`.
+- Empresa y datos legales: `docs/CONTACTO-EMPRESA.md`.
+- Pruebas: `docs/LIMPIAR-PRUEBAS.md`.
+- Operación externa al desarrollo: `docs/OPERATIVO-FUERA-DE-DESARROLLO.md`.
+- Historia y decisiones cerradas: `docs/historico/`; buscar por palabra clave, nunca leerla completa.
 
 ## Colaboración entre herramientas (Claude Code / Codex)
 - Una sola herramienta modifica este checkout a la vez. No editar en paralelo.
-- Quien recibe el trabajo: lee `CLAUDE.md` y `docs/ESTADO-ACTUAL.md`, corre `git status` y `git diff`, y solo después
+- Quien recibe el trabajo: lee `CLAUDE.md` y `docs/ESTADO-ACTUAL.md`, corre `git status --short` y `git diff --stat`, y solo después
   abre los módulos que la tarea necesita. No releer todo el histórico.
 - Al terminar cada avance útil, **reemplazar** (no acumular) lo superado en `docs/ESTADO-ACTUAL.md`. `CLAUDE.md` solo se
   edita si cambia una regla, convención o comando.
