@@ -24,6 +24,8 @@ function reescrituraInmuebles() {
           req.url = '/arrendatario.html';
         } else if (req.url && /^\/soporte\/?(\?.*)?$/.test(req.url)) {
           req.url = '/soporte.html';
+        } else if (req.url && /^\/consignar\/?(\?.*)?$/.test(req.url)) {
+          req.url = '/consignar.html' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
         }
         next();
       });
@@ -52,6 +54,7 @@ export default defineConfig({
         radicar: resolve(__dirname, 'aplicacion/radicar.html'),
         arrendatario: resolve(__dirname, 'aplicacion/arrendatario.html'),
         soporte: resolve(__dirname, 'aplicacion/soporte.html'),
+        consignar: resolve(__dirname, 'aplicacion/consignar.html'),
       },
     },
   },

@@ -118,3 +118,7 @@
 
 /* Aviso flotante de guardado/errores en Administración (visible aunque el formulario sea largo). */
 .ad-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:1000;max-width:min(92vw,520px);padding:14px 20px;border-radius:12px;background:#14532d;color:#fff;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,.28)}.ad-toast.error{background:#7f1d1d}.ad-toast[hidden]{display:none}@media(max-width:860px){.ad-toast{bottom:84px}}
+
+/* Coberturas agrupadas por ciudad */
+.ad-cob-grupo { margin: 10px 0 14px; }
+.ad-cob-grupo > strong { display: block; margin-bottom: 4px; color: var(--empresa-primario, inherit); }

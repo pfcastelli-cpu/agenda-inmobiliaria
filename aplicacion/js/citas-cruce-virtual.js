@@ -57,7 +57,8 @@ export function htmlCampoReunion(it, estado) {
   return `<label class="v-check"><input type="checkbox" id="v-interna-virtual" ${it.virtual ? 'checked' : ''}> Reunión virtual (videollamada)</label>
     ${it.virtual ? (automatico
       ? '<p class="v-note">El enlace de la reunión se crea automáticamente al guardar y queda en la cita.</p>'
-      : `<label class="v-field" for="v-interna-enlace">Enlace de la reunión<input class="v-input" id="v-interna-enlace" type="url" placeholder="https://meet.google.com/…" value="${esc(it.enlace || '')}"></label>`) : ''}`;
+      : `<p class="v-note">Esta empresa no tiene Google Meet conectado, así que el enlace no se crea solo. <a class="v-link" href="https://meet.new" target="_blank" rel="noopener">Crear una reunión en Google Meet</a> (se abre en otra pestaña), copia el enlace y pégalo aquí. Para que se cree solo: Configuración → Reuniones virtuales.</p>
+      <label class="v-field" for="v-interna-enlace">Enlace de la reunión<input class="v-input" id="v-interna-enlace" type="url" placeholder="https://meet.google.com/…" value="${esc(it.enlace || '')}"></label>`) : ''}`;
 }
 
 // Crea el enlace automático para una cita ya guardada. Nunca lanza: devuelve {ok, enlace?, error?}.

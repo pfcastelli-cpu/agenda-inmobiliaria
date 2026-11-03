@@ -38,6 +38,11 @@
   status = 200
 
 [[redirects]]
+  from = "/consignar"
+  to = "/consignar.html"
+  status = 200
+
+[[redirects]]
   from = "/soporte"
   to = "/soporte.html"
   status = 200

@@ -1,0 +1,33 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Consignar: prueba local</title>
+<link rel="stylesheet" href="/aplicacion/estilos/reservar.css">
+<style>html,body{margin:0;background:#f4f4f4}</style></head><body>
+<div id="pub-app"><header class="pu-head"><div><strong>PATRIMONIOS</strong><small>INMOBILIARIOS</small></div></header><main id="pu-main"></main></div>
+<script>
+// Vista previa local: las respuestas de la base de datos son de mentira (no toca Supabase ni envía correos).
+const ciudades = [
+  { id: 'c-bog', nombre: 'Bogotá', zonas: [{ id: 'z1', nombre: 'Norte' }, { id: 'z2', nombre: 'Centro' }] },
+  { id: 'c-med', nombre: 'Medellín', zonas: [] },
+];
+const dias = ['2026-11-04', '2026-11-05', '2026-11-06'];
+const horas = ['08:30', '10:00', '11:30', '14:00', '15:30'];
+window.__llamadas = [];
+const respuestas = {
+  agenda_marca_publica: () => null,
+  agenda_formato_hora_publico: () => '12h',
+  agenda_captacion_publica_config: () => ({ activa: true, nombre: 'Patrimonios', ciudades }),
+  agenda_captacion_publica_horarios: (a) => dias.flatMap((f) => horas.map((h) => ({ fecha: f, hora_inicio: h + ':00', hora_fin: h.replace(/^(\d+)/, (n) => String(Number(n) + 1).padStart(2, '0')) + ':30' }))),
+  agenda_captacion_publica_agendar: (a) => ({ cita_id: '11111111-1111-1111-1111-111111111111', token: '22222222-2222-2222-2222-222222222222', fecha: a.p_fecha, hora_inicio: a.p_hora_inicio, hora_fin: '10:00:00', asesor_nombre: 'Luisa Restrepo' }),
+};
+const realFetch = window.fetch.bind(window);
+window.fetch = async (url, opts) => {
+  const u = String(url);
+  const m = u.match(/\/rest\/v1\/rpc\/([a-z_]+)/);
+  const cuerpo = opts?.body ? JSON.parse(opts.body) : {};
+  if (m && respuestas[m[1]]) { window.__llamadas.push([m[1], cuerpo]); return new Response(JSON.stringify(respuestas[m[1]](cuerpo)), { status: 200, headers: { 'Content-Type': 'application/json' } }); }
+  if (u.includes('/functions/v1/avisar-captacion')) { window.__llamadas.push(['avisar-captacion', cuerpo]); return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } }); }
+  return realFetch(url, opts);
+};
+</script>
+<script type="module" src="/aplicacion/js/consignar.js"></script>
+</body></html>

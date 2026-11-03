@@ -8,6 +8,14 @@ Actualizado: 03-nov-2026.
 - Probar con sesión real: Administración > Empresa, sedes, botones de encuesta desde correo y marca «Reubicación pendiente».
 - Antes de publicar el front pendiente, revisar el diff y obtener autorización de Felipe.
 
+## Captación por ciudad y página pública `/consignar` (03-nov, sin commit ni push)
+
+- SQL 041 APLICADO (horarios de captación por ciudad, todos los asesores mezclados, 7 días; `agenda_sugerir_horarios_captacion_ciudad`). Causa del «no hay horarios»: ninguna cobertura tenía asesores.
+- SQL 042 APLICADO en producción (columna `captacion_publica_activa` por defecto apagada; RPC `agenda_captacion_publica_config/horarios/agendar`, ejecutables por `anon`). Probado: validaciones, asignación al asesor de mayor prioridad, horario ya tomado, tope por correo/celular.
+- Edge Function `avisar-captacion` DESPLEGADA (pública, sin JWT). Prueba real con cita `[PRUEBA]` (Barranquilla, cancelada después): 2 correos enviados al destino de pruebas, segunda llamada no reenvía. El interruptor quedó APAGADO.
+- Front: `consignar.html` + `js/consignar.js` (vista previa simulada `tests/fixtures/consignar-preview.html`: flujo completo OK), `captacion-horarios.js` (formulario interno: ciudad → zona opcional, horarios mezclados, lista de orígenes ampliada), coberturas agrupadas por ciudad en `administracion.js`, interruptor «Habilitar /consignar» en Administración → Empresa, enlace a meet.new cuando Meet no está conectado. `vite build` y 48 pruebas pasan.
+- Siguiente: Felipe autoriza el push (Netlify) → activar el interruptor «Habilitar /consignar» en Administración → Empresa. Archivos del propietario (Drive) y tipos de inmueble: sin cambios por ahora.
+
 ## Estado técnico resumido
 
 - La aplicación real está en `aplicacion/`; la raíz contiene una demo vieja.
