@@ -122,3 +122,121 @@
 /* Coberturas agrupadas por ciudad */
 .ad-cob-grupo { margin: 10px 0 14px; }
 .ad-cob-grupo > strong { display: block; margin-bottom: 4px; color: var(--empresa-primario, inherit); }
+
+/* ===== Buscador de ajustes (admin-buscador.js) ===== */
+.ad .ad-buscar { grid-column: 1 / -1; position: relative; margin: 0 0 18px; }
+#pat-access .ad .ad-buscar-etiqueta { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+.ad .ad-buscar-campo { position: relative; display: flex; align-items: center; }
+.ad .ad-buscar-campo svg { position: absolute; left: 14px; color: #526575; pointer-events: none; }
+#pat-access .ad .ad-buscar-campo input { padding-left: 42px; min-height: 48px; font-size: 16px; border: 2px solid #c9d6df; width: 100%; -webkit-appearance: none; appearance: none; }
+#pat-access .ad .ad-buscar-campo input:focus-visible { outline: 3px solid var(--empresa-accion, #00a9a5); outline-offset: 1px; border-color: var(--empresa-accion, #00a9a5); }
+.ad .ad-buscar-lista { list-style: none; margin: 6px 0 0; padding: 6px; position: absolute; left: 0; right: 0; z-index: 30; background: #fff; border: 1px solid #c9d6df; border-radius: 4px 14px 14px 14px; box-shadow: 0 12px 30px -10px rgba(0,0,0,.35); max-height: min(60vh, 420px); overflow-y: auto; }
+.ad .ad-buscar-lista li[role=option] { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 48px; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
+.ad .ad-buscar-lista li[aria-selected=true], .ad .ad-buscar-lista li[role=option]:hover { background: var(--tema-tinte, #e3f8f7); box-shadow: inset 4px 0 0 var(--empresa-accion, #00a9a5); }
+.ad .ad-buscar-titulo { font-size: 15px; font-weight: 600; }
+.ad .ad-buscar-donde { flex: 0 0 auto; font-size: 12.5px; color: #526575; background: #edf3f6; border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+.ad .ad-buscar-vacio { padding: 12px; font-size: 14px; color: #526575; }
+.ad .ad-buscar-estado { margin: 4px 0 0; min-height: 0; font-size: 13px; }
+.ad .ad-buscar-estado:empty { display: none; }
+.ad .ad-resaltado { outline: 3px solid var(--empresa-accion, #00a9a5); outline-offset: 6px; border-radius: 6px; background: var(--tema-tinte, #e3f8f7); animation: ad-resalte 1.2s ease-out 2; scroll-margin: 90px; }
+@keyframes ad-resalte { 0%, 100% { outline-offset: 6px; } 50% { outline-offset: 11px; } }
+@media (prefers-reduced-motion: reduce) { .ad .ad-resaltado { animation: none; } }
+@media (max-width: 650px) {
+  .ad .ad-buscar-lista { position: static; max-height: 50vh; }
+  .ad .ad-buscar-lista li[role=option] { flex-direction: column; align-items: flex-start; gap: 4px; }
+}
+
+/* ===== Pulido general: jerarquía, tablas, botones ===== */
+.ad button:hover:not(:disabled):not([aria-pressed=true]) { border-color: var(--empresa-accion, #00a9a5); }
+.ad .ad-primary:hover:not(:disabled) { filter: brightness(.95); }
+.ad select:focus-visible, .ad textarea:focus-visible { outline: 3px solid #7599bf; outline-offset: 2px; }
+.ad textarea { font: inherit; font-size: 16px; width: 100%; max-width: 100%; border: 1px solid #c9d6df; border-radius: 4px 12px 12px 12px; padding: 10px; }
+.ad .ad-note { max-width: 78ch; line-height: 1.55; }
+.ad .ad-form > h3:not(:first-child), .ad .ad-form > form > h3:not(:first-child) { margin-top: 30px; padding-top: 20px; border-top: 1px solid #dbe4e9; }
+.ad .ad-form > h3:first-child { margin-top: 0; }
+.ad .ad-grid > label, .ad .ad-grid > * { min-width: 0; }
+.ad .ad-actions { flex-wrap: wrap; }
+.ad .ad-ciudades li, .ad .ad-ausencias li { flex-wrap: wrap; gap: 8px 12px; }
+.ad .ad-ciudades li button { min-height: 40px; }
+.ad table.ad-tabla, .ad table.v-tabla-res { border-collapse: collapse; }
+.ad table.ad-tabla th, .ad table.v-tabla-res th { text-align: left; font-size: 13px; font-weight: 600; color: #526575; background: var(--tema-tinte, #e3f8f7); padding: 10px 12px; white-space: nowrap; }
+.ad table.ad-tabla td, .ad table.v-tabla-res td { padding: 10px 12px; border-bottom: 1px solid #dbe4e9; vertical-align: top; }
+.ad table.ad-tabla tbody tr:hover, .ad table.v-tabla-res tbody tr:hover { background: #f7fafb; }
+.ad table.ad-tabla td select { min-height: 40px; }
+
+/* Tableta y celular: pestañas de Configuración en una sola fila deslizable; controles táctiles de 44 px */
+@media (max-width: 860px) {
+  .ad .ad-subnav { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; padding-bottom: 8px; margin-bottom: 16px; scrollbar-width: thin; }
+  .ad .ad-subnav button { flex: 0 0 auto; white-space: nowrap; scroll-snap-align: start; }
+  .ad .ad-link-btn, .ad .ad-acceso-botones button, .ad .ad-ciudades li button { min-height: 44px; }
+  .ad .ad-acceso-clave-form input, .ad .ad-probar-correo-destino { min-height: 44px; }
+  .ad .ad-check, .ad .ad-toggle { min-height: 44px; }
+  .ad table.ad-tabla td select, .ad table.ad-tabla td input[type=checkbox] { min-height: 44px; }
+  .ad table.ad-tabla td input[type=checkbox] { width: 24px; }
+}
+@media (max-width: 650px) {
+  .ad h2 { font-size: 26px; }
+  .ad .ad-actions { flex-direction: column; }
+  .ad .ad-actions button, .ad .ad-form > button[type=submit], .ad .ad-form button.ad-primary[type=submit] { width: 100%; }
+  .ad .ad-acceso-botones { width: 100%; }
+  .ad .ad-acceso-botones button { flex: 1 1 140px; }
+  .ad .ad-correo-password-row { flex-wrap: wrap; }
+  .ad .ad-correo-prov { min-height: 52px; }
+  .ad .ad-paletas-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .ad-toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .ad .ad-bitacora-linea1 { flex-direction: column; gap: 2px; }
+}
+
+/* Subpestañas dentro de una pestaña larga (Empresa, Correo, Ciudades): botones tipo píldora, deslizables en celular */
+.ad .ad-sub-barra { margin: 14px 0 20px; position: relative; }
+.ad .ad-sub-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.ad .ad-sub-tab { flex: 0 0 auto; white-space: nowrap; scroll-snap-align: start; min-height: 44px; padding: 8px 16px; border: 1px solid #c9d6dd; border-radius: 999px; background: #fff; color: #1a2c45; font: inherit; font-weight: 500; cursor: pointer; }
+.ad .ad-sub-tab:hover { background: var(--tema-tinte, #e3f8f7); }
+.ad .ad-sub-tab[aria-selected=true] { background: var(--tema-tinte, #e3f8f7); border-color: var(--empresa-accion, #00a9a5); box-shadow: 0 0 0 1px var(--empresa-accion, #00a9a5); font-weight: 700; }
+.ad .ad-sub-tab:focus-visible { outline: 3px solid var(--empresa-accion, #00a9a5); outline-offset: 2px; }
+.ad .ad-subpanel[hidden] { display: none !important; }
+.ad .ad-subpanel > h3:first-child, .ad .ad-subpanel > h2:first-child { margin-top: 0; }
+@media (max-width: 860px) { .ad .ad-sub-barra::after { content: ""; position: absolute; right: 0; top: 0; bottom: 8px; width: 24px; background: linear-gradient(90deg, transparent, var(--v-bg, #fff)); pointer-events: none; } }
+
+/* Guía de Google Meet (Reuniones virtuales) */
+.ad .ad-guia { margin: 16px 0; border: 1px solid #dbe4e9; border-radius: 12px; padding: 4px 16px 12px; background: #fff; }
+.ad .ad-guia summary { cursor: pointer; font-weight: 700; padding: 12px 0; min-height: 44px; }
+.ad .ad-guia ol { padding-left: 22px; line-height: 1.6; }
+.ad .ad-guia li { margin: 8px 0; }
+.ad .ad-guia h4 { margin: 18px 0 4px; }
+.ad .ad-copiable { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+.ad .ad-copiable code { padding: 8px 10px; border-radius: 8px; background: #eef3f6; color: #1a2c45; font-size: 14px; overflow-wrap: anywhere; user-select: all; }
+.ad .ad-copiable button { min-height: 44px; padding: 6px 14px; }
+
+/* ---- Roles y permisos ---- */
+.ad-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ad-rol-cabecera{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px}
+.ad-roles{list-style:none;padding:0;margin:14px 0;display:grid;gap:10px}
+.ad-rol{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--tema-tinte,#dbe4e9);border-radius:14px;background:var(--empresa-texto-principal,#fff)}
+.ad-rol-info{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 280px}
+.ad-rol-info p{margin:0;font-size:14px}
+.ad-rol-titulo{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.ad-rol-botones{display:flex;flex-wrap:wrap;gap:8px}
+.ad-rol-botones button{font-size:13.5px;min-height:38px;padding:6px 12px}
+.ad-rol-botones .ad-peligro{border-color:currentColor;color:#b3261e}
+.ad-rol-desc{grid-column:1 / -1}
+.ad-perm-grupos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:10px 0}
+.ad .ad-perm-grupo{grid-column:auto;margin:0;padding:12px 14px}
+.ad-perm-cat{padding-bottom:8px;margin-bottom:6px;border-bottom:1px solid var(--tema-tinte,#dbe4e9)}
+.ad-perm-lista{display:flex;flex-direction:column;gap:2px}
+.ad-perm-item{align-items:flex-start;padding:4px 0}
+.ad-perm-item input,.ad-perm-cat input{accent-color:var(--empresa-accion,#00a9a5);margin-top:2px}
+.ad-perm-item small{display:block;font-size:12.5px;line-height:1.35}
+.ad-acceso-rol{display:flex;flex-direction:row;align-items:center;gap:6px;font-size:13.5px}
+.ad-acceso-rol select{min-height:38px;max-width:190px}
+@media(max-width:860px){
+  .ad-perm-grupos{grid-template-columns:1fr}
+  .ad .ad-rol-botones button,.ad .ad-acceso-rol select{min-height:44px}
+  .ad .ad-perm-item,.ad .ad-perm-cat{min-height:44px;align-items:center}
+}
+@media(max-width:650px){
+  .ad-rol{flex-direction:column;align-items:stretch}
+  .ad-rol-botones button{flex:1 1 110px}
+  .ad-rol-cabecera .ad-primary{width:100%}
+  .ad-acceso-rol{width:100%}.ad-acceso-rol select{flex:1;max-width:none}
+}

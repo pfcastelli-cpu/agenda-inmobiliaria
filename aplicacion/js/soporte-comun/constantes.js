@@ -24,3 +24,9 @@ export const SLA_HORAS = { urgente: 2, alta: 8, normal: 24, baja: 48 };
 export function sePuedeCalificar(t) {
   return Boolean(t.primera_respuesta_en) || t.estado === 'resuelto' || t.estado === 'cerrado';
 }
+
+// Una vez que soporte (o el administrador) respondió, lo escrito en el ticket ya no se modifica: solo se agregan comentarios.
+// La base lo impone con triggers (sql/045); esto solo decide qué mensaje y qué botones mostrar.
+export function soporteYaRespondio(t) {
+  return Boolean(t.primera_respuesta_en);
+}

@@ -1,34 +1,41 @@
-// Configuración → Demanda: (1) alertas de demanda por inmueble en horas, (2) umbrales y tope de citas, (3) importar el histórico del
-// calendario del sistema anterior (.ics con nombre, correo, celular e inmueble en la descripción). La lógica pura está en
-// alertas-demanda.js e ics-historico.js; el cálculo en la base (agenda_demanda_resumen, sql/035). El sistema solo SUGIERE: nunca cambia precios.
+// Configuración → Demanda: (1) cómo se lee la demanda (umbrales), (2) opción de tope con lista de espera (APAGADA por defecto), (3) importar el
+// histórico del calendario del sistema anterior (.ics). Las alertas y la recomendación de subir el canon viven en Informes → Alertas de demanda
+// (informe-demanda.js); aquí solo queda un contador. Lógica pura en alertas-demanda.js e ics-historico.js; cálculo en la base (agenda_demanda_resumen,
+// sql/035; interruptor del bloqueo en sql/046). El sistema solo SUGIERE: nunca cambia precios.
 import { supabase } from './cliente-supabase.js';
-import { nivelDemanda, textoAlerta } from './alertas-demanda.js';
+import { contarAlertasDemanda } from './informe-demanda.js';
 import { parsearIcsHistorico } from './ics-historico.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const cop = (n) => (n == null ? '—' : '$ ' + Math.round(Number(n)).toLocaleString('es-CO'));
-const ETIQUETA = { urgente: ['🔴', 'Urgente'], atencion: ['🟡', 'Atención'], normal: ['🟢', 'Normal'] };
 const num = (v) => (v === '' || v == null ? null : Math.max(1, Math.round(Number(v))));
 
 // ctx = { el, empresaId, config, aviso(texto, error?), vigente() }
 export async function demandaTab(ctx) {
   const { el, empresaId, config, aviso, vigente } = ctx;
+  // Si la columna del interruptor (sql/046) aún no existe en la base, el bloqueo sigue la regla vieja: se bloquea siempre que haya un tope.
+  const hayInterruptor = 'demanda_bloquear_por_tope' in config;
+  const bloquea = hayInterruptor ? !!config.demanda_bloquear_por_tope : config.demanda_tope_citas != null;
   el.innerHTML = `<h2>Demanda por inmueble</h2>
- <p>Mide cuántas personas piden cita por cada inmueble y te avisa <strong>en horas</strong> cuando uno recibe mucho más de lo normal. Con una sola radicación por inmueble, una avalancha de pedidos casi siempre significa que el precio está por debajo del mercado y que la agenda del equipo se está llenando con un solo inmueble. La alerta solo <strong>sugiere</strong>; el precio lo decides tú.</p>
- <form id="dem-form"><h3>Umbrales y tope</h3>
+ <p><strong>Qué mide:</strong> cuántas personas piden cita por cada inmueble. Si uno recibe muchos más pedidos de lo normal, casi siempre significa que el precio está por debajo del mercado. En ese caso el sistema te lo señala y <strong>sugiere subir el canon</strong>; el precio siempre lo decides tú.</p>
+ <p><strong>Qué NO hace:</strong> no cierra la agenda ni deja de atender clientes. Aunque un inmueble tenga muchísima demanda, la página pública sigue dando horarios, salvo que enciendas la opción de abajo.</p>
+ <p class="ad-note" id="dem-contador">Calculando alertas…</p>
+ <form id="dem-form"><h3>Cuándo se considera «demanda alta»</h3>
   <div class="ad-grid">
    <label>Atención con … pedidos en 24 horas<input name="demanda_umbral_info" type="number" min="1" max="50" value="${esc(config.demanda_umbral_info ?? 3)}"></label>
    <label>Urgente con … pedidos en 24 horas<input name="demanda_umbral_urgente" type="number" min="2" max="100" value="${esc(config.demanda_umbral_urgente ?? 5)}"></label>
+  </div>
+  <p class="ad-note">«Atención» pide vigilar el inmueble; «Urgente» sugiere subir el canon (8–10 %). Si no cambias nada, se usan 3 y 5: son una primera suposición que conviene ajustar con el histórico que importes abajo. Si no haces nada, las alertas solo aparecen en Informes y no pasa nada más.</p>
+  <h3 style="margin-top:20px">Opción avanzada: limitar citas por inmueble (apagada)</h3>
+  <label class="ad-check" style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" name="demanda_bloquear_por_tope" ${bloquea ? 'checked' : ''} ${hayInterruptor ? '' : 'disabled'}> <span>Dejar de dar horarios cuando un inmueble llegue al tope y ofrecer una lista de espera</span></label>
+  <div class="ad-grid">
    <label>Tope de citas activas por inmueble <small class="ad-muted">(vacío = sin tope)</small><input name="demanda_tope_citas" type="number" min="1" max="100" value="${esc(config.demanda_tope_citas ?? '')}" placeholder="Ej. 8"></label>
   </div>
-  <p class="ad-note">Con el tope, cuando un inmueble llega a ese número de citas activas, la página pública deja de dar horarios y ofrece una <strong>lista de espera</strong>. Los umbrales son una primera suposición: se calibran con el histórico que importes abajo.</p>
+  <p class="ad-note"><strong>Úsalo con cuidado:</strong> al encenderlo, los clientes nuevos de ese inmueble <strong>no pueden reservar</strong>; solo dejan sus datos y esperan. Es una pérdida de clientes que no se ve en los informes. Normalmente es mejor subir el precio y seguir atendiendo a todos. Con la casilla apagada, el tope solo sirve de referencia: si se alcanza, el inmueble aparece con alerta, pero la reserva sigue abierta.</p>
+  ${hayInterruptor ? '' : '<p class="error" role="alert">Falta aplicar el SQL 046: mientras tanto, cualquier tope guardado SÍ bloquea la página pública (regla anterior). Para que no bloquee, deja el tope vacío.</p>'}
   <button type="submit">Guardar</button>
  </form>
- <h3 style="margin-top:26px">Alertas</h3>
- <div class="ad-row" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap"><label>Mirar los últimos<select id="dem-dias"><option value="3">3 días</option><option value="7">7 días</option><option value="14" selected>14 días</option><option value="30">30 días</option><option value="90">90 días</option></select></label><button type="button" id="dem-ver">Actualizar</button></div>
- <div id="dem-resultado" class="ad-muted" style="margin-top:12px">Cargando…</div>
  <h3 style="margin-top:26px">Importar el histórico del sistema anterior</h3>
- <p class="ad-note">Exporta el calendario de Google (calendar.google.com → Configuración → Importar y exportar → Exportar) y sube el <code>.ics</code>. Se lee de cada cita el nombre, correo, celular y el número de inmueble de la descripción, y <strong>cuándo se pidió</strong> la cita (no cuándo es la visita). No se crean citas ni se envía ningún correo: solo sirve para medir la demanda.</p>
+ <p class="ad-note">Exporta el calendario de Google (calendar.google.com → Configuración → Importar y exportar → Exportar) y sube el <code>.ics</code>. Se lee de cada cita el nombre, correo, celular y el número de inmueble de la descripción, y <strong>cuándo se pidió</strong> la cita (no cuándo es la visita). No se crean citas ni se envía ningún correo: solo sirve para medir la demanda y calibrar los umbrales.</p>
  <label>Archivo .ics<input type="file" id="dem-archivo" accept=".ics,text/calendar"></label>
  <div id="dem-import"></div>`;
 
@@ -36,34 +43,28 @@ export async function demandaTab(ctx) {
     e.preventDefault();
     const f = e.target;
     const v = { demanda_umbral_info: num(f.demanda_umbral_info.value) || 3, demanda_umbral_urgente: num(f.demanda_umbral_urgente.value) || 5, demanda_tope_citas: num(f.demanda_tope_citas.value) };
+    if (hayInterruptor) v.demanda_bloquear_por_tope = f.demanda_bloquear_por_tope.checked;
     if (v.demanda_umbral_urgente <= v.demanda_umbral_info) { aviso('El umbral urgente debe ser mayor que el de atención.', true); return; }
+    if (v.demanda_bloquear_por_tope && v.demanda_tope_citas == null) { aviso('Para limitar las citas escribe primero el tope (por ejemplo 8) o apaga la casilla.', true); return; }
+    if (v.demanda_bloquear_por_tope && !config.demanda_bloquear_por_tope && !window.confirm('Vas a encender el límite: cuando un inmueble llegue a ' + v.demanda_tope_citas + ' citas activas, los clientes nuevos no podrán reservar y quedarán en lista de espera. ¿Confirmas?')) return;
     const { error } = await supabase.from('agenda_configuracion').update(v).eq('empresa_id', empresaId);
     if (error) { aviso('No se pudo guardar. ¿Ya se aplicó el SQL 035?', true); return; }
     Object.assign(config, v);
     aviso('Demanda guardada.');
-    await cargar();
+    await contar();
   };
 
-  async function cargar() {
-    const out = el.querySelector('#dem-resultado');
-    out.textContent = 'Calculando…';
-    const { data, error } = await supabase.rpc('agenda_demanda_resumen', { p_empresa_id: empresaId, p_dias: Number(el.querySelector('#dem-dias').value) });
-    if (!vigente()) return;
-    if (error) { out.innerHTML = `<p class="error">${esc(error.message)}</p>`; return; }
-    const u = { info: data.umbral_info, urgente: data.umbral_urgente };
-    const filas = (data.inmuebles || []).map((m) => ({ m, nivel: nivelDemanda(m, u) }));
-    const orden = { urgente: 0, atencion: 1, normal: 2 };
-    filas.sort((a, b) => orden[a.nivel] - orden[b.nivel] || b.m.pedidos_24h - a.m.pedidos_24h || b.m.pedidos - a.m.pedidos);
-    const alertas = filas.filter((f) => f.nivel !== 'normal');
-    out.innerHTML = `<p class="ad-note">${data.inmuebles.length} inmuebles con pedidos en este periodo; promedio de ${data.promedio_pedidos_por_inmueble ?? '—'} pedidos por inmueble. ${alertas.length ? `<strong>${alertas.length} con alerta.</strong>` : 'Ninguno con alerta ahora.'}</p>
- ${alertas.map(({ m, nivel }) => `<div style="border:1px solid #e5e7eb;border-left:5px solid ${nivel === 'urgente' ? '#DC2626' : '#D97706'};border-radius:12px;padding:12px 14px;margin:0 0 10px"><strong>${ETIQUETA[nivel][0]} ${ETIQUETA[nivel][1]} · Inmueble ${esc(m.numero_inmueble)}</strong> · ${esc([m.barrio, m.ciudad].filter(Boolean).join(', '))} · ${esc(m.tipo_oferta || '')} ${cop(m.valor_canon || m.valor_venta)}<br><span>${esc(textoAlerta(m, nivel))}</span></div>`).join('')}
- <table class="v-tabla-res" style="width:100%"><thead><tr><th>Inmueble</th><th>24 h</th><th>48 h</th><th>7 días</th><th>Total</th><th>Personas</th><th>Citas activas</th><th>Nivel</th></tr></thead><tbody>${filas.map(({ m, nivel }) => `<tr><td data-label="Inmueble">${esc(m.numero_inmueble)} · ${esc(m.direccion || '')}</td><td data-label="24 h">${m.pedidos_24h}</td><td data-label="48 h">${m.pedidos_48h}</td><td data-label="7 días">${m.pedidos_7d}</td><td data-label="Total">${m.pedidos}</td><td data-label="Personas">${m.personas}</td><td data-label="Citas activas">${m.activas}${m.tope != null ? ' / ' + m.tope : ''}</td><td data-label="Nivel">${ETIQUETA[nivel][0]} ${ETIQUETA[nivel][1]}</td></tr>`).join('') || '<tr><td colspan="8">Sin pedidos en el periodo.</td></tr>'}</tbody></table>`;
+  async function contar() {
+    const out = el.querySelector('#dem-contador');
+    const r = await contarAlertasDemanda(empresaId, 14);
+    if (!vigente() || !out) return;
+    out.innerHTML = r
+      ? (r.alertas ? `<strong>${r.alertas} ${r.alertas === 1 ? 'inmueble con alerta' : 'inmuebles con alerta'}${r.urgentes ? ` (${r.urgentes} urgente${r.urgentes === 1 ? '' : 's'})` : ''}</strong> en los últimos 14 días. ` : 'Ningún inmueble con alerta en los últimos 14 días. ') + 'Míralos en <strong>Informes → Alertas de demanda</strong>.'
+      : 'Las alertas están en <strong>Informes → Alertas de demanda</strong>.';
   }
-  el.querySelector('#dem-ver').onclick = cargar;
-  el.querySelector('#dem-dias').onchange = cargar;
-  cargar();
+  contar();
 
-  // ---- Importar histórico ---------------------------------------------------------------------
+// ---- Importar histórico ---------------------------------------------------------------------
   el.querySelector('#dem-archivo').onchange = async (ev) => {
     const f = ev.target.files[0];
     if (!f) return;
@@ -89,7 +90,7 @@ export async function demandaTab(ctx) {
         guardadas += Math.min(100, filas.length - i);
       }
       box.innerHTML = `<p><strong>${guardadas}</strong> citas importadas al histórico de demanda (las repetidas se actualizan, no se duplican).</p>`;
-      await cargar();
+      await contar();
     };
   };
 }

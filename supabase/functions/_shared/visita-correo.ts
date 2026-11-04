@@ -7,6 +7,13 @@ export function enlaceVisita(url: string, texto: string, marca: MarcaCorreo): st
   return `<a href="${esc(url)}" style="display:inline-block;padding:12px 0;margin-right:18px;color:${marca.principal};font-size:14px;line-height:1.5;text-decoration:underline">${esc(texto)}</a>`;
 }
 
+// Botón «Confirmo que estaré» (arrendatario). Lleva al portal de esa visita, que pide un último toque para confirmar
+// (así un antivirus o la vista previa del correo no confirman por error).
+export function botonConfirmarAsistencia(url: string, marca: MarcaCorreo, texto = 'Confirmo que estaré'): string {
+  if (!/^https:\/\//i.test(url)) return '';
+  return `<a href="${esc(url)}" style="display:inline-block;padding:12px 20px;margin:6px 0;background:${marca.accion};color:${marca.textoAccion};font-size:15px;line-height:1.4;font-weight:700;text-decoration:none;border-radius:8px">${esc(texto)}</a>`;
+}
+
 // Aviso para el cliente que va a una visita: el asesor tiene otra cita después y no puede esperar.
 export const TEXTO_PUNTUALIDAD = {
   titulo: 'Tu asesor no puede esperar',

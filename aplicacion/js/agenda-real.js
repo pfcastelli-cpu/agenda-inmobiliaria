@@ -1,11 +1,14 @@
 import { supabase } from './cliente-supabase.js';
 import { htmlLlegada, registrarLlegada } from './llegada-cita.js';
 import { htmlBotonRadicar, enviarRadicacion } from './radicacion-cita.js';
+import { htmlConfirmacionArrendatario } from './confirmacion-arrendatario.js';
 import { abrirVisorEncuestaDesdeUrl } from './visor-encuesta.js';
 import { claveHorario, revisarCruce, htmlAvisoCruce, puedeCruzar, estadoReunion, htmlCampoReunion, crearEnlaceReunion, htmlEnlaceReunion } from './citas-cruce-virtual.js';
 import { ORIGENES_CAPTACION, cargarCiudadesYZonas, buscarHorariosCaptacion, seleccionarHorario, htmlCiudadYZona, htmlHorariosCaptacion } from './captacion-horarios.js';
 import { renderPendientes, reiniciarPendientes } from './pendientes.js';
 import { renderTickets, reiniciarTickets, abrirTicket } from './tickets.js';
+import { montarInformeDemanda } from './informe-demanda.js';
+import { puede } from './permisos.js';
 import { crearApiSoporte } from './soporte-comun/api.js';
 import { montarCampana } from './soporte-comun/campana.js';
 import {
@@ -163,9 +166,10 @@ export function iniciarAgendaReal(acceso) {
     // por defecto (Equipo solo para administradores) para evitar que se vea un
     // instante y luego se oculte. Informes usa el mismo criterio que el botón
     // "No disponible" de la ficha del inmueble (administrador/coordinador).
-    if (b.dataset.view === 'team') b.hidden = contexto.rol !== 'administrador';
-    if (b.dataset.view === 'informes') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
-    if (b.dataset.view === 'bitacora') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
+    // El rol base manda para los datos; el permiso del rol solo afina qué pestañas se muestran.
+    if (b.dataset.view === 'team') b.hidden = contexto.rol !== 'administrador' || !puede('equipo.ver');
+    if (b.dataset.view === 'informes') b.hidden = (contexto.rol !== 'administrador' && contexto.rol !== 'coordinador') || !puede('informes.ver');
+    if (b.dataset.view === 'bitacora') b.hidden = (contexto.rol !== 'administrador' && contexto.rol !== 'coordinador') || !puede('bitacora.ver');
     // Pendientes lo ve todo el equipo; la base de datos decide cuáles le salen a cada uno.
     if (b.dataset.view === 'pendientes') b.hidden = false;
     // Soporte (tickets): lo ve todo el equipo.
@@ -222,7 +226,7 @@ const state = {
   moveError: '',
   moveForzable: false,
   completarId: null,
-  interna: { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: hoyISO(), hora: '09:00', duracion: '', titulo: '', notas: '', coberturaId: '', ciudadId: '', propietarioNombre: '', propietarioTelefono: '', tipoInmuebleCaptacion: '', valorEstimado: '', origenCaptacion: '', mandatoExclusivo: false, slotsCaptacion: [], slotSeleccionado: null, buscandoSlots: false, errorSlots: '', virtual: false, enlace: '', cruce: null, cruceClave: '', cruceOk: '' },
+  interna: { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: hoyISO(), hora: '09:00', duracion: '', titulo: '', notas: '', coberturaId: '', ciudadId: '', propietarioNombre: '', propietarioTelefono: '', tipoInmuebleCaptacion: '', valorEstimado: '', origenCaptacion: '', contactoNombre: '', contactoTelefono: '', contactoEmail: '', mandatoExclusivo: false, slotsCaptacion: [], slotSeleccionado: null, buscandoSlots: false, errorSlots: '', virtual: false, enlace: '', cruce: null, cruceClave: '', cruceOk: '' },
   errorInterna: '',
   restriccionId: null,
   errorRestriccion: '',
@@ -257,7 +261,47 @@ const TIPOS_CITA = {
   inspeccion: 'Inspección / revisión',
   captacion: 'Captación de inmueble nuevo',
   otro: 'Otra actividad',
+  entrega_inmueble: 'Entrega o recibo de inmueble',
+  llaves: 'Entrega / devolución de llaves',
+  firma_contrato: 'Firma de contrato',
+  fotografia: 'Fotografía / video',
+  mantenimiento: 'Mantenimiento / proveedor',
+  reunion_cliente: 'Reunión con propietario o arrendatario',
+  tramite: 'Diligencia o trámite',
+  reunion_interna: 'Capacitación / reunión interna',
 };
+// Tipos de actividad interna (sql/044). El inmueble es obligatorio solo donde la actividad ocurre en un inmueble del catálogo;
+// en los demás se puede dar una dirección libre o solo un título. Los de contacto piden nombre, celular y correo de la persona.
+const DURACION_POR_TIPO = { fotografia: 90, entrega_inmueble: 60, firma_contrato: 60, mantenimiento: 60, tramite: 60, reunion_interna: 60, reunion_cliente: 45, llaves: 30 };
+const TIPOS_CON_INMUEBLE = ['inventario', 'inspeccion', 'entrega_inmueble', 'fotografia', 'mantenimiento'];
+const TIPOS_CON_CONTACTO = ['entrega_inmueble', 'llaves', 'firma_contrato', 'reunion_cliente', 'mantenimiento', 'fotografia'];
+const ETIQUETA_CONTACTO = { mantenimiento: 'Proveedor o quien da acceso', fotografia: 'Quién abre el inmueble', llaves: 'Quién entrega o recibe las llaves', firma_contrato: 'Firmante principal' };
+const AYUDA_TIPO = {
+  inventario: 'Se recorre el inmueble y se deja constancia de lo que hay (entrada o salida de un arrendatario).',
+  entrega_inmueble: 'Entrega formal del inmueble al arrendatario o al propietario, o recibo de vuelta.',
+  inspeccion: 'Revisión del estado de un inmueble ya arrendado, avalúo o visita técnica.',
+  fotografia: 'Sesión de fotos o video del inmueble para publicarlo.',
+  mantenimiento: 'Visita de un proveedor o reparación en el inmueble.',
+  captacion: 'Visita a un propietario que quiere consignar su inmueble. Se buscan horarios libres de los asesores de la ciudad.',
+  llaves: 'Solo pasar o recibir llaves, sin recorrer el inmueble.',
+  firma_contrato: 'Firma de un contrato de arrendamiento, compraventa o administración.',
+  reunion_cliente: 'Reunión con un propietario o arrendatario (cobro, negociación, seguimiento).',
+  tramite: 'Diligencia fuera de la oficina: notaría, curaduría, banco, administración.',
+  reunion_interna: 'Capacitación o reunión del equipo, sin clientes.',
+  otro: 'Cualquier otra actividad que ocupe tiempo del asesor.',
+};
+// Muestra el error del formulario y lo lleva a la vista (en el celular quedaba fuera de pantalla, abajo).
+function errorInterno(texto) {
+  state.errorInterna = texto;
+  render();
+  if (texto) document.getElementById('v-interna-error')?.scrollIntoView({ block: 'center' });
+}
+const GRUPOS_TIPO = [
+  ['En un inmueble', [['inventario', 'Inventario (entrada o salida del inmueble)'], ['entrega_inmueble', 'Entrega o recibo de inmueble'], ['inspeccion', 'Inspección, avalúo o visita técnica'], ['fotografia', 'Fotografía / video'], ['mantenimiento', 'Mantenimiento / visita de proveedor']]],
+  ['Captar un inmueble nuevo', [['captacion', 'Captación de un inmueble nuevo (cambia el formulario)']]],
+  ['Con propietarios y clientes', [['llaves', 'Entrega / devolución de llaves'], ['firma_contrato', 'Firma de contrato'], ['reunion_cliente', 'Reunión con propietario o arrendatario']]],
+  ['Otras', [['tramite', 'Diligencia o trámite (notaría, curaduría, banco…)'], ['reunion_interna', 'Capacitación / reunión interna'], ['otro', 'Otra actividad']]],
+];
 
 async function cargarDominioPublico() {
   if (configPublicaCache !== null) return configPublicaCache;
@@ -339,7 +383,7 @@ function aplicarVisibilidadEquipo() {
   const botonEquipo = root?.querySelector('[data-view="team"]');
   if (!botonEquipo) return;
   const roles = configPublicaCache?.equipoVisibleRoles || ['administrador'];
-  const visible = roles.includes(contexto.rol);
+  const visible = roles.includes(contexto.rol) && puede('equipo.ver');
   botonEquipo.hidden = !visible;
   if (!visible && state.view === 'team') {
     state.view = 'agenda';
@@ -582,10 +626,12 @@ function citaCard(c) {
     ${c.cruce_autorizado ? '<span class="v-tag v-tag-neutral" style="margin-top:6px">Cruce autorizado</span>' : ''}
     ${inmueble ? `<a class="v-link" href="${linkPublico(inmueble.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver inmueble</a>` : ''}
     ${c.estado === 'completada' ? (c.feedback_cliente ? `<p class="v-muted" style="margin-top:8px;font-size:12.5px">Comentario del cliente: ${escape(c.feedback_cliente)}</p>` : '') : `<div class="v-actions"><button data-completar="${c.id}">Realizada</button><button data-mover="${c.id}">Mover</button><button class="v-danger" data-cancelar="${c.id}">Cancelar</button></div>`}
-    ${inmueble && avisaArrendatario(inmueble) && c.estado !== 'cancelada' && c.tipo_cita === 'visita_cliente' ? `<div class="v-actions" style="margin-top:8px"><button data-avisar-arrendatario="${c.id}">${icon('mail')}${c.arrendatario_avisado_en ? 'Reenviar aviso al arrendatario' : 'Informar al arrendatario'}</button></div>${c.arrendatario_avisado_en ? `<p class="v-muted" style="font-size:12.5px;margin-top:4px">Arrendatario informado el ${new Date(c.arrendatario_avisado_en).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}</p>` : ''}` : ''}
+    ${inmueble && avisaArrendatario(inmueble) && c.estado !== 'cancelada' && c.tipo_cita === 'visita_cliente' ? `${c.arrendatario_avisado_en
+      ? `<p class="v-note" style="margin:8px 0 0">${icon('mail-check')} El sistema ya avisó al arrendatario por correo el ${new Date(c.arrendatario_avisado_en).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}. <button type="button" class="v-link" data-avisar-arrendatario="${c.id}" title="Solo si el arrendatario dice que no le llegó">Volver a enviar</button></p>`
+      : `<div class="v-actions" style="margin-top:8px"><button data-avisar-arrendatario="${c.id}" title="Este inmueble está arrendado. El aviso sale solo al agendar; si aquí aún no aparece como enviado, envíalo con este botón.">${icon('mail')}Avisar al arrendatario</button></div><p class="v-muted" style="font-size:12.5px;margin-top:4px">Aún no se le ha avisado al arrendatario de esta visita (el inmueble está arrendado).</p>`}${htmlConfirmacionArrendatario(c)}` : ''}
     ${state.moveId === c.id ? `<div class="v-cancelbox">${esCaptacion ? '<p style="margin:0 0 8px;font-weight:600">Esta es una cita de captación con prioridad total.</p>' : ''}<label class="v-field">Nueva fecha<input type="date" id="v-mover-fecha" class="v-input" value="${state.moveFecha}"></label><label class="v-field">Nueva hora<input type="time" id="v-mover-hora" class="v-input" value="${state.moveHora}"></label>${state.moveError ? `<p class="v-error">${escape(state.moveError)}</p>` : ''}${state.moveForzable ? `<p class="v-note">Puedes moverla de todos modos; quedará registrado que autorizaste el cruce.</p><div class="v-actions"><button data-forzarmover="${c.id}">Mover de todos modos</button></div>` : ''}<div class="v-actions"><button class="v-primary" data-confirmarmover="${c.id}">Guardar nuevo horario</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
     ${state.cancelId === c.id ? `<div class="v-cancelbox">${esCaptacion ? 'Esta es una cita de captación con prioridad total. ' : ''}¿Cancelar esta ${esInterna ? 'actividad' : 'visita'}? Se libera el horario.<div class="v-actions"><button class="v-danger" data-confirmarcancelar="${c.id}">Sí, cancelar ${esInterna ? 'la actividad' : 'la visita'}</button><button data-mantener="${c.id}">No, mantener ${esInterna ? 'la actividad' : 'la visita'}</button></div></div>` : ''}
-    ${state.completarId === c.id ? `<div class="v-cancelbox"><label class="v-field">¿Qué dijo el cliente? (para el informe al propietario)<textarea id="v-feedback-texto" class="v-input" rows="3" placeholder="Ej: le gustó mucho, va a decidir con su familia…"></textarea></label><div class="v-actions"><button class="v-primary" data-guardarrealizada="${c.id}">Guardar y marcar como realizada</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
+    ${state.completarId === c.id ? `<div class="v-cancelbox"><p class="v-note" style="margin:0 0 6px">Toca lo que aplique (opcional) y, si quieres, escribe algo más. Va en el informe al propietario.</p><div class="v-opciones" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${['Le gustó mucho', 'Va a pensarlo', 'Precio alto', 'No le convino la zona', 'Muy pequeño', 'Necesita arreglos', 'No le interesó'].map((t) => `<button type="button" class="v-opcion" data-chip-feedback="${escape(t)}" aria-pressed="false">${escape(t)}</button>`).join('')}</div><label class="v-field">¿Algo más que dijo el cliente?<textarea id="v-feedback-texto" class="v-input" rows="3" placeholder="Ej: le gustó mucho, va a decidir con su familia…"></textarea></label><div class="v-actions"><button class="v-primary" data-guardarrealizada="${c.id}">Guardar y marcar como realizada</button><button data-mantener="${c.id}">Cancelar</button></div></div>` : ''}
   </div></article>`;
 }
 
@@ -970,11 +1016,9 @@ async function renderInterna() {
     <form id="v-interna-form">
       <div class="v-sectiontitle">${icon('clipboard-list')}¿Qué actividad es?</div>
       <label class="v-field" for="v-interna-tipo">Tipo de actividad<select class="v-input" id="v-interna-tipo">
-        <option value="inventario" ${it.tipo === 'inventario' ? 'selected' : ''}>Inventario (entrada o salida del inmueble)</option>
-        <option value="inspeccion" ${it.tipo === 'inspeccion' ? 'selected' : ''}>Inspección / revisión de inmueble ya arrendado</option>
-        <option value="captacion" ${it.tipo === 'captacion' ? 'selected' : ''}>Captación de un inmueble nuevo</option>
-        <option value="otro" ${it.tipo === 'otro' ? 'selected' : ''}>Otra actividad</option>
+        ${GRUPOS_TIPO.map(([grupo, opciones]) => `<optgroup label="${grupo}">${opciones.map(([v, t]) => `<option value="${v}" ${it.tipo === v ? 'selected' : ''}>${t}</option>`).join('')}</optgroup>`).join('')}
       </select></label>
+      <p class="v-note" id="v-interna-ayuda" style="margin-top:-4px">${escape(AYUDA_TIPO[it.tipo] || '')}</p>
       ${
         esCaptacion
           ? `<p class="v-note">Las citas de captación tienen prioridad total: se ofrecen los horarios reales libres de los asesores de la ciudad (mezclados, el de mayor prioridad primero), sin mover ni cancelar ninguna cita ya confirmada. Duran 90 minutos.</p>
@@ -998,20 +1042,23 @@ async function renderInterna() {
               .filter((a) => a.activo)
               .map((a) => `<option value="${a.id}" ${it.asesorId === a.id ? 'selected' : ''}>${escape(a.nombre)}</option>`)
               .join('')}</select></label>
-      <label class="v-field" for="v-interna-inmueble">Inmueble<select class="v-input" id="v-interna-inmueble" required><option value="">Selecciona un inmueble</option>${inmuebles
+      <label class="v-field" for="v-interna-inmueble">Inmueble${TIPOS_CON_INMUEBLE.includes(it.tipo) ? '' : ' (opcional)'}<select class="v-input" id="v-interna-inmueble" ${TIPOS_CON_INMUEBLE.includes(it.tipo) ? 'required' : ''}><option value="">${TIPOS_CON_INMUEBLE.includes(it.tipo) ? 'Selecciona un inmueble' : 'Sin inmueble del catálogo'}</option>${inmuebles
         .map((i) => `<option value="${i.id}" ${it.inmuebleId === i.id ? 'selected' : ''}>#${i.numero_inmueble} · ${escape(i.direccion)}</option>`)
         .join('')}</select></label>
-      <label class="v-field" for="v-interna-titulo">Título corto<input class="v-input" id="v-interna-titulo" type="text" maxlength="120" value="${escape(it.titulo)}" placeholder="Ej. Inventario de salida"></label>
+      ${!TIPOS_CON_INMUEBLE.includes(it.tipo) && !it.inmuebleId ? `<label class="v-field" for="v-interna-direccion">Lugar o dirección<input class="v-input" id="v-interna-direccion" type="text" maxlength="200" value="${escape(it.direccionLibre)}" placeholder="Ej. Notaría 12, oficina, calle 80 # 10-20"></label>` : ''}
+      <label class="v-field" for="v-interna-titulo">Título corto (opcional si eliges inmueble o lugar)<input class="v-input" id="v-interna-titulo" type="text" maxlength="120" value="${escape(it.titulo)}" placeholder="Ej. Inventario de salida"></label>
       <label class="v-field" for="v-interna-fecha">Fecha<input class="v-input" id="v-interna-fecha" type="date" value="${it.fecha}"></label>
       <label class="v-field" for="v-interna-hora">Hora<input class="v-input" id="v-interna-hora" type="time" value="${it.hora}"></label>
-      <label class="v-field" for="v-interna-duracion">Duración (minutos)<input class="v-input" id="v-interna-duracion" type="number" min="5" step="5" placeholder="Por defecto, la misma que una visita" value="${it.duracion}"></label>`
+      <label class="v-field" for="v-interna-duracion">Duración (minutos)<input class="v-input" id="v-interna-duracion" type="number" min="5" step="5" placeholder="${DURACION_POR_TIPO[it.tipo] ? DURACION_POR_TIPO[it.tipo] + ' (se calcula sola si la dejas vacía)' : 'Se calcula sola si la dejas vacía'}" value="${it.duracion}"></label>
+${nuevo_contacto}`
       }
       <label class="v-field" for="v-interna-notas">Notas (opcional)<textarea class="v-input" id="v-interna-notas">${escape(it.notas)}</textarea></label>
       ${htmlCampoReunion(it, estadoReu)}
       ${it.cruce ? htmlAvisoCruce(it.cruce, horaFmt) : ''}
       <div id="v-interna-error" class="v-error" role="alert">${escape(state.errorInterna)}</div>
       <button class="v-btn v-primary v-full" type="submit"${esCaptacion && !slotElegido ? ' disabled' : ''}>${icon('check')}Guardar actividad</button>
-      <p class="v-note" style="margin-top:12px">Queda registrada en la agenda del asesor con trazabilidad completa (quién la creó, si se mueve o se cancela).</p>
+      ${esCaptacion && !slotElegido ? '<p class="v-note" style="margin-top:8px">Elige un horario para poder guardar.</p>' : ''}
+      <p class="v-note" style="margin-top:12px">Puedes moverla o cancelarla después; queda el registro de quién la hizo.</p>
     </form>`;
 }
 
@@ -1435,6 +1482,8 @@ async function renderInformes() {
     <p class="v-muted" style="font-size:13.5px">Inmuebles marcados manualmente como no disponibles mientras Sedi los sigue mostrando disponibles. Pasa si alguien los marcó por error o de prueba, o si la novedad real (arrendado, vendido, papeles en trámite) todavía no se actualiza en Sedi.</p>
     ${bloqueInconsistencias}
 
+    ${puedeEditarAlertas ? '<section id="v-demanda-informe" aria-live="polite"></section>' : ''}
+
     <h3 style="margin-top:28px">Inmuebles que requieren atención</h3>
     ${formAlertas}
     ${
@@ -1490,6 +1539,7 @@ async function renderInformes() {
     <div class="v-statbar"><div class="v-stat"><strong>${asesoresActivos}</strong><span>Asesores activos (${asesoresPlanta} planta, ${asesoresFreelance} freelance)</span></div><div class="v-stat"><strong>${totalPropietarios}</strong><span>Propietarios registrados</span></div></div>
     `;
   pintarMasivo();
+  if (puedeEditarAlertas) montarInformeDemanda(document.getElementById('v-demanda-informe'), contexto.empresaId);
 }
 
 const ETIQUETAS_ACCION_BITACORA = {
@@ -1716,8 +1766,12 @@ function adjuntarEventos(rootEl) {
     if (e.target.id === 'v-interna-titulo') state.interna.titulo = e.target.value;
     if (e.target.id === 'v-interna-enlace') state.interna.enlace = e.target.value;
     if (e.target.id === 'v-interna-duracion') state.interna.duracion = e.target.value;
+    if (e.target.id === 'v-interna-hora') state.interna.hora = e.target.value;
     if (e.target.id === 'v-interna-direccion') state.interna.direccionLibre = e.target.value;
     if (e.target.id === 'v-interna-notas') state.interna.notas = e.target.value;
+    if (e.target.id === 'v-interna-contacto-nombre') state.interna.contactoNombre = e.target.value;
+    if (e.target.id === 'v-interna-contacto-telefono') state.interna.contactoTelefono = e.target.value;
+    if (e.target.id === 'v-interna-contacto-email') state.interna.contactoEmail = e.target.value;
     if (e.target.id === 'v-interna-propietario-nombre') state.interna.propietarioNombre = e.target.value;
     if (e.target.id === 'v-interna-propietario-telefono') state.interna.propietarioTelefono = e.target.value;
     if (e.target.id === 'v-interna-valor-estimado') state.interna.valorEstimado = e.target.value;
@@ -1860,7 +1914,7 @@ function adjuntarEventos(rootEl) {
       return;
     }
     if (b.hasAttribute('data-new-interna')) {
-      state.interna = { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: state.fecha, hora: '09:00', duracion: '', titulo: '', notas: '', coberturaId: '', ciudadId: '', propietarioNombre: '', propietarioTelefono: '', tipoInmuebleCaptacion: '', valorEstimado: '', origenCaptacion: '', mandatoExclusivo: false, slotsCaptacion: [], slotSeleccionado: null, buscandoSlots: false, errorSlots: '', virtual: false, enlace: '', cruce: null, cruceClave: '', cruceOk: '' };
+      state.interna = { tipo: 'inventario', asesorId: '', inmuebleId: '', direccionLibre: '', ciudadLibre: '', fecha: state.fecha, hora: '09:00', duracion: '', titulo: '', notas: '', coberturaId: '', ciudadId: '', propietarioNombre: '', propietarioTelefono: '', tipoInmuebleCaptacion: '', valorEstimado: '', origenCaptacion: '', contactoNombre: '', contactoTelefono: '', contactoEmail: '', mandatoExclusivo: false, slotsCaptacion: [], slotSeleccionado: null, buscandoSlots: false, errorSlots: '', virtual: false, enlace: '', cruce: null, cruceClave: '', cruceOk: '' };
       state.errorInterna = '';
       setView('interna');
       return;
@@ -2077,6 +2131,19 @@ function adjuntarEventos(rootEl) {
       if (boton) boton.disabled = false;
       return;
     }
+    if (b.dataset.chipFeedback) {
+      const area = rootEl.querySelector('#v-feedback-texto');
+      if (area) {
+        const frase = b.dataset.chipFeedback;
+        const trozos = area.value.split(/\.\s*/).map((x) => x.trim()).filter(Boolean);
+        const i = trozos.indexOf(frase);
+        if (i >= 0) trozos.splice(i, 1); else trozos.unshift(frase);
+        area.value = trozos.length ? trozos.join('. ') + '.' : '';
+        b.setAttribute('aria-pressed', String(i < 0));
+        b.classList.toggle("v-opcion-on", i < 0);
+      }
+      return;
+    }
     if (b.dataset.completar) {
       state.completarId = b.dataset.completar;
       render();
@@ -2224,36 +2291,36 @@ function adjuntarEventos(rootEl) {
       const esCaptacion = it.tipo === 'captacion';
       if (esCaptacion) {
         if (!it.ciudadId) {
-          state.errorInterna = 'Selecciona la ciudad.';
-          render();
+          errorInterno('Selecciona la ciudad.');
           return;
         }
         if (!it.direccionLibre.trim()) {
-          state.errorInterna = 'Escribe la dirección del inmueble a captar.';
-          render();
+          errorInterno('Escribe la dirección del inmueble a captar.');
           return;
         }
         if (!it.slotSeleccionado) {
-          state.errorInterna = 'Busca horarios disponibles y elige uno.';
-          render();
+          errorInterno('Busca horarios disponibles y elige uno.');
           return;
         }
       } else {
         if (!it.asesorId) {
-          state.errorInterna = 'Selecciona un asesor.';
-          render();
+          errorInterno('Selecciona un asesor.');
           return;
         }
-        if (!it.inmuebleId) {
-          state.errorInterna = 'Selecciona un inmueble.';
-          render();
+        if (TIPOS_CON_INMUEBLE.includes(it.tipo) && !it.inmuebleId) {
+          errorInterno('Selecciona un inmueble.');
+          return;
+        }
+        if (!it.inmuebleId && !it.direccionLibre.trim() && !it.titulo.trim()) {
+          errorInterno('Falta el lugar. Elige un inmueble o escribe una dirección o un título.');
           return;
         }
       }
       const boton = e.target.querySelector('button[type=submit]');
       boton.disabled = true;
+      boton.textContent = 'Guardando…';
       const claveActual = claveHorario({ asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion });
-      if (!esCaptacion && it.cruceOk !== claveActual) {
+      if (!esCaptacion && it.inmuebleId && it.cruceOk !== claveActual) {
         const cruce = await revisarCruce({ empresaId: contexto.empresaId, asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion });
         if (!cruce.libre) {
           boton.disabled = false;
@@ -2269,16 +2336,17 @@ function adjuntarEventos(rootEl) {
         p_asesor_id: it.asesorId,
         p_fecha: it.fecha,
         p_hora_inicio: it.hora,
-        p_inmueble_id: esCaptacion ? null : it.inmuebleId,
+        p_inmueble_id: esCaptacion ? null : it.inmuebleId || null,
         p_tipo_cita: it.tipo,
         p_titulo: it.titulo.trim(),
-        p_direccion_libre: esCaptacion ? it.direccionLibre.trim() : '',
+        p_direccion_libre: esCaptacion || !it.inmuebleId ? it.direccionLibre.trim() : '',
         p_ciudad_libre: esCaptacion ? it.ciudadLibre.trim() : '',
         p_notas: it.notas.trim(),
         p_duracion_minutos: esCaptacion ? null : it.duracion ? Number(it.duracion) : null,
         p_cobertura_id: esCaptacion ? it.coberturaId || null : null,
-        p_cliente_nombre: esCaptacion ? it.propietarioNombre.trim() : '',
-        p_cliente_telefono: esCaptacion ? it.propietarioTelefono.trim() : '',
+        p_cliente_nombre: esCaptacion ? it.propietarioNombre.trim() : TIPOS_CON_CONTACTO.includes(it.tipo) ? it.contactoNombre.trim() : '',
+        p_cliente_email: !esCaptacion && TIPOS_CON_CONTACTO.includes(it.tipo) ? it.contactoEmail.trim() : '',
+        p_cliente_telefono: esCaptacion ? it.propietarioTelefono.trim() : TIPOS_CON_CONTACTO.includes(it.tipo) ? it.contactoTelefono.trim() : '',
         p_tipo_inmueble_captacion: esCaptacion ? it.tipoInmuebleCaptacion || null : null,
         p_valor_estimado_captacion: esCaptacion && it.valorEstimado ? Number(it.valorEstimado) : null,
         p_mandato_exclusivo: esCaptacion ? it.mandatoExclusivo : null,
@@ -2298,7 +2366,7 @@ function adjuntarEventos(rootEl) {
         return;
       }
       state.fecha = it.fecha;
-      let textoToast = 'Actividad guardada en la agenda.';
+      let textoToast = esCaptacion ? 'Listo, la captación quedó guardada en la agenda.' : `Listo, quedó guardada: ${TIPOS_CITA[it.tipo] || 'actividad'} · ${dateLabel(it.fecha)} · ${horaFmt(it.hora)}.`;
       if (it.virtual && !(it.enlace || '').trim() && citaNuevaId) {
         const r = await crearEnlaceReunion(citaNuevaId);
         textoToast += r.ok ? ' Enlace de la reunión creado.' : ` Pero no se pudo crear el enlace de la reunión (${r.error}). Pégalo a mano o reintenta.`;

@@ -99,7 +99,8 @@ const PROVEEDORES_REUNION = {
       { k: 'private_key', t: 'Clave privada de la cuenta de servicio', ph: '-----BEGIN PRIVATE KEY-----…', area: true },
       { k: 'usuario_organizador', t: 'Correo de Workspace que organiza las reuniones', ph: 'citas@tuempresa.com' },
     ],
-    ayuda: 'Requiere una cuenta de servicio con delegación en todo el dominio y el permiso https://www.googleapis.com/auth/calendar.events (en la consola de administración de Google Workspace → Seguridad → Control de acceso a la API). Es la misma cuenta que usa el lector de correos, si ya la tienes.',
+    ayuda: 'Necesitas un administrador de Google Workspace. Abajo están los pasos completos, uno por uno.',
+    guia: true,
   },
   microsoft_teams: {
     nombre: 'Microsoft Teams (Microsoft 365)',
@@ -122,6 +123,55 @@ const PROVEEDORES_REUNION = {
   },
 };
 
+// Texto que se copia con el botón «Copiar». El alcance (scope) NO es una página web: es un texto que se pega en un campo de Google.
+const ALCANCE_CALENDAR = 'https://www.googleapis.com/auth/calendar.events';
+const copiable = (texto) => `<span class="ad-copiable"><code>${esc(texto)}</code><button type="button" class="ad-secondary" data-copiar="${esc(texto)}">Copiar</button></span>`;
+
+function guiaGoogleMeet() {
+  return `<details class="ad-guia" open><summary>Cómo conectar Google Meet, paso a paso</summary>
+ <p class="ad-note">Quién lo hace: una persona con acceso de <strong>superadministrador</strong> a Google Workspace (la misma que administra los correos de la empresa). Toma unos 15 minutos. Los nombres de los menús son los que Google usa hoy; si alguno se ve distinto, busca el más parecido.</p>
+ <h4>Parte A. Crear el proyecto y la cuenta de servicio (Google Cloud)</h4>
+ <ol>
+  <li>Entra a <strong>console.cloud.google.com</strong> con la cuenta de administrador de Workspace.</li>
+  <li>Arriba, junto al logo de Google Cloud, abre el selector de proyectos y pulsa <strong>Proyecto nuevo</strong>. Ponle un nombre (por ejemplo «Agenda citas») y pulsa <strong>Crear</strong>. Luego asegúrate de que ese proyecto quede seleccionado.</li>
+  <li>Abre el menú (☰) → <strong>APIs y servicios</strong> → <strong>Biblioteca</strong>. Busca <strong>Google Calendar API</strong>, ábrela y pulsa <strong>Habilitar</strong>.</li>
+  <li>Menú (☰) → <strong>IAM y administración</strong> → <strong>Cuentas de servicio</strong> → <strong>Crear cuenta de servicio</strong>. Escribe un nombre (por ejemplo «agenda-meet») y pulsa <strong>Listo</strong> (no hace falta asignarle roles).</li>
+  <li>Verás la cuenta en la lista. Copia su <strong>correo</strong> (termina en <code>.iam.gserviceaccount.com</code>); lo pegarás en el primer campo de esta pantalla.</li>
+  <li>Pulsa el correo de la cuenta para abrirla. En la pestaña <strong>Detalles</strong> busca el <strong>ID único</strong> (un número largo, de unas 21 cifras) y cópialo: es el «ID de cliente» que pide la Parte B.</li>
+  <li>Abre la pestaña <strong>Claves</strong> → <strong>Agregar clave</strong> → <strong>Crear clave nueva</strong> → tipo <strong>JSON</strong> → <strong>Crear</strong>. Se descarga un archivo <code>.json</code>. Es la única copia: guárdalo en un lugar seguro y no lo envíes por chat ni correo. Si Google dice que la creación de claves está bloqueada, un administrador de la organización debe quitar esa restricción («Restringir la creación de claves de cuentas de servicio»).</li>
+ </ol>
+ <h4>Parte B. Autorizar a la cuenta en Google Workspace (delegación en todo el dominio)</h4>
+ <ol>
+  <li>Entra a <strong>admin.google.com</strong> como superadministrador.</li>
+  <li>Menú (☰) → <strong>Seguridad</strong> → <strong>Acceso y control de datos</strong> → <strong>Controles de API</strong>. Abajo, en «Delegación en todo el dominio», pulsa <strong>Administrar la delegación en todo el dominio</strong>.</li>
+  <li>Pulsa <strong>Añadir nueva</strong>.</li>
+  <li>En <strong>ID de cliente</strong> pega el ID único que copiaste en la Parte A (el número largo, no el correo).</li>
+  <li>En <strong>Ámbitos de OAuth</strong> pega exactamente este texto (no es un enlace ni una página: es un permiso que se escribe en ese campo):
+   ${copiable(ALCANCE_CALENDAR)}</li>
+  <li>Pulsa <strong>Autorizar</strong>. Google puede tardar unos minutos (a veces hasta 24 horas) en aplicarlo.</li>
+ </ol>
+ <h4>Parte C. Elegir quién organiza las reuniones</h4>
+ <ol>
+  <li>Escoge un usuario real de tu dominio de Workspace, con licencia y calendario, por ejemplo <code>citas@tuempresa.com</code>. Las reuniones se crean en su calendario y él figura como organizador; los asesores y el cliente reciben el enlace.</li>
+  <li>Debe ser un correo de tu dominio (no un Gmail personal) y estar activo.</li>
+ </ol>
+ <h4>Parte D. Qué pegar en esta pantalla</h4>
+ <ol>
+  <li>Arriba, en «Proveedor», deja <strong>Google Meet</strong>.</li>
+  <li><strong>Correo de la cuenta de servicio</strong>: el campo <code>client_email</code> del archivo JSON (o el correo copiado en la Parte A).</li>
+  <li><strong>Clave privada</strong>: abre el archivo JSON con el Bloc de notas, copia todo lo que está entre las comillas de <code>private_key</code>, desde <code>-----BEGIN PRIVATE KEY-----</code> hasta <code>-----END PRIVATE KEY-----</code>, y pégalo. Si ves símbolos <code>\n</code>, déjalos tal cual.</li>
+  <li><strong>Correo de Workspace que organiza</strong>: el usuario de la Parte C.</li>
+  <li>Pulsa <strong>Guardar</strong>. La clave queda cifrada y no se vuelve a mostrar.</li>
+ </ol>
+ <h4>Parte E. Probar</h4>
+ <ol>
+  <li>Pulsa <strong>Crear una reunión de prueba</strong>. Si todo está bien, verás ✅ y un enlace de ejemplo que se cancela solo.</li>
+  <li>Si aparece un error de «unauthorized_client» o «delegación», revisa que el ID de cliente y el ámbito de la Parte B estén exactos y espera unos minutos. Si dice que no encuentra al usuario, revisa el correo de la Parte C. Si dice que la API no está habilitada, repite el paso 3 de la Parte A en el mismo proyecto de la cuenta de servicio.</li>
+ </ol>
+ <p class="ad-note">Si ya tienes una cuenta de servicio para leer correos, puedes reutilizarla: solo agrégale el ámbito de arriba en la delegación (separando los ámbitos con coma) y habilita Google Calendar API en su proyecto.</p>
+</details>`;
+}
+
 export async function reunionesTab(ctx) {
   const { el, empresaId, aviso, vigente } = ctx;
   el.innerHTML = '<p class="ad-muted">Cargando…</p>';
@@ -136,6 +186,7 @@ export async function reunionesTab(ctx) {
   <div class="ad-grid"><label>Proveedor<select name="proveedor">${Object.entries(PROVEEDORES_REUNION).map(([k, v]) => `<option value="${k}" ${k === prov ? 'selected' : ''}>${v.nombre}</option>`).join('')}</select></label></div>
   <div data-campos></div>
   <p class="ad-note" data-ayuda></p>
+  <div data-guia></div>
   <div class="ad-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
    <button type="submit">Guardar</button>
    <button type="button" data-probar-reunion ${prov !== 'manual' && estado.tiene_credenciales ? '' : 'disabled'}>Crear una reunión de prueba</button>
@@ -149,9 +200,23 @@ export async function reunionesTab(ctx) {
       ? `<div class="ad-grid">${p.campos.map((c) => `<label>${c.t}${estado.tiene_credenciales && sel.value === prov ? ' <small class="ad-muted">(guardado; vacío = conservar)</small>' : ''}${c.area ? `<textarea name="${c.k}" rows="4" placeholder="${esc(c.ph)}" autocomplete="off"></textarea>` : `<input name="${c.k}" type="${c.secreto ? 'password' : 'text'}" placeholder="${esc(c.ph)}" autocomplete="off">`}</label>`).join('')}</div>`
       : '';
     el.querySelector('[data-ayuda]').textContent = p.ayuda;
+    el.querySelector('[data-guia]').innerHTML = p.guia ? guiaGoogleMeet() : '';
   };
   sel.onchange = pintar;
   pintar();
+  el.addEventListener('click', async (ev) => {
+    const b = ev.target.closest('[data-copiar]');
+    if (!b) return;
+    const texto = b.dataset.copiar;
+    try { await navigator.clipboard.writeText(texto); b.textContent = '¡Copiado!'; }
+    catch {
+      const code = b.parentNode.querySelector('code');
+      const r = document.createRange(); r.selectNodeContents(code);
+      const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r);
+      b.textContent = 'Selecciona y copia (Ctrl+C)';
+    }
+    setTimeout(() => { b.textContent = 'Copiar'; }, 2500);
+  });
   el.querySelector('#ad-reunion-form').onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target;

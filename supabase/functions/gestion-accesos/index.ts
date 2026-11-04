@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
     if (accion === 'listar') {
       const { data: miembros, error } = await admin
         .from('agenda_miembros')
-        .select('usuario_id, nombre, rol, activo, creado_en')
+        .select('usuario_id, nombre, rol, rol_id, activo, creado_en')
         .eq('empresa_id', empresaId)
         .order('creado_en', { ascending: true });
       if (error) return json({ ok: false, error: 'No se pudieron leer los accesos.' }, 500);
@@ -182,6 +182,7 @@ Deno.serve(async (req) => {
             usuario_id: m.usuario_id,
             nombre: m.nombre,
             rol: m.rol,
+            rol_id: m.rol_id ?? null,
             activo: m.activo,
             correo: u?.user?.email || '(correo no disponible)',
             ultimo_acceso: u?.user?.last_sign_in_at || null,

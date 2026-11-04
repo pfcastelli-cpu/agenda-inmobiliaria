@@ -1,5 +1,5 @@
-// Lista de espera de la página pública de reserva: cuando un inmueble ya llenó su tope de citas (sql/035), en lugar de horarios se muestra este
-// formulario. El navegador solo pregunta y envía; la regla (tope, lista) vive en la base.
+// Lista de espera de la página pública de reserva: solo si la empresa encendió el bloqueo por tope (sql/046, apagado por defecto) y el inmueble
+// ya lo alcanzó, en lugar de horarios se muestra este formulario. El navegador solo pregunta y envía; la regla (tope, lista) vive en la base.
 import { supabase } from './cliente-supabase.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

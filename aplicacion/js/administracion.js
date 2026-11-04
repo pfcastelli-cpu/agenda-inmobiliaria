@@ -4,6 +4,10 @@ import { iaTab as iaTabModulo, reunionesTab as reunionesTabModulo } from './admi
 import { supervisionTab as supervisionTabModulo } from './admin-supervision.js';
 import { radicacionTab as radicacionTabModulo } from './admin-radicacion.js';
 import { demandaTab as demandaTabModulo } from './admin-demanda.js';
+import { montarBuscador } from './admin-buscador.js';
+import { rolesTab as rolesTabModulo, listarRoles } from './admin-roles.js';
+import { puede } from './permisos.js';
+import { repartir, montarSubpestanas } from './admin-subpestanas.js';
 import { invalidarDominioPublico } from './agenda-real.js';
 import {
  listarAccesos,
@@ -46,10 +50,14 @@ export async function iniciarAdministracion(a){
  if(turno!==revision)return;
  if(data)config=data;marca();
  if(a.membresia.rol!=='administrador')return;
- root=document.createElement('section');root.className='ad';root.innerHTML=`<nav aria-label="Administración"><button data-tab="agenda" aria-pressed="true" class="ad-volver" hidden>← Volver a la agenda</button><span class="ad-nav-sep"></span><button data-tab="config" aria-pressed="false" class="ad-gear" title="Configuración" aria-label="Configuración"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></button></nav><p role="status" aria-live="polite"></p><div class="ad-body" hidden><nav class="ad-subnav" aria-label="Configuración"><button data-subtab="equipo" aria-pressed="true">Equipo</button><button data-subtab="ciudades" aria-pressed="false">Ciudades y festivos</button><button data-subtab="marca" aria-pressed="false">Empresa</button><button data-subtab="correo" aria-pressed="false">Correo</button><button data-subtab="ia" aria-pressed="false">Inteligencia artificial</button><button data-subtab="reuniones" aria-pressed="false">Reuniones virtuales</button><button data-subtab="supervision" aria-pressed="false">Supervisión</button><button data-subtab="radicacion" aria-pressed="false">Radicación</button><button data-subtab="demanda" aria-pressed="false">Demanda</button><button data-subtab="calendario" aria-pressed="false">Calendario</button><button data-subtab="importar" aria-pressed="false">Importar citas</button><button data-subtab="accesos" aria-pressed="false">Accesos</button></nav><div class="ad-subbody"></div></div>`;
+ root=document.createElement('section');root.className='ad';root.innerHTML=`<nav aria-label="Administración"><button data-tab="agenda" aria-pressed="true" class="ad-volver" hidden>← Volver a la agenda</button><span class="ad-nav-sep"></span><button data-tab="config" aria-pressed="false" class="ad-gear" title="Configuración" aria-label="Configuración"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></button></nav><p role="status" aria-live="polite"></p><div class="ad-body" hidden><nav class="ad-subnav" aria-label="Configuración"><button data-subtab="equipo" aria-pressed="true">Equipo</button><button data-subtab="ciudades" aria-pressed="false">Ciudades y festivos</button><button data-subtab="marca" aria-pressed="false">Empresa</button><button data-subtab="correo" aria-pressed="false">Correo</button><button data-subtab="ia" aria-pressed="false">Inteligencia artificial</button><button data-subtab="reuniones" aria-pressed="false">Reuniones virtuales</button><button data-subtab="supervision" aria-pressed="false">Supervisión</button><button data-subtab="radicacion" aria-pressed="false">Radicación</button><button data-subtab="demanda" aria-pressed="false">Demanda</button><button data-subtab="calendario" aria-pressed="false">Calendario</button><button data-subtab="importar" aria-pressed="false">Importar citas</button><button data-subtab="accesos" aria-pressed="false">Accesos</button><button data-subtab="roles" aria-pressed="false">Roles y permisos</button></nav><div class="ad-subbody"></div></div>`;
  document.getElementById('pa-agenda-content').before(root);
  root.querySelector('nav').addEventListener('click',async e=>{const t=e.target.closest('button')?.dataset.tab;if(!t)return;root.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===t)));const body=root.querySelector('.ad-body');body.hidden=t==='agenda';document.getElementById('pa-agenda-content').hidden=t!=='agenda';root.querySelector('.ad-volver').hidden=t==='agenda';aviso('');if(t==='config')await abrirSubtab(root.querySelector('.ad-subnav [aria-pressed=true]')?.dataset.subtab||'equipo');});
  root.querySelector('.ad-subnav').addEventListener('click',async e=>{const st=e.target.closest('button')?.dataset.subtab;if(!st)return;await abrirSubtab(st);});
+ // Los permisos del rol afinan qué pestañas de Configuración se muestran (el rol base sigue mandando para los datos).
+ const PERMISO_PESTANA={marca:'config.empresa',correo:'config.correo',ciudades:'config.ciudades',demanda:'config.demanda',ia:'config.ia_reuniones',reuniones:'config.ia_reuniones'};
+ root.querySelectorAll('.ad-subnav [data-subtab]').forEach(b=>{const k=PERMISO_PESTANA[b.dataset.subtab];if(k&&!puede(k))b.hidden=true;if(b.dataset.subtab==='roles'&&!puede('roles.ver')&&!puede('roles.gestionar'))b.hidden=true;});
+ montarBuscador(root,{abrir:abrirSubtab});
  if(error)aviso('Para activar Equipo y Configuración, aplica sql/002-equipo-configuracion.sql en Supabase. La agenda sigue disponible.',true);
 }
 async function cargarCiudades(){
@@ -90,6 +98,7 @@ function nombresCiudades(asesorId){
 // Contexto que reciben las pestañas que viven en módulos aparte (admin-ia-reuniones.js).
 function ctxSubtab(){const turno=revision;return{el:root.querySelector('.ad-subbody'),empresaId:config.empresa_id,aviso,vigente:()=>turno===revision};}
 async function abrirSubtab(st){
+ if(root.querySelector(`.ad-subnav [data-subtab="${st}"]`)?.hidden)return;
  root.querySelectorAll('.ad-subnav [data-subtab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.subtab===st)));
  aviso('');
  if(st==='equipo')await equipo();
@@ -104,6 +113,7 @@ async function abrirSubtab(st){
  if(st==='calendario')await calendarioTab();
  if(st==='importar')await importarTab();
  if(st==='accesos')await accesosTab();
+ if(st==='roles')await rolesTabModulo(ctxSubtab());
 }
 const WIN_TZ={'SA Pacific Standard Time':'America/Bogota','Eastern Standard Time':'America/New_York','Central Standard Time':'America/Chicago','Mountain Standard Time':'America/Denver','Pacific Standard Time':'America/Los_Angeles','Central America Standard Time':'America/Guatemala','GMT Standard Time':'Europe/London','W. Europe Standard Time':'Europe/Berlin','Romance Standard Time':'Europe/Paris','UTC':'UTC'};
 function icsDesescapar(v){return v.replace(/\\n/gi,'\n').replace(/\\,/g,',').replace(/\\;/g,';').replace(/\\\\/g,'\\');}
@@ -397,6 +407,8 @@ async function ciudadesTab(){
  <h2 style="margin-top:28px">Calidad de geolocalización</h2><p>Inmuebles disponibles con coordenadas ausentes, fuera de Colombia, o lejos del centro de la ciudad que tienen asignada. Repórtalos a Sedi para que corrijan la ubicación en el origen — esta pantalla solo detecta el problema, no lo corrige.</p>
  <div id="ad-geo-report"></div>`;
  cargarReporteGeolocalizacion(el.querySelector('#ad-geo-report'));
+ {const hijos=[...el.children];const rep=repartir(hijos,t=>t.startsWith('ciudades')||t.startsWith('coberturas')?'ciudades':t.startsWith('festivos')?'festivos':t.startsWith('calidad')?'geo':undefined,'ciudades');
+  montarSubpestanas({id:'ciudades',etiqueta:'Secciones de ciudades y festivos',contenedor:el,antes:hijos[0],grupos:[{id:'ciudades',titulo:'Ciudades y zonas',nodos:rep.ciudades||[]},{id:'festivos',titulo:'Festivos',nodos:rep.festivos||[]},{id:'geo',titulo:'Calidad de ubicación',nodos:rep.geo||[]}]});}
  el.onclick=async e=>{
   const ciudadId=e.target.dataset.delCiudad;const festivoId=e.target.dataset.delFestivo;const guardarId=e.target.dataset.guardarCiudad;const coberturaId=e.target.dataset.delCobertura;
   if(ciudadId){if(!confirm('¿Eliminar esta ciudad? Los asesores que la tenían asignada dejarán de aparecer para inmuebles de esa ciudad.'))return;await supabase.from('agenda_ciudades').delete().eq('id',ciudadId);await ciudadesTab();}
@@ -419,7 +431,7 @@ function marcaForm(){
  const el=root.querySelector('.ad-subbody');
  const enlaceEjemplo=config.dominio_publico?`https://${config.dominio_publico}/inmuebles/245`:'configura el dominio para ver un ejemplo';
  const enlaceInmuebleEjemplo=config.plantilla_enlace_inmueble&&config.plantilla_enlace_inmueble.includes('{numero}')?config.plantilla_enlace_inmueble.replace('{numero}','245'):'usa el dominio de arriba mientras no configures esta plantilla';
- el.innerHTML=`<h2>Configuración de empresa</h2><p>Personaliza la identidad y las reglas de agenda de tu empresa. Cada empresa conserva su propia configuración.</p><form class="ad-form">${tarjetasPaletas(config)}<div class="ad-grid">${campo('nombre_comercial','Nombre comercial',config.nombre_comercial,'text','required maxlength="120"')}${campo('logo_url','Enlace HTTPS del logo',config.logo_url,'url','pattern="https://.*" placeholder="https://…/logo.png"')}${'imagen_correo_url' in config?campo('imagen_correo_url','Imagen de encabezado de los correos (HTTPS, ancho ideal 1160 px)',config.imagen_correo_url||'','url','pattern="https://.*" placeholder="https://…/encabezado-correo.jpg"'):''}${campo('color_principal','Color principal',config.color_principal,'color')}${campo('color_accion','Color de botones',config.color_accion,'color')}${campo('correo_contacto','Correo de contacto (uso general / comercial)',config.correo_contacto,'email')}${campo('telefono','Teléfono general (si no hay sedes)',config.telefono,'tel')}${campo('enlace_documentos','Enlace para radicar documentos',config.enlace_documentos,'url','pattern="https://.*"')}</div>
+ el.innerHTML=`<h2>Configuración de empresa</h2><p>Personaliza la identidad y las reglas de agenda de tu empresa. Cada empresa conserva su propia configuración.</p><form class="ad-form">${tarjetasPaletas(config)}<div class="ad-grid">${campo('nombre_comercial','Nombre comercial',config.nombre_comercial,'text','required maxlength="120"')}${campo('logo_url','Enlace HTTPS del logo',config.logo_url,'url','pattern="https://.*" placeholder="https://…/logo.png"')}${'imagen_correo_url' in config?campo('imagen_correo_url','Imagen de encabezado de los correos (HTTPS, ancho ideal 1160 px)',config.imagen_correo_url||'','url','pattern="https://.*" placeholder="https://…/encabezado-correo.jpg"'):''}${campo('color_principal','Color principal',config.color_principal,'color')}${campo('color_accion','Color de botones',config.color_accion,'color')}</div><h3>Datos de contacto generales</h3><div class="ad-grid">${campo('correo_contacto','Correo de contacto (uso general / comercial)',config.correo_contacto,'email')}${campo('telefono','Teléfono general (si no hay sedes)',config.telefono,'tel')}${campo('enlace_documentos','Enlace para radicar documentos',config.enlace_documentos,'url','pattern="https://.*"')}</div>
  ${htmlContactoEmpresa(config)}
  <h3>Página pública de agendamiento</h3>
  <div class="ad-grid">${campo('dominio_publico','Dominio de la página de agendamiento (donde el cliente reserva)',config.dominio_publico,'text','placeholder="citas.patrimonios.co"')}</div>
@@ -437,7 +449,8 @@ function marcaForm(){
  <p class="ad-note">Un inmueble de alto valor puede agendarse aunque quede fuera de la zona/mitad del día del asesor ese momento: no espera a la otra mitad del día, solo respeta el tiempo de traslado real hasta y desde ese inmueble. Deja en 0 para no aplicar ninguna excepción.</p>
  <h3>Reservas públicas</h3>
  <div class="ad-grid"><label class="ad-check"><input type="checkbox" name="verificar_correo_reserva"> Pedir el código de verificación al correo en la reserva pública</label></div>
- ${'captacion_publica_activa' in config?`<div class="ad-grid"><label class="ad-check"><input type="checkbox" name="captacion_publica_activa"> Habilitar la página <code>/consignar</code> para que los propietarios agenden solos su cita de captación (comparte el enlace <code>https://${esc(config.dominio_publico||'tu-dominio')}/consignar</code>)</label></div>`:''}
+ ${'captacion_publica_activa' in config?`<div class="ad-grid"><label class="ad-check"><input type="checkbox" name="captacion_publica_activa"> <span>Habilitar la página <code>/consignar</code> para que los propietarios agenden solos su cita de captación. Enlace para compartir: <code>https://${esc(config.dominio_publico||'tu-dominio')}/consignar</code></span></label></div>`:''}
+ ${'captacion_video_url' in config?`<div class="ad-grid">${campo('captacion_video_url','Video explicativo de /consignar (enlace de YouTube, opcional)',config.captacion_video_url||'','text')}</div>`:''}
  <p class="ad-note">Déjalo <strong>encendido</strong> en producción: evita que alguien reserve con un correo ajeno. Apágalo solo mientras haces pruebas, para no tener que teclear el código cada vez, y vuelve a encenderlo.</p>
  <h3>Agendar sobre un horario ocupado</h3>
  <div class="ad-grid"><label class="ad-check"><input type="checkbox" name="asesores_pueden_cruzar"> Los asesores pueden agendar una cita aunque ese horario esté ocupado (se les muestra una advertencia y deben confirmar)</label></div>
@@ -467,6 +480,11 @@ const chkCruce=el.querySelector('[name=asesores_pueden_cruzar]');if(chkCruce)chk
  el.querySelector('[name=equipo_ve_asesor]').checked=rolesEquipo.includes('asesor');
  const formCfg=el.querySelector('form');
  const editorContacto=montarContactoEmpresa(formCfg, config);
+ {const hijos=[...formCfg.children].filter(n=>!n.matches('button[type=submit]'));
+  const mapa=t=>t.startsWith('datos de contacto')||t.startsWith('contacto y datos')||t.startsWith('sedes')?'contacto':t.startsWith('pagina publica')||t.startsWith('reservas publicas')?'reservas':t.startsWith('reglas de la agenda')||t.startsWith('citas de seguimiento')||t.startsWith('agendar sobre')||t.startsWith('almuerzo')?'horarios':t.startsWith('encuesta')||t.startsWith('permisos')?'encuestas':undefined;
+  const rep=repartir(hijos,mapa,'marca');
+  montarSubpestanas({id:'empresa',etiqueta:'Secciones de la configuración de empresa',contenedor:formCfg,antes:formCfg,botonGuardar:null,grupos:[
+   {id:'marca',titulo:'Marca y colores',nodos:rep.marca||[]},{id:'contacto',titulo:'Contacto y sedes',nodos:rep.contacto||[]},{id:'horarios',titulo:'Horarios y reglas',nodos:rep.horarios||[]},{id:'reservas',titulo:'Reservas públicas',nodos:rep.reservas||[]},{id:'encuestas',titulo:'Encuestas y permisos',nodos:rep.encuestas||[]}]});}
  const vistaPrevia=()=>aplicarTema({...config,color_principal:formCfg.color_principal.value,color_accion:formCfg.color_accion.value});
  const marcarPaleta=()=>{const act=paletaActiva({color_principal:formCfg.color_principal.value,color_accion:formCfg.color_accion.value})?.id;const d=derivarPaleta(formCfg.color_principal.value,formCfg.color_accion.value);formCfg.querySelectorAll('.ad-paleta').forEach(o=>o.setAttribute('aria-pressed',String(o.dataset.paleta===(act||'propia'))));const pr=formCfg.querySelector('.ad-paleta-propia .ad-paleta-muestra');if(pr){pr.style.background=formCfg.color_principal.value;const [a,t,f]=pr.querySelectorAll('i');a.style.background=formCfg.color_accion.value;t.style.background=d.tinte;f.style.background=d.fondo;}};
  formCfg.querySelectorAll('.ad-paleta').forEach(btn=>btn.onclick=()=>{if(btn.dataset.paleta==='propia'){formCfg.color_principal.focus();return;}const p=PALETAS.find(x=>x.id===btn.dataset.paleta);formCfg.color_principal.value=p.principal.toLowerCase();formCfg.color_accion.value=p.accion.toLowerCase();marcarPaleta();vistaPrevia();});
@@ -474,7 +492,7 @@ const chkCruce=el.querySelector('[name=asesores_pueden_cruzar]');if(chkCruce)chk
  formCfg.onsubmit=async e=>{e.preventDefault();const f=e.target;const b=f.querySelector('[type=submit]');b.disabled=true;
  let contactoActual;try{contactoActual=editorContacto.leer();}catch(error){b.disabled=false;aviso(error.message,true);return;}
  const equipoVisibleRoles=['administrador'];if(f.equipo_ve_coordinador.checked)equipoVisibleRoles.push('coordinador');if(f.equipo_ve_asesor.checked)equipoVisibleRoles.push('asesor');
- const v={...contactoActual,...('captacion_publica_activa' in config?{captacion_publica_activa:f.captacion_publica_activa.checked}:{}),...('verificar_correo_reserva' in config?{verificar_correo_reserva:f.verificar_correo_reserva.checked}:{}),...('asesores_pueden_cruzar' in config?{asesores_pueden_cruzar:f.asesores_pueden_cruzar.checked}:{}),...('encuesta_minutos_despues' in config?{encuesta_automatica:f.encuesta_automatica.checked,encuesta_minutos_despues:Math.max(0,Math.min(1440,Number(f.encuesta_minutos_despues.value)||0))}:{}),...('encuesta_aviso_admin' in config?{encuesta_aviso_admin:f.encuesta_aviso_admin.value,encuesta_aviso_correos:f.encuesta_aviso_correos.value.trim()}:{}),empresa_id:config.empresa_id,nombre_comercial:f.nombre_comercial.value.trim(),logo_url:f.logo_url.value.trim(),...('imagen_correo_url' in config?{imagen_correo_url:f.imagen_correo_url.value.trim()||null}:{}),color_principal:f.color_principal.value,color_accion:f.color_accion.value,correo_contacto:f.correo_contacto.value.trim(),telefono:f.telefono.value.trim(),enlace_documentos:f.enlace_documentos.value.trim(),dominio_publico:f.dominio_publico.value.trim()||null,plantilla_enlace_inmueble:f.plantilla_enlace_inmueble.value.trim()||null,duracion_visita_minutos:Number(f.duracion_visita_minutos.value),minutos_traslado_entre_inmuebles:Number(f.minutos_traslado_entre_inmuebles.value),modo_mismo_inmueble:f.modo_mismo_inmueble.value,separacion_mismo_inmueble_minutos:Number(f.separacion_mismo_inmueble_minutos.value),radio_zona_km:Number(f.radio_zona_km.value),valor_minimo_canon_seguimiento:Number(f.valor_minimo_canon_seguimiento.value),valor_minimo_venta_seguimiento:Number(f.valor_minimo_venta_seguimiento.value),valor_alto_canon_zona:Number(f.valor_alto_canon_zona.value),valor_alto_venta_zona:Number(f.valor_alto_venta_zona.value),horas_minimas_anticipacion:Number(f.horas_minimas_anticipacion.value),horas_minimas_anticipacion_mismo_inmueble:Number(f.horas_minimas_anticipacion_mismo_inmueble.value),formato_hora:f.formato_hora.value,almuerzo_activo:f.almuerzo_activo.checked,almuerzo_inicio:f.almuerzo_inicio.value,almuerzo_fin:f.almuerzo_fin.value,equipo_visible_roles:equipoVisibleRoles};
+ const v={...contactoActual,...('captacion_publica_activa' in config?{captacion_publica_activa:f.captacion_publica_activa.checked}:{}),...('captacion_video_url' in config?{captacion_video_url:f.captacion_video_url.value.trim()||null}:{}),...('verificar_correo_reserva' in config?{verificar_correo_reserva:f.verificar_correo_reserva.checked}:{}),...('asesores_pueden_cruzar' in config?{asesores_pueden_cruzar:f.asesores_pueden_cruzar.checked}:{}),...('encuesta_minutos_despues' in config?{encuesta_automatica:f.encuesta_automatica.checked,encuesta_minutos_despues:Math.max(0,Math.min(1440,Number(f.encuesta_minutos_despues.value)||0))}:{}),...('encuesta_aviso_admin' in config?{encuesta_aviso_admin:f.encuesta_aviso_admin.value,encuesta_aviso_correos:f.encuesta_aviso_correos.value.trim()}:{}),empresa_id:config.empresa_id,nombre_comercial:f.nombre_comercial.value.trim(),logo_url:f.logo_url.value.trim(),...('imagen_correo_url' in config?{imagen_correo_url:f.imagen_correo_url.value.trim()||null}:{}),color_principal:f.color_principal.value,color_accion:f.color_accion.value,correo_contacto:f.correo_contacto.value.trim(),telefono:f.telefono.value.trim(),enlace_documentos:f.enlace_documentos.value.trim(),dominio_publico:f.dominio_publico.value.trim()||null,plantilla_enlace_inmueble:f.plantilla_enlace_inmueble.value.trim()||null,duracion_visita_minutos:Number(f.duracion_visita_minutos.value),minutos_traslado_entre_inmuebles:Number(f.minutos_traslado_entre_inmuebles.value),modo_mismo_inmueble:f.modo_mismo_inmueble.value,separacion_mismo_inmueble_minutos:Number(f.separacion_mismo_inmueble_minutos.value),radio_zona_km:Number(f.radio_zona_km.value),valor_minimo_canon_seguimiento:Number(f.valor_minimo_canon_seguimiento.value),valor_minimo_venta_seguimiento:Number(f.valor_minimo_venta_seguimiento.value),valor_alto_canon_zona:Number(f.valor_alto_canon_zona.value),valor_alto_venta_zona:Number(f.valor_alto_venta_zona.value),horas_minimas_anticipacion:Number(f.horas_minimas_anticipacion.value),horas_minimas_anticipacion_mismo_inmueble:Number(f.horas_minimas_anticipacion_mismo_inmueble.value),formato_hora:f.formato_hora.value,almuerzo_activo:f.almuerzo_activo.checked,almuerzo_inicio:f.almuerzo_inicio.value,almuerzo_fin:f.almuerzo_fin.value,equipo_visible_roles:equipoVisibleRoles};
  const {data,error}=await supabase.from('agenda_configuracion').upsert(v).select('*').single();b.disabled=false;if(error){aviso('No se pudo guardar la configuración. Verifica permisos y conexión.',true);return;}config=data;marca();invalidarDominioPublico();marcaForm();aviso('Configuración guardada.');};
 }
 
@@ -577,6 +595,11 @@ async function correoForm(){
  ${bitacoraCorreoHtml(logCorreos)}`;
  el.querySelector('[name=correo_smtp_seguridad]').value=config.correo_smtp_seguridad||PROVEEDORES_CORREO[proveedorInicial].seguridad;
  el.querySelector('[name=correo_modo_pruebas]').checked=modoPruebas;
+ {const formCo=el.querySelector('form');const boton=formCo.querySelector('button[type=submit]');
+  const nodos=[...[...formCo.children].filter(n=>n!==boton),...[...el.children].slice([...el.children].indexOf(formCo)+1)];
+  const rep=repartir(nodos,t=>/^[123]\./.test(t)?'conexion':/^[45]\./.test(t)?'pruebas':/^6\./.test(t)?'bitacora':undefined,'conexion');
+  montarSubpestanas({id:'correo',etiqueta:'Secciones del correo',contenedor:el,antes:formCo,botonGuardar:boton,grupos:[
+   {id:'conexion',titulo:'Cuenta y servidor',nodos:rep.conexion||[]},{id:'pruebas',titulo:'Modo de pruebas y envío de prueba',nodos:rep.pruebas||[]},{id:'bitacora',titulo:'Bitácora de envíos',nodos:rep.bitacora||[],guardar:false}]});}
  const actualizarInstrucciones=key=>{const p=PROVEEDORES_CORREO[key];el.querySelector('[data-prov-nombre]').textContent=p.etiqueta;el.querySelector('[data-prov-pasos]').innerHTML=p.pasos.map(t=>`<li>${esc(t)}</li>`).join('');};
  actualizarInstrucciones(proveedorInicial);
  el.querySelectorAll('[data-prov]').forEach(b=>b.addEventListener('click',()=>{
@@ -639,6 +662,7 @@ async function correoForm(){
 }
 
 let accesosCache = null;
+let rolesAccesos = [];
 let accesoClaveAbiertaId = null;
 
 function formatearFechaAcceso(iso) {
@@ -659,6 +683,10 @@ async function accesosTab() {
   el.innerHTML = `<p class="error">${esc(e.message)}</p>`;
   return;
  }
+ const gestionaRoles = puede('roles.gestionar');
+ rolesAccesos = [];
+ if (gestionaRoles || puede('roles.ver')) { try { rolesAccesos = await listarRoles(config.empresa_id); } catch { rolesAccesos = []; } }
+ const nombreRol = m => rolesAccesos.find(r => r.id === m.rol_id)?.nombre || m.rol;
  const { data: fichasAcceso } = await supabase.from('agenda_asesores').select('id,nombre,correo,usuario_id,activo').eq('empresa_id', config.empresa_id);
  const fichas = fichasAcceso || [];
  const filaAsesor = m => {
@@ -674,9 +702,10 @@ async function accesosTab() {
    : 'Invitación enviada · nunca ha iniciado sesión';
   return `<li>
    <div class="ad-acceso-info"><strong>${esc(m.nombre)}</strong><span class="ad-muted">${esc(m.correo)}</span>
-    <span class="ad-pill">${esc(m.rol)}</span><span class="ad-pill">${m.activo ? 'Activo' : 'Inactivo'}</span>
+    <span class="ad-pill">${esc(nombreRol(m))}</span><span class="ad-pill">${m.activo ? 'Activo' : 'Inactivo'}</span>
     <span class="ad-muted">${esc(estado)}</span> ${filaAsesor(m)}</div>
    <div class="ad-acceso-botones">
+    ${gestionaRoles && rolesAccesos.length ? `<label class="ad-acceso-rol">Rol <select data-asignar-rol="${m.usuario_id}" aria-label="Rol de ${esc(m.nombre)}">${m.rol_id ? '' : '<option value="" selected disabled>Elegir rol…</option>'}${rolesAccesos.map(r => `<option value="${esc(r.id)}" ${r.id === m.rol_id ? 'selected' : ''}>${esc(r.nombre)}</option>`).join('')}</select></label>` : ''}
     ${abierta
      ? `<form class="ad-acceso-clave-form" data-clave-form="${m.usuario_id}"><input type="password" name="clave" placeholder="Nueva contraseña (mín. 8)" minlength="8" required autocomplete="new-password"><button type="submit" class="ad-primary">Guardar</button><button type="button" data-cancelar-clave>Cancelar</button></form>`
      : `<button type="button" data-cambiar-pass="${m.usuario_id}">Cambiar contraseña</button>`}
@@ -725,6 +754,13 @@ async function accesosTab() {
  };
  el.querySelector('#ad-acceso-form [name=rol]').addEventListener('change', notaRol);
  notaRol();
+ el.querySelectorAll('[data-asignar-rol]').forEach(s => s.addEventListener('change', async () => {
+  s.disabled = true;
+  const { error } = await supabase.rpc('agenda_miembro_asignar_rol', { p_empresa_id: config.empresa_id, p_usuario_id: s.dataset.asignarRol, p_rol_id: s.value });
+  if (error) { aviso(error.message || 'No se pudo asignar el rol.', true); await accesosTab(); return; }
+  aviso('Rol asignado.');
+  await accesosTab();
+ }));
  el.querySelectorAll('[data-cambiar-pass]').forEach(b => b.addEventListener('click', () => {
   accesoClaveAbiertaId = b.dataset.cambiarPass;
   accesosTab();

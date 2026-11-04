@@ -1,4 +1,5 @@
 import { hayConfiguracionSupabase, supabase } from './cliente-supabase.js';
+import { cargarPermisos, limpiarPermisos } from './permisos.js';
 
 const MENSAJE_CONFIG =
   'Falta la configuración de Supabase. Copia el archivo .env.example a .env (junto a package.json) y vuelve a iniciar el servidor con npm run dev.';
@@ -58,14 +59,18 @@ export async function consultarAccesoActual() {
 
   const fila = filas?.[0];
   if (!fila?.agenda_empresas) {
+    limpiarPermisos();
     return { usuario, membresia: null };
   }
+
+  const permisos = await cargarPermisos(fila.empresa_id, fila.rol);
 
   return {
     usuario,
     membresia: {
       nombre: fila.nombre,
       rol: fila.rol,
+      rolNombre: permisos.rolNombre || null,
       empresa: fila.agenda_empresas,
     },
   };
@@ -89,6 +94,7 @@ export async function iniciarSesionConCorreo(correo, contrasena) {
 }
 
 export async function cerrarSesion() {
+  limpiarPermisos();
   if (!supabase) {
     return;
   }

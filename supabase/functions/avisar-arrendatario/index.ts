@@ -4,11 +4,13 @@
 // la hora y el asesor a cargo. No revela nombre ni datos del cliente que visita.
 // Requiere sesión: el llamador debe ser un miembro activo de la empresa de la cita. El
 // destinatario sale siempre de agenda_arrendatarios (nunca del cuerpo de la solicitud).
+// Con { recordatorio: true } (solo llamada interna; la hace recordar-arrendatario) manda en cambio un recordatorio de
+// UNA visita sin confirmar, una sola vez (marca arrendatario_recordado_en).
 // También la llama enviar-correo-cita al agendar una visita en un inmueble Rentando (llamada interna con la
 // service role: el aviso al arrendatario sale solo, sin que el asesor tenga que acordarse del botón).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { enlaceInmueble, marcaCorreo } from '../_shared/marca-correo.ts';
-import { correoVisita, enlaceVisita } from '../_shared/visita-correo.ts';
+import { botonConfirmarAsistencia, correoVisita, enlaceVisita } from '../_shared/visita-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -112,6 +114,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: 'Cuerpo de la solicitud inválido.' }, 400);
   }
   const citaId = String(body.cita_id || '');
+  const recordatorio = body.recordatorio === true;
   if (!citaId) return json({ ok: false, error: 'Falta cita_id.' }, 400);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -126,7 +129,7 @@ Deno.serve(async (req) => {
 
   const { data: cita } = await admin
     .from('agenda_citas')
-    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, tipo_cita, estado, token_arrendatario, arrendatario_avisado_en')
+    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, tipo_cita, estado, token_arrendatario, arrendatario_avisado_en, arrendatario_confirmado_en, arrendatario_recordado_en')
     .eq('id', citaId)
     .maybeSingle();
   if (!cita) return json({ ok: false, error: 'Cita no encontrada.' }, 404);
@@ -142,7 +145,11 @@ Deno.serve(async (req) => {
     if (!miembro) return json({ ok: false, error: 'No perteneces a esta empresa.' }, 403);
   }
 
-  if (interno && cita.arrendatario_avisado_en && Date.now() - new Date(cita.arrendatario_avisado_en).getTime() < 120000) {
+  if (recordatorio && !interno) return json({ ok: false, error: 'Los recordatorios solo los envía el sistema.' }, 403);
+  if (recordatorio && (cita.arrendatario_confirmado_en || cita.arrendatario_recordado_en)) {
+    return json({ ok: true, enviado: false, motivo: 'La visita ya está confirmada o ya se le recordó al arrendatario.' });
+  }
+  if (!recordatorio && interno && cita.arrendatario_avisado_en && Date.now() - new Date(cita.arrendatario_avisado_en).getTime() < 120000) {
     return json({ ok: true, enviado: false, motivo: 'El arrendatario ya recibió este aviso hace instantes.' });
   }
 
@@ -190,7 +197,7 @@ Deno.serve(async (req) => {
       empresa_id: cita.empresa_id,
       cita_id: cita.id,
       destinatario_email: null,
-      asunto: null,
+      asunto: recordatorio ? `Recordatorio: confirma tu visita · Inmueble ${inmueble.numero_inmueble}` : null,
       estado: 'omitido',
       detalle_error: `No hay correo de arrendatario para el inmueble Nº ${inmueble.numero_inmueble}.`,
       modo_pruebas: modoPruebas,
@@ -228,17 +235,20 @@ Deno.serve(async (req) => {
   const hoyBogota = new Date().toLocaleString('sv-SE', { timeZone: 'America/Bogota' }).slice(0, 10);
   const { data: proximasRaw } = await admin
     .from('agenda_citas')
-    .select('id, fecha, hora_inicio, token_arrendatario')
+    .select('id, fecha, hora_inicio, token_arrendatario, arrendatario_confirmado_en')
     .eq('inmueble_id', cita.inmueble_id)
     .eq('tipo_cita', 'visita_cliente')
     .neq('estado', 'cancelada')
     .gte('fecha', hoyBogota)
     .order('fecha', { ascending: true })
     .order('hora_inicio', { ascending: true });
-  const proximas = (proximasRaw || []).slice(0, 12);
-  if (!proximas.some((c) => c.id === cita.id)) proximas.push({ id: cita.id, fecha: cita.fecha, hora_inicio: cita.hora_inicio, token_arrendatario: cita.token_arrendatario });
+  // Recordatorio: solo la visita sin confirmar (no la lista completa).
+  const proximas = (recordatorio ? (proximasRaw || []).filter((c) => c.id === cita.id) : (proximasRaw || [])).slice(0, 12);
+  if (!proximas.some((c) => c.id === cita.id)) proximas.push({ id: cita.id, fecha: cita.fecha, hora_inicio: cita.hora_inicio, token_arrendatario: cita.token_arrendatario, arrendatario_confirmado_en: cita.arrendatario_confirmado_en ?? null });
   const varias = proximas.length > 1;
-  const asunto = `Visitas programadas en tu ${sust.n} · Inmueble ${inmueble.numero_inmueble}`;
+  const asunto = recordatorio
+    ? `Recordatorio: confirma tu visita · Inmueble ${inmueble.numero_inmueble}`
+    : `Visitas programadas en tu ${sust.n} · Inmueble ${inmueble.numero_inmueble}`;
   const nombre = escaparHtml(arrendatario?.nombre || '');
   const enlacePortal = `${SITIO_URL}/arrendatario/${inmueble.token_arrendatario || cita.token_arrendatario}`;
   // Botones para hablar con el asesor sin buscar su número (WhatsApp con mensaje listo y llamada).
@@ -249,23 +259,36 @@ Deno.serve(async (req) => {
   const remitenteNombre = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
 
   const html = (destinatarioReal: string) => correoVisita(marca, {
-    titulo: varias ? `Tienes ${proximas.length} visitas programadas` : 'Tienes una visita programada',
-    preheader: `Inmueble ${inmueble.numero_inmueble}. Si puedes recibir las visitas, no necesitas responder.`,
+    titulo: recordatorio ? 'Confirma tu visita' : varias ? `Tienes ${proximas.length} visitas programadas` : 'Tienes una visita programada',
+    preheader: recordatorio ? `Inmueble ${inmueble.numero_inmueble}. Aún no nos confirmas la visita: toca el botón.` : `Inmueble ${inmueble.numero_inmueble}. Confírmanos que estarás con el botón de cada visita.`,
     modoPruebas, destinatarioReal,
-    cuerpo: `<p style="margin:0 0 12px">Hola${nombre ? ' ' + nombre : ''}. Si puedes recibir las visitas, <b>no tienes que hacer nada.</b></p>
+    cuerpo: `<p style="margin:0 0 12px">Hola${nombre ? ' ' + nombre : ''}. ${recordatorio ? `Tu ${sust.n} tiene una visita próxima y <b>aún no nos has confirmado que estarás.</b> Toca «Confirmo que estaré» para avisarnos.` : `Para cada visita, toca <b>«Confirmo que estaré»</b>. Así sabemos que ${sust.el} estará listo y el asesor no pierde el viaje.`}</p>
       <p style="margin:0 0 12px"><b>Inmueble ${inmueble.numero_inmueble}</b><br>${escaparHtml(lugarTexto)}</p>
       <p style="margin:0">El asesor llegará a la hora acordada y tiene otra cita después, por lo que no puede esperar. Ten el inmueble listo a esa hora.</p>`,
-    boton: { texto: 'Organizar mis visitas y horarios', url: enlacePortal },
+    boton: recordatorio ? undefined : { texto: 'Organizar mis visitas y horarios', url: enlacePortal },
     despues: `<table role="presentation" width="100%" style="border-collapse:collapse">${proximas.map(c => `<tr><td style="padding:12px 0;border-top:1px solid #dde3e7">
         <b>${escaparHtml(formatearFecha(c.fecha))}</b><br><span style="font-size:20px">${escaparHtml(formatearHora(c.hora_inicio.slice(0, 5)))}</span>
-        ${c.id === cita.id ? '<span style="font-size:12px"> (nueva)</span>' : ''}<br>
-        ${enlaceVisita(`${SITIO_URL}/arrendatario/${c.token_arrendatario}?accion=otra_hora`, 'Cambiar esta visita', marca)}</td></tr>`).join('')}</table>
+        ${c.id === cita.id && !recordatorio ? '<span style="font-size:12px"> (nueva)</span>' : ''}<br>
+        ${c.arrendatario_confirmado_en ? '<span style="font-size:14px;font-weight:700">✔ Ya confirmaste esta visita</span><br>' : botonConfirmarAsistencia(`${SITIO_URL}/arrendatario/${c.token_arrendatario}?accion=confirmar`, marca)}<br>
+        ${enlaceVisita(`${SITIO_URL}/arrendatario/${c.token_arrendatario}?accion=otra_hora`, 'No puedo a esa hora: cambiar esta visita', marca)}</td></tr>`).join('')}</table>
       <p style="margin:0 0 10px">Desde tu agenda puedes cambiar una hora, ajustar varios días o pausar visitas hasta por 14 días. Avisaremos a los interesados afectados para que elijan otro horario dentro de un plazo. Si no responden, la visita se cancela.</p>
       ${asesorNombre ? `<p style="margin:0">Asesor: <b>${escaparHtml(asesorNombre)}</b></p>` : ''}
       ${celularWa.length >= 11 ? enlaceVisita(`https://wa.me/${celularWa}`, 'Escribir al asesor', marca) + enlaceVisita(`tel:+${celularWa}`, 'Llamar al asesor', marca) : ''}
       ${enlaceVisita(enlaceSitio, 'Ver la ficha del inmueble', marca)}
       <p style="font-size:12px;margin:10px 0 0">Este enlace es personal. No lo compartas.</p>`,
   });
+
+  // Recordatorio: se reserva la marca ANTES de enviar para que dos corridas seguidas no manden el correo dos veces.
+  if (recordatorio) {
+    const { data: reservada } = await admin
+      .from('agenda_citas')
+      .update({ arrendatario_recordado_en: new Date().toISOString() })
+      .eq('id', cita.id)
+      .is('arrendatario_recordado_en', null)
+      .is('arrendatario_confirmado_en', null)
+      .select('id');
+    if (!reservada?.length) return json({ ok: true, enviado: false, motivo: 'La visita ya está confirmada o ya se le recordó al arrendatario.' });
+  }
 
   const transporte = nodemailer.createTransport({
     host: config.correo_smtp_host,
@@ -307,8 +330,10 @@ Deno.serve(async (req) => {
   }
 
   if (!enviados) {
+    if (recordatorio) await admin.from('agenda_citas').update({ arrendatario_recordado_en: null }).eq('id', cita.id);
     return json({ ok: true, enviado: false, motivo: 'Falló el envío del correo. Revisa la bitácora de correos.' });
   }
+  if (recordatorio) return json({ ok: true, enviado: true, enviados, recordatorio: true });
   await admin
     .from('agenda_citas')
     .update({ arrendatario_avisado_en: new Date().toISOString(), arrendatario_avisado_por: usuario?.id ?? null })

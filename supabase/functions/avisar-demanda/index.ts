@@ -41,7 +41,7 @@ function texto(m: Fila, nivel: string) {
   const cola = m.tope != null && m.activas >= m.tope ? ` La agenda ya llegó al tope: ${m.activas} de ${m.tope} citas activas.` : '';
   const sug = r ? `entre ${r.pct} (${cop(r.desde)} a ${cop(r.hasta)})` : 'el precio';
   return nivel === 'urgente'
-    ? `${dato}.${cola} Hay mucha más demanda que inmuebles: el precio probablemente está por debajo del mercado y la agenda del equipo se está llenando con un solo inmueble. Sugerencia: considera subir ${sug}, limitar las citas nuevas y agrupar a los interesados en una visita en grupo. Revisa de nuevo en 48 horas.`
+    ? `${dato}.${cola} Hay mucha más demanda que inmuebles: el precio probablemente está por debajo del mercado y la agenda del equipo se está llenando con un solo inmueble. Sugerencia: considera subir ${sug} o agrupar a los interesados en una visita en grupo; no se deja de atender a nadie. Revisa de nuevo en 48 horas.`
     : `${dato}.${cola} El ritmo es alto. Sugerencia: vigílalo; si sigue así mañana, considera subir ${sug}.`;
 }
 

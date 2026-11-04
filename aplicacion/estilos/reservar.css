@@ -270,3 +270,24 @@
 @media (max-width: 560px) {
   #pub-app h2 { font-size: 24px; overflow-wrap: anywhere; }
 }
+
+/* --- /consignar: explicación, confianza, video y preguntas frecuentes --- */
+#pub-app .pu-paso { display: inline-block; font-size: 12.5px; font-weight: 600; color: var(--pu-muted); margin: 0 0 6px; }
+#pub-app .pu-pasos { margin: 0 0 16px; padding-left: 22px; color: var(--pu-muted); font-size: 14.5px; line-height: 1.5; }
+#pub-app .pu-pasos li { margin-bottom: 6px; }
+#pub-app .pu-confianza { background: var(--pu-card); border: 1px solid var(--pu-border); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.5; margin: 0 0 18px; }
+#pub-app .pu-aviso-final { font-size: 13px; margin: 0 0 12px; }
+#pub-app .pu-mas { margin-top: 8px; }
+#pub-app .pu-mas summary, #pub-app .pu-video summary, #pub-app .pu-faq summary { cursor: pointer; font-weight: 600; font-size: 14.5px; padding: 10px 0; }
+#pub-app .pu-video { background: var(--pu-card); border: 1px solid var(--pu-border); border-radius: 12px; padding: 0 14px; margin: 0 0 16px; }
+#pub-app .pu-video-caja { position: relative; aspect-ratio: 16 / 9; width: 100%; background: #000; border-radius: 10px; overflow: hidden; }
+#pub-app .pu-video-caja iframe, #pub-app .pu-video-caja img { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; }
+#pub-app .pu-video-play { position: absolute; inset: 0; width: 100%; min-height: 0; padding: 0; border: 0; background: #000; cursor: pointer; }
+#pub-app .pu-video-play span { position: absolute; inset: 0; margin: auto; width: 64px; height: 64px; border-radius: 50%; background: rgba(0, 0, 0, .65); color: #fff; font-size: 26px; display: flex; align-items: center; justify-content: center; }
+#pub-app .pu-video-yt { display: inline-block; font-size: 13px; padding: 10px 0 12px; }
+#pub-app .pu-faq details { border-bottom: 1px solid var(--pu-border); }
+#pub-app .pu-faq details p { margin: 0 0 12px; }
+#pub-app .pu-faq-mas { font-size: 13.5px; margin-top: 12px; }
+#pub-app .pu-compromiso { list-style: none; margin: 10px 0; padding: 0; }
+#pub-app .pu-compromiso li { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 14px; line-height: 1.45; }
+#pub-app .pu-confianza small { display: block; color: var(--pu-muted); font-size: 12.5px; line-height: 1.45; }

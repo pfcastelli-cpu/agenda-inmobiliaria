@@ -154,7 +154,8 @@ async function buscarInmueble(numero) {
   }
   state.inmueble = fila;
   state.numero = numero;
-  // Si el inmueble ya llenó su tope de citas (sql/035), en vez de horarios se ofrece la lista de espera.
+  // Solo si la empresa ENCENDIÓ el bloqueo por tope (sql/046, apagado por defecto) y el inmueble ya lo alcanzó, se ofrece la lista de espera en vez de horarios.
+  // Por defecto la base responde «no está llena» y siempre se muestran horarios.
   state.espera = null;
   try {
     if (await agendaLlena(numero, hostActual())) {

@@ -125,7 +125,7 @@ async function cargarContexto(admin: Admin, token: string) {
   const { data: cita } = await admin
     .from('agenda_citas')
     .select(
-      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente, reubicacion_pendiente_desde, reubicacion_vence_en, reubicacion_motivo, es_prueba',
+      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente, reubicacion_pendiente_desde, reubicacion_vence_en, reubicacion_motivo, es_prueba, arrendatario_confirmado_en',
     )
     .or(`token_arrendatario.eq.${token},token_cliente.eq.${token}`)
     .maybeSingle();
@@ -472,7 +472,7 @@ async function manejarInmueble(admin: Admin, inm: NonNullable<Awaited<ReturnType
   if (accion === 'obtener') {
     const { data: citas } = await admin
       .from('agenda_citas')
-      .select('fecha, hora_inicio, hora_fin, token_arrendatario, reubicacion_pendiente_desde, reubicacion_vence_en')
+      .select('fecha, hora_inicio, hora_fin, token_arrendatario, reubicacion_pendiente_desde, reubicacion_vence_en, arrendatario_confirmado_en')
       .eq('inmueble_id', inm.id)
       .eq('tipo_cita', 'visita_cliente')
       .neq('estado', 'cancelada')
@@ -509,6 +509,7 @@ async function manejarInmueble(admin: Admin, inm: NonNullable<Awaited<ReturnType
           hora_inicio: c.hora_inicio.slice(0, 5),
           hora_fin: c.hora_fin.slice(0, 5),
           token: c.token_arrendatario,
+          confirmado_en: c.arrendatario_confirmado_en || null,
           por_reubicar: !!c.reubicacion_pendiente_desde,
           vence: c.reubicacion_pendiente_desde && c.reubicacion_vence_en ? formatearMomento(new Date(c.reubicacion_vence_en).getTime()) : null,
         })),
@@ -794,7 +795,7 @@ Deno.serve(async (req) => {
         reubicacion_vence: cita.reubicacion_pendiente_desde && citaVigente && cita.reubicacion_vence_en ? formatearMomento(new Date(cita.reubicacion_vence_en).getTime()) : null,
         reubicacion_motivo: cita.reubicacion_pendiente_desde && citaVigente ? cita.reubicacion_motivo : null,
         inmueble_token: rol === 'arrendatario' ? inmueble.token_arrendatario : undefined,
-        cita: { fecha: cita.fecha, hora_inicio: horaCita, hora_fin: cita.hora_fin.slice(0, 5), estado: cita.estado, vigente: citaVigente },
+        cita: { fecha: cita.fecha, hora_inicio: horaCita, hora_fin: cita.hora_fin.slice(0, 5), estado: cita.estado, vigente: citaVigente, confirmado_en: rol === 'arrendatario' ? cita.arrendatario_confirmado_en || null : undefined },
         inmueble: {
           numero: inmueble.numero_inmueble,
           direccion,

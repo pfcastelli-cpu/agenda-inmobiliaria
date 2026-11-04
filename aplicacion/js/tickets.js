@@ -2,7 +2,7 @@
 // Cada quien ve los suyos; el administrador ve todos los de su empresa y sus métricas. La base decide quién ve qué (RLS y funciones
 // de sql/022–025); aquí solo se pinta. Vocabulario, formato, línea de tiempo y llamadas a la base están en ./soporte-comun/.
 import { crearApiSoporte } from './soporte-comun/api.js';
-import { COLOR_ESTADO, COLOR_PRIORIDAD, EMOJI_TIPO, ESTADOS_FINALES, ESTADOS_USUARIO, PRIORIDADES, PUNTOS, SLA_HORAS, TIPOS, sePuedeCalificar } from './soporte-comun/constantes.js';
+import { COLOR_ESTADO, COLOR_PRIORIDAD, EMOJI_TIPO, ESTADOS_FINALES, ESTADOS_USUARIO, PRIORIDADES, PUNTOS, SLA_HORAS, TIPOS, sePuedeCalificar, soporteYaRespondio } from './soporte-comun/constantes.js';
 import { duracionMin, escapar as esc, estrellas, fechaCorta, fechaHora, minutosParaSla } from './soporte-comun/formato.js';
 import { construirLinea, textoEvento } from './soporte-comun/linea-tiempo.js';
 import { EVENTO_AVISOS } from './soporte-comun/campana.js';
@@ -59,7 +59,12 @@ export async function renderTickets(ctx) {
   }
 
   const b = ui.borrador;
-  el.innerHTML = `<div class="v-top"><div><div class="v-eyebrow">Ayuda</div><h2>Soporte</h2></div></div>
+  el.innerHTML = `<style>
+      .tk-acciones{display:flex;gap:8px;flex-wrap:wrap}
+      .tk-aviso{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:#EEF3F7;font-size:13.5px;line-height:1.45}
+      @media (max-width:480px){.tk-acciones .v-btn{flex:1 1 100%;justify-content:center;min-height:44px}.tk-aviso{font-size:14px}}
+    </style>
+    <div class="v-top"><div><div class="v-eyebrow">Ayuda</div><h2>Soporte</h2></div></div>
     ${esAdmin ? '<button type="button" class="v-btn v-quiet" id="tk-fallos">Fallos del sistema</button>' : ''}
     <p class="v-note">¿Algo no funciona, tienes una idea o una duda? Cuéntanoslo aquí y conversa con soporte dentro del mismo ticket. ${esAdmin ? 'Como administrador ves los tickets de todo el equipo y puedes responderlos.' : 'Solo tú y el administrador ven tus tickets. Los avisos te llegan a la campana y por correo.'}</p>
     ${metricas ? bloqueMetricas(metricas) : ''}
@@ -73,7 +78,7 @@ export async function renderTickets(ctx) {
       ${ui.error ? `<div class="v-error" role="alert">${esc(ui.error)}</div>` : ''}
       ${ui.mensaje ? `<p class="v-note" role="status">${esc(ui.mensaje)}</p>` : ''}
       <div><button type="submit" class="v-btn v-primary" ${ui.enviando ? 'disabled' : ''}>${ui.enviando ? 'Enviando…' : 'Enviar ticket'}</button>
-        <span class="v-muted" style="margin-left:8px;font-size:13px">Respondemos en un máximo de ${SLA_HORAS.normal} horas.</span></div>
+        <span class="v-muted" style="margin-left:8px;font-size:13px">Respondemos en un máximo de ${SLA_HORAS.normal} horas. Una vez enviado no se edita; podrás agregar comentarios.</span></div>
     </form>
     ${acceso ? bloqueAcceso(acceso) : ''}
     <h3 style="margin:26px 0 8px">${esAdmin ? 'Tickets del equipo' : 'Mis tickets'}</h3>
@@ -151,7 +156,7 @@ export async function renderTickets(ctx) {
         ui.error = '';
         delete ui.respuestas[id]; delete ui.reabriendo[id];
         if (resolver) { ui.abierto = id; ui.mensaje = '¡Gracias! Marcamos tu ticket como resuelto. Cuéntanos cómo fue la atención con las estrellas de abajo.'; }
-        else ui.mensaje = propio ? 'Mensaje enviado. Soporte recibió el aviso.' : 'Respuesta enviada.';
+        else ui.mensaje = propio ? 'Comentario agregado. Soporte recibió el aviso.' : 'Respuesta enviada.';
         if (texto) api.avisar(id, propio ? 'respuesta_cliente' : 'respondido');
       }
       repintar();
@@ -222,7 +227,7 @@ const insignia = (texto, col = '#1A2C45') => `<span style="font-size:12px;font-w
 function siguientePaso(t) {
   if (t.estado === 'en_espera') {
     return `<div class="v-note" style="margin:10px 0 0"><strong>Soporte te respondió.</strong> ¿Quedó resuelto tu caso?
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="v-btn v-primary" data-tk-enviar="${t.id}" data-estado="resuelto">Sí, quedó resuelto</button>
+      <div class="tk-acciones" style="margin-top:8px"><button type="button" class="v-btn v-primary" data-tk-enviar="${t.id}" data-estado="resuelto">Sí, quedó resuelto</button>
       <button type="button" class="v-btn v-quiet" data-tk-ver="${t.id}">No, necesito más ayuda</button></div></div>`;
   }
   if (['resuelto', 'cerrado'].includes(t.estado) && !t.calificacion) {
@@ -240,7 +245,7 @@ function tarjeta(t, esAdmin) {
   return `<article style="border:1px solid var(--v-line);border-left:4px solid ${color};border-radius:12px;padding:12px 14px">
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
       <strong>${EMOJI_TIPO[t.tipo] || ''} #${t.numero} · ${esc(t.titulo)}</strong>
-      <span style="font-size:12.5px;font-weight:600;color:${color}">${esc(ESTADOS_USUARIO[t.estado] || t.estado)}</span>
+      <span style="font-size:12.5px;font-weight:600;color:${color};border:1px solid ${color}55;background:${color}12;border-radius:999px;padding:2px 10px">${esc(ESTADOS_USUARIO[t.estado] || t.estado)}</span>
     </div>
     <p class="v-muted" style="margin:4px 0 0;font-size:12.5px">${esc(TIPOS[t.tipo] || t.tipo)} · ${fechaCorta(t.creado_en)}${esAdmin ? ` · ${esc(t.usuario_nombre || 'usuario')}` : ''}${t.pagina ? ` · desde ${esc(t.pagina)}` : ''}</p>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
@@ -276,21 +281,27 @@ function conversacion(t, esAdmin, propio) {
   const mostrarCompositor = !final && (esAdmin || propio) && !(resuelto && propio && !ui.reabriendo[t.id]);
   const estadoAdmin = ui.estadoAdmin[t.id] || 'en_espera';
   const compositor = mostrarCompositor ? `<div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
-      <label class="v-field">${propio ? (resuelto ? 'Cuéntanos qué sigue pasando (reabre el ticket)' : 'Tu mensaje') : 'Tu respuesta (le llega por correo y a la campana de quien escribió el ticket)'}
+      <label class="v-field">${propio ? (resuelto ? 'Cuéntanos qué sigue pasando (reabre el ticket)' : 'Agregar un comentario') : 'Tu respuesta (le llega por correo y a la campana de quien escribió el ticket)'}
         <textarea class="v-input" rows="3" maxlength="4000" data-tk-texto="${t.id}" placeholder="${propio ? 'Cuéntanos más o confirma si ya quedó resuelto.' : 'Escribe la respuesta…'}">${esc(ui.respuestas[t.id] || '')}</textarea></label>
       ${propio ? '' : `<label class="v-field" style="max-width:340px">Después de enviar, dejar el ticket en
         <select class="v-input" data-tk-estado-admin="${t.id}">${Object.entries(ESTADOS_ADMIN).map(([v, n]) => `<option value="${v}" ${estadoAdmin === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`}
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button type="button" class="v-btn v-primary" data-tk-enviar="${t.id}">${propio ? (resuelto ? 'Reabrir y enviar' : 'Enviar mensaje') : 'Enviar respuesta'}</button>
+      <div class="tk-acciones">
+        <button type="button" class="v-btn v-primary" data-tk-enviar="${t.id}">${propio ? (resuelto ? 'Reabrir y enviar' : 'Agregar comentario') : 'Enviar respuesta'}</button>
         ${propio && !resuelto ? `<button type="button" class="v-btn v-quiet" data-tk-enviar="${t.id}" data-estado="resuelto">Ya quedó resuelto</button>` : ''}
       </div></div>` : '';
+  // Lo escrito no se edita: la base lo impide (sql/045). Aquí se le explica con claridad a quien escribió el ticket.
+  const aviso = propio && !final
+    ? `<p class="tk-aviso" role="note">${soporteYaRespondio(t)
+        ? '<strong>Soporte ya respondió.</strong> Lo que escribiste y las respuestas ya no se pueden modificar; puedes agregar un comentario.'
+        : 'Lo que escribiste queda tal como lo enviaste y no se puede modificar. Si olvidaste algo, agrégalo como comentario.'}</p>`
+    : '';
   const pie = final
     ? '<p class="v-muted" style="margin:14px 0 0;font-size:13px">Este ticket está cerrado. Si el problema continúa, crea uno nuevo desde el formulario de arriba.</p>'
     : (resuelto && propio && !ui.reabriendo[t.id] ? `<div style="margin-top:12px"><button type="button" class="v-btn v-quiet" data-tk-reabrir="${t.id}">El problema continúa: reabrir el ticket</button></div>` : '');
   return `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--v-line)">
     <div style="display:flex;flex-direction:column;gap:8px" aria-live="polite">${linea}</div>
     ${propio && sePuedeCalificar(t) ? calificacion(t) : ''}
-    ${compositor}${pie}
+    ${aviso}${compositor}${pie}
   </div>`;
 }
 

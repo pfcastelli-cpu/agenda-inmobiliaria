@@ -60,6 +60,7 @@ const state = {
   hasta: '',
   fueraDeHorario: 0,
   ocupado: false,
+  confirmando: null, // token de la visita cuya asistencia se está confirmando
   mensaje: '',
   errorForm: '',
 };
@@ -181,6 +182,7 @@ function irSegunEnlace() {
   const params = new URLSearchParams(window.location.search);
   const accion = params.get('accion');
   if (!accion) return;
+  if (accion === 'confirmar') document.getElementById('ar-card-confirmar')?.scrollIntoView({ behavior: 'smooth' });
   if (state.modo === 'cita') {
     if (accion === 'otra_hora' && esArrendatario() && state.cita?.vigente && !state.propuesta) irA('proponer');
     return;
@@ -350,12 +352,53 @@ function enlaceTodas() {
   return `<div class="pu-card"><p style="margin:0"><a href="/arrendatario/${esc(state.inmuebleToken)}"><strong>Ver todas mis visitas y organizar mis horarios</strong></a><br>Si tienes varias visitas, ahí marcas los días y franjas en que sí (o no) puedes, de una sola vez.</p></div>`;
 }
 
+const momentoConfirmado = (iso) => new Date(iso).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'long', timeStyle: 'short' });
+
+// Confirmación de asistencia del arrendatario (botón «Confirmo que estaré» del correo y del portal).
+function bloqueConfirmacion() {
+  if (!esArrendatario() || !state.cita?.vigente || state.cita.estado === 'cancelada') return '';
+  if (state.cita.confirmado_en) {
+    return `<div class="pu-card" id="ar-card-confirmar" style="border-color:var(--pu-teal)"><h3 style="margin-top:0">✔ Ya confirmaste que estarás</h3><p style="margin-bottom:0">Gracias. Confirmaste el ${esc(momentoConfirmado(state.cita.confirmado_en))}. Si algo cambia, usa las opciones de abajo para avisarnos.</p></div>`;
+  }
+  return `<div class="pu-card" id="ar-card-confirmar" style="border-color:var(--pu-teal)">
+      <h3 style="margin-top:0">¿Estarás para esta visita?</h3>
+      <p>Confírmanos que podrás recibirla: así el asesor sabe que no pierde el viaje.</p>
+      ${errorBloque()}
+      <button class="pu-main" type="button" data-confirmar="${esc(state.token)}" ${state.confirmando ? 'disabled' : ''}>${state.confirmando ? 'Un momento…' : 'Confirmo que estaré'}</button>
+    </div>`;
+}
+
+// El token de la visita es la credencial; la función de la base valida que no esté cancelada ni vencida y se puede repetir.
+async function confirmarAsistencia(tokenCita) {
+  state.confirmando = tokenCita;
+  state.errorForm = '';
+  render();
+  try {
+    const { data, error } = await supabase.rpc('agenda_arrendatario_confirmar', { p_token: tokenCita });
+    if (error || !data) throw new Error('No pudimos conectar. Revisa tu internet e inténtalo otra vez.');
+    if (data.error) throw new Error(data.error);
+    if (state.modo === 'inmueble') {
+      const fila = state.citasInm.find((c) => c.token === tokenCita);
+      if (fila) fila.confirmado_en = data.confirmado_en;
+    } else if (state.cita) {
+      state.cita.confirmado_en = data.confirmado_en;
+    }
+    state.mensaje = data.resultado === 'ya_confirmada' ? 'Esta visita ya estaba confirmada. ¡Gracias!' : '¡Gracias! Quedó confirmado que estarás para esta visita.';
+  } catch (e) {
+    state.errorForm = e.message || 'No se pudo confirmar. Inténtalo de nuevo.';
+    // En la vista del inmueble no hay recuadro de error junto al botón: el aviso va en el mensaje de arriba.
+    state.mensaje = state.modo === 'inmueble' ? `No se pudo confirmar: ${state.errorForm}` : '';
+  }
+  state.confirmando = null;
+  render();
+}
+
 function vistaResumen() {
   if (!esArrendatario() && state.reubicacion) {
     return `${exito()}<p class="pu-referencia">Inmueble ${esc(state.inmueble.numero)}${state.inmueble.direccion ? `: ${esc(state.inmueble.direccion)}` : ''}</p>${bloqueAcciones()}
       <details class="pu-detalles" id="ar-horario-anterior"><summary>Ver horario anterior y asesor</summary>${tarjetaVisita()}</details>`;
   }
-  return `${tarjetaVisita()}${exito()}${!state.propuesta && !esArrendatario() ? errorBloque() : ''}${bloqueAcciones()}${enlaceTodas()}${esArrendatario() ? `<details id="ar-horario-habitual" class="pu-detalles"><summary>Horario habitual de visitas</summary>${bloqueHorarioPermitido()}</details>` : ''}`;
+  return `${tarjetaVisita()}${exito()}${bloqueConfirmacion()}${!state.propuesta && !esArrendatario() ? errorBloque() : ''}${bloqueAcciones()}${enlaceTodas()}${esArrendatario() ? `<details id="ar-horario-habitual" class="pu-detalles"><summary>Horario habitual de visitas</summary>${bloqueHorarioPermitido()}</details>` : ''}`;
 }
 
 // ---- Vista del inmueble (arrendatario): todas sus visitas y sus franjas --------------------
@@ -375,7 +418,7 @@ function vistaInmueble() {
     ? state.citasInm
         .map(
           (c) =>
-            `<div class="pu-visita-fila"><strong>${esc(fechaLarga(c.fecha))}</strong><span>${c.por_reubicar ? 'Horario anterior: ' : ''}${esc(hora12(c.hora_inicio))} a ${esc(hora12(c.hora_fin))}</span>${c.por_reubicar ? `<div class="pu-estado pu-estado-atencion"><strong>Esperando nueva hora</strong><span>El horario anterior está libre.${c.vence ? ` Plazo del interesado: ${esc(c.vence)}.` : ''}</span></div>` : '<span>Programada</span>'}<a href="/arrendatario/${esc(c.token)}">Ver o cambiar esta visita</a></div>`,
+            `<div class="pu-visita-fila"><strong>${esc(fechaLarga(c.fecha))}</strong><span>${c.por_reubicar ? 'Horario anterior: ' : ''}${esc(hora12(c.hora_inicio))} a ${esc(hora12(c.hora_fin))}</span>${c.por_reubicar ? `<div class="pu-estado pu-estado-atencion"><strong>Esperando nueva hora</strong><span>El horario anterior está libre.${c.vence ? ` Plazo del interesado: ${esc(c.vence)}.` : ''}</span></div>` : '<span>Programada</span>'}${c.por_reubicar ? '' : c.confirmado_en ? '<span class="pu-estado"><strong>✔ Confirmaste que estarás</strong></span>' : `<button class="pu-main" type="button" data-confirmar="${esc(c.token)}" ${state.confirmando === c.token ? 'disabled' : ''}>${state.confirmando === c.token ? 'Un momento…' : 'Confirmo que estaré'}</button>`}<a href="/arrendatario/${esc(c.token)}">Ver o cambiar esta visita</a></div>`,
         )
         .join('')
     : `<p class="pu-vacio" style="margin:0">No tienes visitas programadas por ahora.</p>`;
@@ -835,6 +878,7 @@ function cablear() {
   por('ar-confirmar-proponer')?.addEventListener('click', confirmarProponer);
   por('ar-confirmar-cancelar')?.addEventListener('click', confirmarCancelar);
   por('ar-aceptar')?.addEventListener('click', () => responder(true));
+  document.querySelectorAll('[data-confirmar]').forEach((b) => b.addEventListener('click', () => confirmarAsistencia(b.dataset.confirmar)));
   por('ar-rechazar')?.addEventListener('click', () => responder(false));
   por('ar-guardar-horario')?.addEventListener('click', guardarHorario);
   por('ar-pausa-desde')?.addEventListener('change', (e) => {

@@ -15,7 +15,7 @@ window.__llamadas = [];
 const respuestas = {
   agenda_marca_publica: () => null,
   agenda_formato_hora_publico: () => '12h',
-  agenda_captacion_publica_config: () => ({ activa: true, nombre: 'Patrimonios', ciudades }),
+  agenda_captacion_publica_config: () => ({ activa: true, nombre: 'Patrimonios', video_url: 'https://youtu.be/dQw4w9WgXcQ', ciudades }),
   agenda_captacion_publica_horarios: (a) => dias.flatMap((f) => horas.map((h) => ({ fecha: f, hora_inicio: h + ':00', hora_fin: h.replace(/^(\d+)/, (n) => String(Number(n) + 1).padStart(2, '0')) + ':30' }))),
   agenda_captacion_publica_agendar: (a) => ({ cita_id: '11111111-1111-1111-1111-111111111111', token: '22222222-2222-2222-2222-222222222222', fecha: a.p_fecha, hora_inicio: a.p_hora_inicio, hora_fin: '10:00:00', asesor_nombre: 'Luisa Restrepo' }),
 };
