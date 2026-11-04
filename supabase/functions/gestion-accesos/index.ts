@@ -9,7 +9,8 @@
 // empresa (el mismo del correo de citas, contraseña en Vault), con su bitácora y modo de
 // pruebas.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo, emojiTitulo, pieContacto } from '../_shared/marca-correo.ts';
+import { marcaCorreo } from '../_shared/marca-correo.ts';
+import { correoBase } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -66,7 +67,16 @@ async function enviarCorreoAcceso(
   const modoPruebas = config.correo_modo_pruebas !== false;
   const destino = modoPruebas ? config.correo_pruebas_destino || o.correo : o.correo;
   const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
-  const html = `<!doctype html>
+  const html = correoBase(marca, {
+    titulo: o.titulo,
+    tema: 'acceso',
+    preheader: o.texto,
+    cuerpo: `<p style="margin:0">Hola ${escaparHtml(o.nombre)}, ${escaparHtml(o.texto)}</p><p style="margin:14px 0 0;font-size:13px;color:#63707a">El enlace es de un solo uso. Si no lo pediste, ignora este correo.</p>`,
+    botones: [{ texto: o.boton, url: o.enlace }],
+    modoPruebas,
+    destinatarioReal: o.correo,
+  });
+/*
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
 <body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
@@ -89,7 +99,7 @@ async function enviarCorreoAcceso(
   ${pieContacto(marca)}
 </div>
 </body>
-</html>`;
+</html>*/
 
   const registrar = (estado: 'enviado' | 'fallido', detalle: string | null) =>
     admin.from('agenda_correos_log').insert({
@@ -304,7 +314,7 @@ Deno.serve(async (req) => {
           asunto: 'Te dieron acceso a la agenda de citas',
           titulo: 'Crea tu contraseña',
           texto: 'te dieron acceso a la agenda de citas. Pulsa el botón para elegir tu contraseña y entrar.',
-          boton: 'Crear mi contraseña',
+          boton: '🔑 Crear mi contraseña',
           enlace: enlaceInvitacion,
         });
         if (!envio.enviado) {
@@ -408,7 +418,7 @@ Deno.serve(async (req) => {
         texto: esRecuperacion
           ? 'pulsa el botón para elegir una contraseña nueva.'
           : 'te dieron acceso a la agenda de citas. Pulsa el botón para elegir tu contraseña y entrar.',
-        boton: esRecuperacion ? 'Elegir contraseña nueva' : 'Crear mi contraseña',
+        boton: esRecuperacion ? '🔑 Elegir contraseña nueva' : 'Crear mi contraseña',
         enlace,
       });
       if (!envio.enviado) return json({ ok: false, error: envio.motivo || 'No se pudo enviar el correo.' }, 502);

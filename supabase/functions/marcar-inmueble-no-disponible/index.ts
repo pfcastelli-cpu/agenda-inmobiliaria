@@ -1,3 +1,4 @@
+import { correoBase } from '../_shared/plantilla-correo.ts';
 // Edge Function: marcar-inmueble-no-disponible
 // Se llama desde la ficha del inmueble cuando ya no está disponible (se
 // arrendó, se vendió, alguien más radicó papeles, u otro motivo). A
@@ -465,40 +466,14 @@ Deno.serve(async (req) => {
     const destinatarioEnvio = modoPruebas ? config?.correo_pruebas_destino || destinatarioReal : destinatarioReal;
     const asunto = `Lamentamos informarte: el inmueble Nº ${inmueble.numero_inmueble} ya no está disponible`;
 
-    const bannerPruebas = modoPruebas
-      ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
-          MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioReal)}
-        </div>`
-      : '';
-
-    const html = `<!doctype html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:28px 16px">
-  ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
-    ${encabezadoImagen(marca, 'Tu visita fue cancelada', 'visita')}
-    <div style="padding:28px 26px 8px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 4px">Tu visita fue cancelada 😕</h1>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 14px">Hola ${escaparHtml(fila.cliente_nombre) || ''}, te escribimos porque el inmueble que ibas a visitar${citaOriginal ? ` el ${escaparHtml(formatearFecha(citaOriginal.fecha))} a las ${escaparHtml(formatearHora(citaOriginal.hora_inicio.slice(0, 5)))}` : ''} (Nº ${inmueble.numero_inmueble}, ${escaparHtml(direccionInmueble)}${ciudadTexto ? ', ' + escaparHtml(ciudadTexto) : ''}) ${escaparHtml(etiquetaMotivo)}, así que ya no está disponible para visitas.</p>
+    const html = correoBase(marca, { titulo: 'Tu visita fue cancelada', tema: 'visita', modoPruebas, destinatarioReal, cuerpo: `      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 14px">Hola ${escaparHtml(fila.cliente_nombre) || ''}, te escribimos porque el inmueble que ibas a visitar${citaOriginal ? ` el ${escaparHtml(formatearFecha(citaOriginal.fecha))} a las ${escaparHtml(formatearHora(citaOriginal.hora_inicio.slice(0, 5)))}` : ''} (Nº ${inmueble.numero_inmueble}, ${escaparHtml(direccionInmueble)}${ciudadTexto ? ', ' + escaparHtml(ciudadTexto) : ''}) ${escaparHtml(etiquetaMotivo)}, así que ya no está disponible para visitas.</p>
       <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 18px">Por eso tu cita quedó cancelada y también se quitó del calendario de tu teléfono. Si quieres, tu asesor te ayuda a encontrar otras opciones.${detalle ? ' ' + escaparHtml(detalle) : ''}</p>
       ${
         similares.length
           ? `<div style="font-size:13px;color:${marca.principal};font-weight:700;letter-spacing:.03em;margin-bottom:4px">Estos inmuebles pueden interesarte</div>
       <table style="width:100%;border-collapse:collapse;margin-bottom:8px">${similares.map(filaSimilar).join('')}</table>`
           : ''
-      }
-    </div>
-    <div style="background:#f4f4f4;padding:20px 28px;border-top:1px solid #efefef">
-      <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Si tienes dudas o quieres agendar una visita a alguno de estos inmuebles, comunícate con tu asesor.</p>
-    </div>
-  </div>
-  <p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${escaparHtml(nombreRemitente)}</p>
-  ${pieContacto(marca)}
-</div>
-</body>
-</html>`;
+      }`, despues: '<p>Si tienes dudas o quieres agendar una visita a alguno de estos inmuebles, comunícate con tu asesor.</p>' });
 
     if (!transporte || !config) {
       await registrarLog(admin, {

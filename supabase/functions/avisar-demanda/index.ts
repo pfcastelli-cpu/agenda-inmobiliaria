@@ -5,7 +5,8 @@
 // Destinatarios: correos de aviso de encuesta de Empresa (si hay) o administradores activos. Respeta correo_modo_pruebas.
 // Se despliega con --no-verify-jwt; la credencial es el encabezado x-cron-secreto (mismo secreto que las encuestas).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo, pieContacto, type MarcaCorreo } from '../_shared/marca-correo.ts';
+import { marcaCorreo, type MarcaCorreo } from '../_shared/marca-correo.ts';
+import { correoBase } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -61,20 +62,19 @@ async function destinatarios(admin: Admin, empresaId: string, config: Fila): Pro
 }
 
 function html(marca: MarcaCorreo, dominio: string, lista: { m: Fila; nivel: string }[], modoPruebas: boolean, real: string) {
-  const tarjetas = lista.map(({ m, nivel }) => `<div style="border:1px solid #e5e7eb;border-left:5px solid ${nivel === 'urgente' ? '#DC2626' : '#D97706'};border-radius:12px;padding:12px 14px;margin:0 0 12px">
-<div style="font-weight:600;color:${marca.principal};font-size:15px">${nivel === 'urgente' ? '🔴 Urgente' : '🟡 Atención'} · Inmueble ${esc(m.numero_inmueble)}</div>
-<div style="color:#6b6b6b;font-size:13px;margin:2px 0 6px">${esc([m.direccion, m.barrio].filter(Boolean).join(', '))} · ${esc(m.tipo_oferta || '')} ${cop(m.valor_canon || m.valor_venta || 0)}</div>
-<div style="color:#4d4d4d;font-size:14px;line-height:1.55">${esc(texto(m, nivel))}</div></div>`).join('');
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:28px 16px">
-${modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(real)}</div>` : ''}
-<div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
-${encabezadoImagen(marca, 'Alerta de demanda', 'ninguna')}
-<div style="padding:28px 26px"><h1 style="color:${marca.principal};font-size:24px;line-height:1.25;font-weight:600;margin:0 0 12px">Mucha demanda en ${lista.length === 1 ? 'un inmueble' : lista.length + ' inmuebles'}</h1>
-<p style="color:#4d4d4d;font-size:14px;line-height:1.6;margin:0 0 14px">Esto es una sugerencia para revisar el precio a tiempo; el sistema no cambia nada solo.</p>
-${tarjetas}
-<p style="margin:18px 0 0;text-align:center"><a href="https://${dominio}/" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:999px">Abrir Configuración → Demanda</a></p></div></div>
-${pieContacto(marca)}</div></body></html>`;
+  const tarjetas = lista.map(({ m, nivel }) => `<div style="margin:0 0 14px;padding:14px 16px;border:1px solid #e7ebee;border-radius:14px">
+<div style="font-weight:700;color:${marca.principal};font-size:15px">${nivel === 'urgente' ? '🔴 Urgente' : '🟡 Atención'} · Inmueble ${esc(m.numero_inmueble)}</div>
+<div style="margin:4px 0 7px;font-size:13px;color:#63707a">${esc([m.direccion, m.barrio].filter(Boolean).join(', '))} · ${esc(m.tipo_oferta || '')} ${cop(m.valor_canon || m.valor_venta || 0)}</div>
+<div style="font-size:14px;line-height:1.55">${esc(texto(m, nivel))}</div></div>`).join('');
+  return correoBase(marca, {
+    tema: 'demanda',
+    titulo: `Mucha demanda en ${lista.length === 1 ? 'un inmueble' : lista.length + ' inmuebles'}`,
+    preheader: 'Sugerencia para revisar la demanda de tus inmuebles.',
+    cuerpo: `<p style="margin:0 0 16px">Esto es una sugerencia para revisar el precio a tiempo; el sistema no cambia nada solo.</p>${tarjetas}`,
+    botones: [{ texto: 'Abrir Configuración → Demanda', url: `https://${dominio}/`, variante: 'contorno' }],
+    modoPruebas,
+    destinatarioReal: real,
+  });
 }
 
 Deno.serve(async (req) => {

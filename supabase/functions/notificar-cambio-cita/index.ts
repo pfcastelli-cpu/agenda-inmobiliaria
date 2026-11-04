@@ -13,6 +13,7 @@
 import { preferenciasDe } from '../_shared/preferencias-propietario.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, enlaceInmueble, marcaCorreo, type MarcaCorreo, emojiTitulo, pieContacto } from '../_shared/marca-correo.ts';
+import { correoBase } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -161,20 +162,7 @@ function plantilla(o: {
   remitente: string;
   marca: MarcaCorreo;
 }) {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:28px 16px">
-${o.modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(o.destinatarioReal)}</div>` : ''}
-<div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
-${encabezadoImagen(o.marca, o.titulo, 'visita')}
-<div style="padding:28px 26px">
-<h1 style="color:${o.marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 12px">${esc(o.titulo)} ${emojiTitulo(o.titulo)}</h1>
-<div style="color:#4d4d4d;font-size:14px;line-height:1.55">${o.cuerpo}</div>
-${o.boton ? `<p style="margin:22px 0 0;text-align:center"><a href="${esc(o.boton.url)}" style="display:inline-block;background:${o.marca.principal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 24px;border-radius:999px">${esc(o.boton.texto)}</a></p>` : ''}
-</div>
-</div>
-<p style="text-align:center;color:#6b6b6b;font-size:11.5px;margin-top:18px">${esc(o.remitente)}</p>
-  ${pieContacto(o.marca)}
-</div></body></html>`;
+  return correoBase(o.marca, { titulo: o.titulo, cuerpo: o.cuerpo, tema: 'visita', modoPruebas: o.modoPruebas, destinatarioReal: o.destinatarioReal, botones: o.boton ? [{ ...o.boton, variante: 'principal' }] : undefined });
 }
 
 Deno.serve(async (req) => {

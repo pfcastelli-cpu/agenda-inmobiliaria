@@ -6,7 +6,8 @@
 // guardados en agenda_propietarios para ese inmueble — nunca a un
 // destinatario arbitrario que venga en la solicitud.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, enlaceInmueble, marcaCorreo, bloqueCaptacion, pieLegal } from '../_shared/marca-correo.ts';
+import { enlaceInmueble, marcaCorreo, bloqueCaptacion, pieLegal } from '../_shared/marca-correo.ts';
+import { correoBase, filaCorreo } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 import { preferenciasDe, urlPreferencias } from '../_shared/preferencias-propietario.ts';
 
@@ -380,32 +381,22 @@ Deno.serve(async (req) => {
   const whatsappUrl = celularLimpio ? `https://wa.me/${celularLimpio}?text=${encodeURIComponent(mensajeWhatsapp)}` : null;
   const llamarUrl = asesorCelular ? `tel:${asesorCelular.replace(/\s+/g, '')}` : null;
 
-  let filasBotones = '';
-  filasBotones += filaBoton(enlaceInmueble(config, inmueble.numero_inmueble), marca.principal, '#ffffff', '🏠', 'Ver el inmueble en nuestro sitio');
-  if (wazeUrl) filasBotones += filaBoton(wazeUrl, '#ffffff', marca.principal, '🚗', 'Cómo llegar con Waze');
-  if (mapsUrl) filasBotones += filaBoton(mapsUrl, '#ffffff', marca.principal, '🗺️', 'Cómo llegar con Google Maps');
-  if (whatsappUrl)
-    filasBotones += filaBoton(
-      whatsappUrl,
-      '#ffffff',
-      marca.principal,
-      '💬',
-      `Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp`,
-    );
-  if (llamarUrl) filasBotones += filaBoton(llamarUrl, '#ffffff', marca.principal, '📞', `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`);
+  const botones = [
+    { texto: 'Ver el inmueble en nuestro sitio', url: enlaceInmueble(config, inmueble.numero_inmueble), variante: 'principal' as const },
+    wazeUrl ? { texto: 'Cómo llegar con Waze', url: wazeUrl, variante: 'waze' as const } : null,
+    mapsUrl ? { texto: 'Cómo llegar con Google Maps', url: mapsUrl, variante: 'mapa' as const } : null,
+    whatsappUrl ? { texto: `Escribir a ${escaparHtml(asesorNombre) || 'tu asesor'} por WhatsApp`, url: whatsappUrl, variante: 'whatsapp' as const } : null,
+    llamarUrl ? { texto: `Llamar a ${escaparHtml(asesorNombre) || 'tu asesor'}`, url: llamarUrl, variante: 'llamar' as const } : null,
+  ].filter(Boolean) as { texto: string; url: string; variante: 'principal' | 'mapa' | 'waze' | 'llamar' | 'whatsapp' }[];
 
-  let filasDatos = filaDato('🏠', 'Inmueble', `Nº ${inmueble.numero_inmueble}`);
-  filasDatos += filaDato('📅', 'Fecha de la visita', escaparHtml(fechaTexto));
-  filasDatos += filaDato('🕐', 'Hora', escaparHtml(horaTexto));
+  let filasDatos = filaCorreo(marca, 'Inmueble', `Nº ${inmueble.numero_inmueble}`);
+  filasDatos += filaCorreo(marca, 'Fecha de la visita', fechaTexto);
+  filasDatos += filaCorreo(marca, 'Hora', horaTexto);
   if (direccion) {
-    filasDatos += filaDato('📍', 'Dirección', `${escaparHtml(direccion)}${ciudad ? `, ${escaparHtml(ciudad)}` : ''}`);
+    filasDatos += filaCorreo(marca, 'Dirección', `${direccion}${ciudad ? `, ${ciudad}` : ''}`);
   }
   if (asesorNombre) {
-    filasDatos += filaDato(
-      '👤',
-      'Asesor a cargo',
-      `${escaparHtml(asesorNombre)}${asesorCelular ? ` · ${escaparHtml(asesorCelular)}` : ''}`,
-    );
+    filasDatos += filaCorreo(marca, 'Asesor a cargo', `${asesorNombre}${asesorCelular ? ` · ${asesorCelular}` : ''}`);
   }
 
   // Invitación de calendario para el propietario — mismo evento (mismo UID)
@@ -438,44 +429,9 @@ Deno.serve(async (req) => {
   }
 
   function construirHtml(nombrePropietario: string, destinatarioRealCorreo: string) {
-    const bannerPruebas = modoPruebas
-      ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
-        MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioRealCorreo)}
-      </div>`
-      : '';
-    return `<!doctype html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:28px 16px">
-  ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
-    ${encabezadoImagen(marca, `Se agendó una visita en tu inmueble`)}
-    <div style="padding:28px 26px 8px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 4px">${reagendada ? 'Cambió la hora de una visita en tu inmueble 🔄' : 'Se agendó una visita en tu inmueble 🏡'}</h1>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, ${reagendada ? 'te avisamos que una visita ya agendada cambió de hora; esta es la hora actual:' : 'te informamos que un cliente interesado visitará tu inmueble:'}</p>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
-        ${filasDatos}
-      </table>
-    </div>
-    ${
-      filasBotones
-        ? `<div style="padding:6px 26px 26px">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        ${filasBotones}
-      </table>
-    </div>`
-        : ''
-    }
-    ${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}
-    <div style="background:#f4f4f4;padding:20px 28px;border-top:1px solid #efefef">
-      <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>
-    </div>
-  </div>
-  ${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}
-</div>
-</body>
-</html>`;
+    const cuerpo = `<p>Hola ${escaparHtml(nombrePropietario) || ''}, ${reagendada ? 'te avisamos que una visita ya agendada cambió de hora; esta es la hora actual:' : 'te informamos que un cliente interesado visitará tu inmueble:'}</p><table style="width:100%;border-collapse:collapse;margin:18px 0 8px">${filasDatos}</table>`;
+    const despues = `${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}<p>Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}`;
+    return correoBase(marca, { titulo: reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble', tema: 'sala', cuerpo, botones, despues, modoPruebas: modoPruebas, destinatarioReal: destinatarioRealCorreo });
   }
 
   let password: string | null = null;

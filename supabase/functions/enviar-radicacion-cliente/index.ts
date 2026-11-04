@@ -1,3 +1,4 @@
+import { correoBase } from '../_shared/plantilla-correo.ts';
 // Edge Function: enviar-radicacion-cliente
 // Le manda al cliente que quiere avanzar con un inmueble el correo para radicar su estudio de arrendatario en la aseguradora:
 // enlaces (persona natural / jurídica), datos listos para copiar (póliza o código de la inmobiliaria, asesor, inmueble, canon,
@@ -84,20 +85,11 @@ function construirHtml(marca: MarcaCorreo, d: Record<string, any>, extra: { modo
   const lista: Aseguradora[] = d.aseguradoras || [];
   const varias = lista.length > 1;
   const nombres = lista.map((a) => a.aseguradora).join(' o ');
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:28px 16px">
-${extra.modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(extra.real)}</div>` : ''}
-<div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
-${encabezadoImagen(marca, 'Tu siguiente paso', 'ninguna')}
-<div style="padding:28px 26px 8px">
-<h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-weight:600;letter-spacing:-.01em;margin:0 0 10px">¡Vamos por tu nuevo hogar! 🏡</h1>
+  return correoBase(marca, { titulo: 'Vamos por tu nuevo hogar', tema: 'hogar', modoPruebas: extra.modoPruebas, destinatarioReal: extra.real, cuerpo: `
 <p style="color:#4d4d4d;font-size:15px;line-height:1.65;margin:0 0 14px;text-align:justify">Hola${nombre ? ' ' + esc(nombre) : ''}, nos alegra que quieras avanzar con el inmueble Nº ${esc(d.numero_inmueble)} (${esc(d.direccion || '')}). El siguiente paso es un <strong>estudio en línea con ${esc(nombres)}</strong>: es 100% digital y la respuesta llega el mismo día cuando la información está completa.${varias ? ' Elige la opción que prefieras.' : ''}</p>
 ${lista.map((a, i) => bloqueAseguradora(marca, d, a, varias, extra.paginaUrl, i === 0)).join('')}
 ${boton(extra.paginaUrl, 'Ver esta información en una página', marca, false)}
-${extra.asesorWa ? `<p style="margin:6px 0 0;text-align:center"><a href="https://wa.me/${extra.asesorWa}?text=${encodeURIComponent('Hola, quiero avanzar con el inmueble Nº ' + d.numero_inmueble + ' y tengo una duda sobre el estudio.')}" target="_blank" style="color:${marca.principal};font-weight:600;font-size:14px;text-decoration:none">💬 ¿Dudas? Escríbele a ${esc(extra.asesorNombreCita || 'tu asesor')} por WhatsApp</a></p>` : ''}
-</div></div>
-${pieContacto(marca)}
-</div></body></html>`;
+${extra.asesorWa ? `<p style="margin:6px 0 0;text-align:center"><a href="https://wa.me/${extra.asesorWa}?text=${encodeURIComponent('Hola, quiero avanzar con el inmueble Nº ' + d.numero_inmueble + ' y tengo una duda sobre el estudio.')}" target="_blank" style="color:${marca.principal};font-weight:600;font-size:14px;text-decoration:none">💬 ¿Dudas? Escríbele a ${esc(extra.asesorNombreCita || 'tu asesor')} por WhatsApp</a></p>` : ''}` });
 }
 
 Deno.serve(async (req) => {

@@ -43,7 +43,7 @@ export function marcaCorreo(config: any): MarcaCorreo {
 // Encabezado de marca: franja blanca con el logo centrado (sin línea de acento) y,
 // debajo, la fotografía de la empresa (imagen_correo_url) a todo el ancho. Sin logo ni foto,
 // queda solo el filo de color. Minimalista a propósito: la marca se nota por el orden, no por el ruido.
-export type TemaFoto = 'visita' | 'hogar' | 'opinion' | 'ninguna';
+export type TemaFoto = 'visita' | 'hogar' | 'opinion' | 'llaves' | 'fachada' | 'sala' | 'conjunto' | 'acceso' | 'soporte' | 'demanda' | 'ninguna';
 
 // `tema` elige una fotografía realista con personas según el tipo de correo (archivos en aplicacion/public/correo/, que
 // Netlify publica en citas.patrimonios.co/correo/). Solo se usan esas fotos con logo para la empresa de slug exacto patrimonios.
@@ -53,14 +53,15 @@ export function encabezadoImagen(marca: MarcaCorreo, alt: string, tema?: TemaFot
   const foto_url = tema === 'ninguna' ? null : tema && marca.fotosTematicas ? `https://citas.patrimonios.co/correo/foto-${tema}.jpg` : marca.imagen;
   const a = alt.replace(/[&<>"']/g, '');
   // Las fotos con personas ya llevan el logo incorporado: en esos correos no se repite arriba.
-  const fotoConLogo = marca.fotosTematicas && (tema === 'visita' || tema === 'hogar' || tema === 'opinion');
+  const fotoConLogo = marca.fotosTematicas && !!tema && tema !== 'ninguna';
   const logo = marca.logo && !fotoConLogo
     ? `<tr><td align="center" style="padding:30px 24px 24px;background:#ffffff"><img src="${marca.logo}" alt="${a}" height="44" border="0" style="height:44px;width:auto;max-width:240px;display:block;border:0;outline:none" /></td></tr>`
     : '';
   const foto = foto_url
     ? `<tr><td style="font-size:0;line-height:0"><img src="${foto_url}" alt="${a}" width="580" border="0" style="width:100%;max-width:580px;height:auto;display:block;border:0;outline:none" /></td></tr>`
     : '';
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${logo}${foto}</table>`;
+  const nombre = !logo && !foto ? `<tr><td align="center" style="padding:26px 24px 8px;background:#ffffff;color:${marca.principal};font-size:15px;font-weight:700">${marca.nombre.replace(/[&<>"']/g, '')}</td></tr>` : '';
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${logo}${foto}${nombre}</table>`;
 }
 
 // Enlace para VER el inmueble en el sitio de la empresa (plantilla con {numero}); si la empresa no la

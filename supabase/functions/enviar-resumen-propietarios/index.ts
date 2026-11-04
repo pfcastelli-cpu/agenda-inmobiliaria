@@ -5,7 +5,8 @@
 // Si en el periodo no hubo ninguna visita, no se manda nada (solo se anota que ya se revisó).
 // Respeta correo_modo_pruebas (todo va a correo_pruebas_destino mientras esté activo). verify_jwt = false: la credencial es el secreto.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo, pieLegal, bloqueCaptacion, type MarcaCorreo } from '../_shared/marca-correo.ts';
+import { marcaCorreo, bloqueCaptacion, type MarcaCorreo } from '../_shared/marca-correo.ts';
+import { correoBase } from '../_shared/plantilla-correo.ts';
 import { urlPreferencias } from '../_shared/preferencias-propietario.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
@@ -79,20 +80,18 @@ function htmlResumen(marca: MarcaCorreo, config: Cfg, opts: { modoPruebas: boole
 ${f.proximas.length ? `<div style="font-size:13px;color:#6b6b6b">Próximas: ${f.proximas.slice(0, 5).map((p) => `${esc(fechaLarga(p.fecha))}, ${esc(hora12(p.hora))}`).join(' · ')}</div>` : ''}
 ${f.token ? `<div style="margin-top:8px"><a href="https://${dominio}/propietario/${f.token}" style="color:${marca.principal};font-weight:600;font-size:13px">📊 Ver el informe en vivo</a></div>` : ''}
 </div>`).join('');
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:28px 16px">
-${opts.modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(opts.real)}</div>` : ''}
-<div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
-${encabezadoImagen(marca, 'Resumen de tus inmuebles', 'ninguna')}
-<div style="padding:28px 26px 8px">
-<h1 style="color:${marca.principal};font-size:24px;line-height:1.25;font-weight:600;margin:0 0 12px">Resumen de tus inmuebles</h1>
-<p style="color:#4d4d4d;font-size:14px;line-height:1.6;margin:0 0 16px">Esto pasó ${esc(opts.periodo)}:</p>
-${tarjetas}
-</div>
-${opts.publicidad ? bloqueCaptacion(marca) : ''}
-</div>
-${pieLegal(marca, opts.urlPrefs)}
-</div></body></html>`;
+  return correoBase(marca, {
+    titulo: 'Resumen de tus inmuebles',
+    preheader: `Esto pasó ${opts.periodo}.`,
+    tema: 'conjunto',
+    cuerpo: `<p style="margin:0 0 16px">Esto pasó ${esc(opts.periodo)}:</p>${tarjetas}${opts.publicidad ? bloqueCaptacion(marca) : ''}`,
+    botones: [{ texto: 'Administrar preferencias', url: opts.urlPrefs, variante: 'contorno' }],
+    despues: opts.urlPrefs
+      ? `<p style="margin:0;font-size:13px;line-height:1.6">Elige cuándo recibir estos correos y si quieres recibir publicidad: <a href="${esc(opts.urlPrefs)}" style="color:${marca.principal};text-decoration:underline">administra tus preferencias</a>.</p>`
+      : '',
+    modoPruebas: opts.modoPruebas,
+    destinatarioReal: opts.real,
+  });
 }
 
 Deno.serve(async (req) => {

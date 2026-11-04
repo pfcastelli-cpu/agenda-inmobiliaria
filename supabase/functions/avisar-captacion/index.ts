@@ -5,6 +5,7 @@
 // desde la página pública en las últimas 2 horas y no repite el envío (se revisa agenda_correos_log). Respeta correo_modo_pruebas.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, marcaCorreo, pieContacto, type MarcaCorreo } from '../_shared/marca-correo.ts';
+import { correoBase, botonesCorreo, filaCorreo } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -30,15 +31,10 @@ const hora = (h: string) => String(h).slice(0, 5);
 function fila(k: string, v: string, marca: MarcaCorreo) {
   return v ? `<tr><td style="padding:8px 0;border-bottom:1px solid #efefef;color:#6b6b6b;font-size:13px;width:36%;vertical-align:top">${esc(k)}</td><td style="padding:8px 0;border-bottom:1px solid #efefef;color:${marca.principal};font-size:15px;font-weight:600;overflow-wrap:anywhere">${esc(v)}</td></tr>` : '';
 }
-function envoltura(marca: MarcaCorreo, titulo: string, cuerpo: string, modoPruebas: boolean, real: string) {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:28px 16px">
-${modoPruebas ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${esc(real)}</div>` : ''}
-<div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
-${encabezadoImagen(marca, titulo, 'ninguna')}
-<div style="padding:26px 26px 20px">${cuerpo}</div></div>
-${pieContacto(marca)}
-</div></body></html>`;
+// Script (Apps Script) donde el propietario va enviando la información de su inmueble para que el asesor llegue con los datos.
+const URL_INFO_INMUEBLE = Deno.env.get('CAPTACION_INFO_INMUEBLE_URL') || 'https://script.google.com/a/macros/patrimonios.co/s/AKfycbxOyeD03mhncxQZM6muJbrS5wYeG4ok_QtrqueWhXrVNaxBCylPXhgT4bbp2Zwwc6SNNg/exec';
+function envoltura(marca: MarcaCorreo, titulo: string, cuerpo: string, modoPruebas: boolean, real: string, tema: 'llaves' | 'fachada' = 'llaves', botones?: Parameters<typeof correoBase>[1]['botones']) {
+  return correoBase(marca, { titulo, cuerpo, tema, botones, modoPruebas, destinatarioReal: real });
 }
 
 Deno.serve(async (req) => {
@@ -98,12 +94,17 @@ Deno.serve(async (req) => {
   const para = correoValido(cita.cliente_email);
   if (para) {
     const waAs = wa(asesor?.celular);
-    await enviar('cliente', para, `Recibimos tu solicitud: ${fechaLarga(cita.fecha)} a las ${hora(cita.hora_inicio)}`, (p) => envoltura(marca, 'Tu cita de captación',
-      `<h1 style="color:${marca.principal};font-size:25px;line-height:1.25;font-weight:600;margin:0 0 10px">¡Gracias por confiar en nosotros! 🏡</h1>
-<p style="color:#4d4d4d;font-size:15px;line-height:1.65;margin:0 0 16px">Hola${nombre1 ? ' ' + esc(nombre1) : ''}, tu cita quedó agendada. Un asesor irá a conocer tu inmueble, tomar las fotos y explicarte cómo lo publicamos y administramos.</p>
-<table style="width:100%;border-collapse:collapse">${fila('Cuándo', cuando, marca)}${fila('Dónde', direccion, marca)}${fila('Tu asesor', asesor?.nombre || '', marca)}${fila('Celular del asesor', asesor?.celular || '', marca)}</table>
-<p style="color:#4d4d4d;font-size:14px;line-height:1.65;margin:16px 0 0">Si necesitas cambiar la hora o tienes alguna duda, escríbele o llámale a tu asesor.</p>
-${waAs ? `<p style="margin:14px 0 0;text-align:center"><a href="https://wa.me/${waAs}?text=${encodeURIComponent('Hola, agendé una cita para captar mi inmueble y quiero consultar algo.')}" target="_blank" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 24px;border-radius:999px">💬 Escribir a mi asesor</a></p>` : ''}`, p, para));
+    await enviar('cliente', para, `Recibimos tu solicitud: ${fechaLarga(cita.fecha)} a las ${hora(cita.hora_inicio)}`, (p) => envoltura(marca, '¡Gracias por confiar en nosotros! 🔑', `
+<p style="margin:0 0 16px">Hola${nombre1 ? ' ' + esc(nombre1) : ''}, ¡qué alegría que nos confíes tu inmueble! Tu cita quedó agendada y <b>${esc(asesor?.nombre || 'tu asesor')}</b> irá a conocerlo, tomar las fotos y explicarte cómo lo publicamos y administramos.</p>
+<table role="presentation" style="width:100%;border-collapse:collapse">${filaCorreo(marca, '📅 Cuándo', cuando)}${filaCorreo(marca, '📍 Dónde', direccion)}${filaCorreo(marca, '🙋 Tu asesor', asesor?.nombre || '')}</table>
+<p style="margin:22px 0 8px;font-weight:700;color:${marca.principal}">Así seguimos juntos</p>
+<table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px;line-height:1.5">
+<tr><td style="padding:6px 0;width:34px;font-size:20px;vertical-align:top">1️⃣</td><td style="padding:6px 0"><b>Cuéntanos de tu inmueble</b> con el botón de abajo. Así tu asesor llega con los datos listos y la visita rinde más.</td></tr>
+<tr><td style="padding:6px 0;font-size:20px;vertical-align:top">2️⃣</td><td style="padding:6px 0"><b>Visita y fotos:</b> te acompañamos en la fecha acordada.</td></tr>
+<tr><td style="padding:6px 0;font-size:20px;vertical-align:top">3️⃣</td><td style="padding:6px 0"><b>Publicamos</b> tu inmueble y te vamos contando cómo avanza.</td></tr>
+</table>
+${botonesCorreo(marca, [{ texto: '📎 Enviar la información de mi inmueble', url: URL_INFO_INMUEBLE, variante: 'principal' }, waAs ? { texto: 'Escribir a mi asesor', url: `https://wa.me/${waAs}?text=${encodeURIComponent('Hola, agendé una cita para captar mi inmueble y quiero consultar algo.')}`, variante: 'whatsapp' } : null, asesor?.celular ? { texto: 'Llamar al asesor', url: `tel:${asesor.celular.replace(/\D/g, '')}`, variante: 'llamar' } : null].filter(Boolean) as any)}
+<p style="margin:20px 0 0;font-size:14px;line-height:1.6">¿Necesitas cambiar la hora o tienes una duda? Escríbele o llámale a tu asesor${asesor?.celular ? ' al <b>' + esc(asesor.celular) + '</b>' : ''}: te responde con gusto. 💙</p>`, p, para, 'llaves'));
   }
 
   // 2) Aviso al asesor.
@@ -112,13 +113,11 @@ ${waAs ? `<p style="margin:14px 0 0;text-align:center"><a href="https://wa.me/${
     const waProp = wa(cita.cliente_telefono);
     const mapa = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`;
     for (const real of correos) {
-      await enviar('interno', real, `Nueva captación · ${cita.ciudad_libre} · ${fechaLarga(cita.fecha)} ${hora(cita.hora_inicio)}`, (p) => envoltura(marca, 'Nueva captación',
-        `<h1 style="color:${marca.principal};font-size:24px;line-height:1.25;font-weight:600;margin:0 0 10px">Tienes una nueva captación 🔑</h1>
-<p style="color:#4d4d4d;font-size:15px;line-height:1.65;margin:0 0 14px">Hola ${esc(asesor!.nombre)}, un propietario agendó por la página pública. Es una cita con prioridad total y ya está en tu agenda. <b>Verifica que el inmueble esté en tu zona de cobertura</b>; si no, avisa a la administración para reasignarla.</p>
+      await enviar('interno', real, `Nueva captación · ${cita.ciudad_libre} · ${fechaLarga(cita.fecha)} ${hora(cita.hora_inicio)}`, (p) => envoltura(marca, 'Tienes una nueva captación 🔑', `
+<p style="color:#4d4d4d;font-size:15px;line-height:1.65;margin:0 0 14px">Hola ${esc(asesor!.nombre)}, un propietario agendó por la página pública. La cita ya está en tu agenda y el propietario recibió el enlace para enviarte la información del inmueble. <b>Verifica que el inmueble esté en tu zona de cobertura</b>; si no, avisa a la administración para reasignarla.</p>
 <table style="width:100%;border-collapse:collapse">${fila('Cuándo', cuando, marca)}${fila('Propietario', cita.cliente_nombre || '', marca)}${fila('Celular', cita.cliente_telefono || '', marca)}${fila('Correo', cita.cliente_email || '', marca)}${fila('Dirección', direccion, marca)}${fila('Tipo de inmueble', cita.tipo_inmueble_captacion || '', marca)}${fila('Valor esperado', cita.valor_estimado_captacion ? '$ ' + Math.round(Number(cita.valor_estimado_captacion)).toLocaleString('es-CO') : '', marca)}</table>
 <p style="color:#6b6b6b;font-size:13px;line-height:1.6;margin:14px 0 0;white-space:pre-line">${esc(String(cita.notas || '').replace(/^Solicitud hecha por el propietario desde la página pública\.\n?/, ''))}</p>
-<p style="margin:14px 0 0;text-align:center"><a href="${esc(mapa)}" target="_blank" style="color:${marca.principal};font-weight:600;font-size:14px;text-decoration:none">📍 Ver la dirección en Google Maps</a></p>
-${waProp ? `<p style="margin:14px 0 0;text-align:center"><a href="https://wa.me/${waProp}?text=${encodeURIComponent('Hola ' + nombre1 + ', soy ' + asesor!.nombre + '. Recibí tu solicitud para consignar tu inmueble y quiero confirmar la cita.')}" target="_blank" style="display:inline-block;background:${marca.principal};color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 24px;border-radius:999px">💬 Escribir al propietario</a></p>` : ''}`, p, real));
+${botonesCorreo(marca, [{ texto: 'Ver la dirección en Google Maps', url: mapa, variante: 'mapa' }, waProp ? { texto: 'Escribir al propietario', url: `https://wa.me/${waProp}?text=${encodeURIComponent('Hola ' + nombre1 + ', soy ' + asesor!.nombre + '. Recibí tu solicitud para consignar tu inmueble y quiero confirmar la cita.')}`, variante: 'whatsapp' } : null, cita.cliente_telefono ? { texto: 'Llamar al propietario', url: `tel:${cita.cliente_telefono.replace(/\D/g, '')}`, variante: 'llamar' } : null].filter(Boolean) as any)}`, p, real, 'fachada'));
     }
   }
   return json({ ok: true, enviado: resultados.some((r) => r.endsWith(':enviado')), resultados });

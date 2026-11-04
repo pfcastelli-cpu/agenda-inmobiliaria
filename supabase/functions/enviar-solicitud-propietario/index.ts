@@ -8,7 +8,8 @@
 // afuera), y le avisa por correo al asesor a cargo del inmueble, con copia a
 // su supervisor si tiene uno configurado.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo, emojiTitulo, pieContacto } from '../_shared/marca-correo.ts';
+import { marcaCorreo, emojiTitulo, pieContacto } from '../_shared/marca-correo.ts';
+import { correoBase, filaCorreo } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -217,21 +218,21 @@ Deno.serve(async (req) => {
     : destinoReal;
 
   const filasDetalle: string[] = [
-    `<tr><td style="padding:6px 0;color:#4d4d4d;font-size:12px;text-transform:uppercase">Inmueble</td></tr><tr><td style="padding:0 0 10px;font-size:15px;font-weight:700;color:${marca.principal}">Nº ${numeroInmueble}</td></tr>`,
+    filaCorreo(marca, 'Inmueble', `Nº ${numeroInmueble}`),
   ];
   if (tipo === 'cambio_precio' && valorPropuesto != null) {
     filasDetalle.push(
-      `<tr><td style="padding:6px 0;color:#4d4d4d;font-size:12px;text-transform:uppercase">Precio propuesto por el propietario</td></tr><tr><td style="padding:0 0 10px;font-size:15px;font-weight:700;color:${marca.principal}">$${valorPropuesto.toLocaleString('es-CO')}</td></tr>`,
+      filaCorreo(marca, 'Precio propuesto por el propietario', `$${valorPropuesto.toLocaleString('es-CO')}`),
     );
   }
   if (detalle) {
     filasDetalle.push(
-      `<tr><td style="padding:6px 0;color:#4d4d4d;font-size:12px;text-transform:uppercase">Mensaje del propietario</td></tr><tr><td style="padding:0 0 10px;font-size:14px;color:${marca.principal}">${escaparHtml(detalle)}</td></tr>`,
+      filaCorreo(marca, 'Mensaje del propietario', detalle),
     );
   }
   if (propietarioNombre || propietarioEmail) {
     filasDetalle.push(
-      `<tr><td style="padding:6px 0;color:#4d4d4d;font-size:12px;text-transform:uppercase">Quién escribió</td></tr><tr><td style="padding:0 0 4px;font-size:14px;color:${marca.principal}">${escaparHtml(propietarioNombre) || ''}${propietarioEmail ? ` · ${escaparHtml(propietarioEmail)}` : ''}</td></tr>`,
+      filaCorreo(marca, 'Quién escribió', `${propietarioNombre || ''}${propietarioEmail ? ` · ${propietarioEmail}` : ''}`),
     );
   }
 
@@ -241,7 +242,8 @@ Deno.serve(async (req) => {
       </div>`
     : '';
 
-  const html = `<!doctype html>
+  const html = correoBase(marca, { titulo: ETIQUETAS_TIPO[tipo], tema: 'sala', cuerpo: `<p>El propietario del inmueble Nº ${numeroInmueble}${nombreAsesor ? ` (tu inmueble, ${escaparHtml(nombreAsesor)})` : ''} escribió desde el informe en vivo:</p><table style="width:100%;border-collapse:collapse;margin-top:18px">${filasDetalle.join('')}</table>`, modoPruebas, destinatarioReal: `${destinoReal.to}${destinoReal.cc ? ` (con copia a ${destinoReal.cc})` : ''}` }); /*
+  const htmlLegacy = `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
 <body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
@@ -259,7 +261,7 @@ Deno.serve(async (req) => {
   ${pieContacto(marca)}
 </div>
 </body>
-</html>`;
+</html>`; */
 
   try {
     await transporte.sendMail({

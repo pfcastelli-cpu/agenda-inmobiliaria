@@ -6,7 +6,8 @@
 // Solo administradores activos de la empresa pueden usarla — se verifica con el JWT
 // del que llama, igual que en gestion-accesos.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo, pieContacto } from '../_shared/marca-correo.ts';
+import { marcaCorreo } from '../_shared/marca-correo.ts';
+import { correoBase } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -97,11 +98,17 @@ Deno.serve(async (req) => {
   }
 
   const asunto = `Correo de prueba — ${marca.nombre}`;
-  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head><body style="margin:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif"><div style="max-width:560px;margin:0 auto;padding:28px 16px"><div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:2px;overflow:hidden">${encabezadoImagen(marca, 'Prueba de correo', 'ninguna')}<div style="padding:28px 26px">
+  const html = correoBase(marca, {
+    titulo: 'Configuración de correo verificada',
+    tema: 'soporte',
+    preheader: 'Prueba de envío desde el panel de administración.',
+    cuerpo: `<p style="margin:0">Este correo de prueba fue enviado desde el panel de administración usando la configuración SMTP guardada para los correos de la agenda.</p><p style="margin:14px 0 0;font-size:13px;color:#63707a">Enviado el ${new Date().toLocaleString('es-CO')}.</p>`,
+  });
+/*
     <h2 style="color:${marca.principal};font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:26px;margin:0 0 10px">Tu configuración de correo funciona ✅</h2>
     <p style="color:#4d4d4d">Este es un correo de prueba enviado desde el panel de administración de la agenda de citas, usando exactamente los mismos datos SMTP que se usan para los correos reales de confirmación de visitas.</p>
     <p style="color:#6b6b6b;font-size:12px">Enviado el ${new Date().toLocaleString('es-CO')}.</p>
-  </div></div>${pieContacto(marca)}</div></body></html>`;
+  </div></div>${pieContacto(marca)}</div></body></html>*/
 
   let password: string | null = null;
   try {

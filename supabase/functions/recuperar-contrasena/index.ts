@@ -6,7 +6,8 @@
 // se envía por el SMTP de la empresa (el del correo de citas), no por el correo integrado de
 // Supabase (límite ~2 por hora y solo a miembros del equipo de Supabase).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo, pieContacto } from '../_shared/marca-correo.ts';
+import { marcaCorreo } from '../_shared/marca-correo.ts';
+import { correoBase } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -116,7 +117,16 @@ Deno.serve(async (req) => {
     const modoPruebas = config.correo_modo_pruebas !== false;
     const destino = modoPruebas ? config.correo_pruebas_destino || correo : correo;
     const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
-    const html = `<!doctype html>
+    const html = correoBase(marca, {
+      titulo: 'Restablece tu contraseña',
+      tema: 'acceso',
+      preheader: 'Elige una contraseña nueva para volver a entrar a la agenda.',
+      cuerpo: `<p style="margin:0">Hola ${escaparHtml(miembro.nombre || '')}, pulsa el botón para elegir una contraseña nueva.</p><p style="margin:14px 0 0;font-size:13px;color:#63707a">El enlace es de un solo uso. Si no lo pediste, ignora este correo: tu contraseña sigue igual.</p>`,
+      botones: [{ texto: '🔑 Elegir contraseña nueva', url: accion }],
+      modoPruebas,
+      destinatarioReal: correo,
+    });
+/*
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
 <body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
@@ -139,7 +149,7 @@ Deno.serve(async (req) => {
   ${pieContacto(marca)}
 </div>
 </body>
-</html>`;
+</html>*/
 
     const asunto = 'Restablece tu contraseña';
     const registrar = (estado: 'enviado' | 'fallido', detalle: string | null) =>

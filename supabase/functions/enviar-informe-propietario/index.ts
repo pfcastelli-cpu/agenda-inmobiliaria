@@ -10,7 +10,8 @@
 // necesita sesión — el token (uuid en agenda_inmuebles.token_informe_propietario)
 // es el único requisito de acceso, igual que /inmuebles/:numero para reservar.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { encabezadoImagen, marcaCorreo, bloqueCaptacion, pieLegal } from '../_shared/marca-correo.ts';
+import { marcaCorreo, bloqueCaptacion, pieLegal } from '../_shared/marca-correo.ts';
+import { correoBase } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 import { preferenciasDe, urlPreferencias } from '../_shared/preferencias-propietario.ts';
 
@@ -215,11 +216,12 @@ Deno.serve(async (req) => {
   });
 
   function construirHtml(nombrePropietario: string, destinatarioRealCorreo: string) {
-    const bannerPruebas = modoPruebas
+    /* const bannerPruebas = modoPruebas
       ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
         MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioRealCorreo)}
       </div>`
       : '';
+    return correoBase(marca, { titulo: `Informe de tu inmueble Nº ${numeroInmueble}`, tema: 'fachada', cuerpo: `<p>Hola ${escaparHtml(nombrePropietario) || ''}, te compartimos el link con el informe en vivo de tu inmueble: cuántas visitas ha tenido, qué han dicho los clientes que lo han visto, y un espacio para pedirnos un cambio de precio, de fotos, o una asesoría cuando quieras. Se actualiza solo, así que puedes volver a verlo cuando quieras con este mismo link.</p>`, botones: [{ texto: 'Ver el informe de mi inmueble', url: linkInforme, variante: 'principal' }], despues: `${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}<p>Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}`, modoPruebas, destinatarioReal: destinatarioRealCorreo }); /*
     return `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
@@ -247,7 +249,7 @@ Deno.serve(async (req) => {
   ${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}
 </div>
 </body>
-</html>`;
+</html>`; */
   }
 
   let enviados = 0;
