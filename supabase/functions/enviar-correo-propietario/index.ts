@@ -431,7 +431,7 @@ Deno.serve(async (req) => {
   function construirHtml(nombrePropietario: string, destinatarioRealCorreo: string) {
     const cuerpo = `<p>Hola ${escaparHtml(nombrePropietario) || ''}, ${reagendada ? 'te avisamos que una visita ya agendada cambió de hora; esta es la hora actual:' : 'te informamos que un cliente interesado visitará tu inmueble:'}</p><table style="width:100%;border-collapse:collapse;margin:18px 0 8px">${filasDatos}</table>`;
     const despues = `${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}<p>Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}`;
-    return correoBase(marca, { titulo: reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble', tema: 'sala', cuerpo, botones, despues, modoPruebas: modoPruebas, destinatarioReal: destinatarioRealCorreo });
+    return correoBase(marca, { titulo: reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble', tema: 'visitaprop', cuerpo, botones, despues, modoPruebas: modoPruebas, destinatarioReal: destinatarioRealCorreo });
   }
 
   let password: string | null = null;

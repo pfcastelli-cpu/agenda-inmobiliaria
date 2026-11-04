@@ -33,7 +33,7 @@ function fila(k: string, v: string, marca: MarcaCorreo) {
 }
 // Script (Apps Script) donde el propietario va enviando la información de su inmueble para que el asesor llegue con los datos.
 const URL_INFO_INMUEBLE = Deno.env.get('CAPTACION_INFO_INMUEBLE_URL') || 'https://script.google.com/a/macros/patrimonios.co/s/AKfycbxOyeD03mhncxQZM6muJbrS5wYeG4ok_QtrqueWhXrVNaxBCylPXhgT4bbp2Zwwc6SNNg/exec';
-function envoltura(marca: MarcaCorreo, titulo: string, cuerpo: string, modoPruebas: boolean, real: string, tema: 'llaves' | 'fachada' = 'llaves', botones?: Parameters<typeof correoBase>[1]['botones']) {
+function envoltura(marca: MarcaCorreo, titulo: string, cuerpo: string, modoPruebas: boolean, real: string, tema: 'llaves' | 'lujo' = 'llaves', botones?: Parameters<typeof correoBase>[1]['botones']) {
   return correoBase(marca, { titulo, cuerpo, tema, botones, modoPruebas, destinatarioReal: real });
 }
 
@@ -117,7 +117,7 @@ ${botonesCorreo(marca, [{ texto: '📎 Enviar la información de mi inmueble', u
 <p style="color:#4d4d4d;font-size:15px;line-height:1.65;margin:0 0 14px">Hola ${esc(asesor!.nombre)}, un propietario agendó por la página pública. La cita ya está en tu agenda y el propietario recibió el enlace para enviarte la información del inmueble. <b>Verifica que el inmueble esté en tu zona de cobertura</b>; si no, avisa a la administración para reasignarla.</p>
 <table style="width:100%;border-collapse:collapse">${fila('Cuándo', cuando, marca)}${fila('Propietario', cita.cliente_nombre || '', marca)}${fila('Celular', cita.cliente_telefono || '', marca)}${fila('Correo', cita.cliente_email || '', marca)}${fila('Dirección', direccion, marca)}${fila('Tipo de inmueble', cita.tipo_inmueble_captacion || '', marca)}${fila('Valor esperado', cita.valor_estimado_captacion ? '$ ' + Math.round(Number(cita.valor_estimado_captacion)).toLocaleString('es-CO') : '', marca)}</table>
 <p style="color:#6b6b6b;font-size:13px;line-height:1.6;margin:14px 0 0;white-space:pre-line">${esc(String(cita.notas || '').replace(/^Solicitud hecha por el propietario desde la página pública\.\n?/, ''))}</p>
-${botonesCorreo(marca, [{ texto: 'Ver la dirección en Google Maps', url: mapa, variante: 'mapa' }, waProp ? { texto: 'Escribir al propietario', url: `https://wa.me/${waProp}?text=${encodeURIComponent('Hola ' + nombre1 + ', soy ' + asesor!.nombre + '. Recibí tu solicitud para consignar tu inmueble y quiero confirmar la cita.')}`, variante: 'whatsapp' } : null, cita.cliente_telefono ? { texto: 'Llamar al propietario', url: `tel:${cita.cliente_telefono.replace(/\D/g, '')}`, variante: 'llamar' } : null].filter(Boolean) as any)}`, p, real, 'fachada'));
+${botonesCorreo(marca, [{ texto: 'Ver la dirección en Google Maps', url: mapa, variante: 'mapa' }, waProp ? { texto: 'Escribir al propietario', url: `https://wa.me/${waProp}?text=${encodeURIComponent('Hola ' + nombre1 + ', soy ' + asesor!.nombre + '. Recibí tu solicitud para consignar tu inmueble y quiero confirmar la cita.')}`, variante: 'whatsapp' } : null, cita.cliente_telefono ? { texto: 'Llamar al propietario', url: `tel:${cita.cliente_telefono.replace(/\D/g, '')}`, variante: 'llamar' } : null].filter(Boolean) as any)}`, p, real, 'lujo'));
     }
   }
   return json({ ok: true, enviado: resultados.some((r) => r.endsWith(':enviado')), resultados });

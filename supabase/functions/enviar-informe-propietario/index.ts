@@ -215,13 +215,29 @@ Deno.serve(async (req) => {
     },
   });
 
+  // Inmueble solo en venta: se le sugiere también arrendar, con estudio de mercado sin costo.
+  const { data: inmuebleOferta } = await admin
+    .from('agenda_inmuebles')
+    .select('tipo_oferta')
+    .eq('empresa_id', empresaId)
+    .eq('numero_inmueble', numeroInmueble)
+    .maybeSingle();
+  const soloVenta = inmuebleOferta?.tipo_oferta === 'Venta';
+  const correoEstudio = marca.contacto?.correo || '';
+  const sugerenciaArriendo = soloVenta
+    ? `<div style="margin-top:20px;padding:16px 18px;border-radius:16px;background:#eef8f7;border:1px solid #bfe3e0;font-size:14px;line-height:1.6"><b>💡 ¿Y si también lo arriendas?</b><br>Mientras se vende, un arriendo puede generarte ingresos. Hacemos un <b>estudio de mercado sin costo</b> para decirte a cuánto arrendarlo.</div>`
+    : '';
+  const botonEstudio = soloVenta && correoEstudio
+    ? [{ texto: '🔑 Quiero el estudio de mercado sin costo', url: `mailto:${correoEstudio}?subject=${encodeURIComponent(`Quiero el estudio de mercado para arrendar mi inmueble Nº ${numeroInmueble}`)}`, variante: 'contorno' as const }]
+    : [];
+
   function construirHtml(nombrePropietario: string, destinatarioRealCorreo: string) {
     /* const bannerPruebas = modoPruebas
       ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
         MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioRealCorreo)}
       </div>`
       : '';
-    return correoBase(marca, { titulo: `Informe de tu inmueble Nº ${numeroInmueble}`, tema: 'fachada', cuerpo: `<p>Hola ${escaparHtml(nombrePropietario) || ''}, te compartimos el link con el informe en vivo de tu inmueble: cuántas visitas ha tenido, qué han dicho los clientes que lo han visto, y un espacio para pedirnos un cambio de precio, de fotos, o una asesoría cuando quieras. Se actualiza solo, así que puedes volver a verlo cuando quieras con este mismo link.</p>`, botones: [{ texto: 'Ver el informe de mi inmueble', url: linkInforme, variante: 'principal' }], despues: `${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}<p>Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}`, modoPruebas, destinatarioReal: destinatarioRealCorreo }); /*
+    return correoBase(marca, { titulo: `Informe de tu inmueble Nº ${numeroInmueble}`, tema: 'informe', cuerpo: `<p>Hola ${escaparHtml(nombrePropietario) || ''}, te compartimos el link con el informe en vivo de tu inmueble: cuántas visitas ha tenido, qué han dicho los clientes que lo han visto, y un espacio para pedirnos un cambio de precio, de fotos, o una asesoría cuando quieras. Se actualiza solo, así que puedes volver a verlo cuando quieras con este mismo link.</p>${sugerenciaArriendo}`, botones: [{ texto: 'Ver el informe de mi inmueble', url: linkInforme, variante: 'principal' }, ...botonEstudio], despues: `${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}<p>Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}`, modoPruebas, destinatarioReal: destinatarioRealCorreo }); /*
     return `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>

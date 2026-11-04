@@ -206,6 +206,32 @@ function tarjetaOpiniones() {
   `;
 }
 
+// Cambio de precio: venta, arriendo o ambos, con la sugerencia de arrendar y el estudio de mercado sin costo.
+function bloquePrecio() {
+  const d = state.datos || {};
+  const inicial = d.tipo_oferta === 'Arriendo' ? 'arriendo' : 'venta';
+  const opcion = (v, t) => `<label style="display:flex;align-items:center;gap:8px;margin:0;font-weight:600"><input type="radio" name="pu-modalidad" value="${v}" ${v === inicial ? 'checked' : ''} style="width:auto;margin:0"> ${t}</label>`;
+  return `
+    <label>¿Qué precio quieres ajustar?</label>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin:4px 0 10px">${opcion('venta', '🏷️ Venta')}${opcion('arriendo', '🔑 Arriendo')}${opcion('ambos', '🏠 Los dos')}</div>
+    <div id="pu-campo-venta"><label for="pu-valor-venta">Nuevo precio de venta</label><input id="pu-valor-venta" type="number" min="0" step="1" placeholder="Ej: 850000000"></div>
+    <div id="pu-campo-arriendo"><label for="pu-valor-arriendo">Nuevo canon de arriendo (mensual)</label><input id="pu-valor-arriendo" type="number" min="0" step="1" placeholder="Ej: 3500000"></div>
+    <div id="pu-sugerencia-arriendo" class="pu-card" style="background:#eef8f7;border-color:#bfe3e0;margin:12px 0">
+      <strong>💡 ¿Y si también lo arriendas?</strong>
+      <p style="margin:6px 0 8px">Mientras se vende, un arriendo puede generarte ingresos. Hacemos un <strong>estudio de mercado sin costo</strong> para decirte a cuánto arrendarlo.</p>
+      <label style="display:flex;align-items:center;gap:8px;margin:0;font-weight:600"><input type="checkbox" id="pu-quiere-estudio" style="width:auto;margin:0"> Sí, quiero el estudio de mercado sin costo</label>
+    </div>`;
+}
+
+function actualizarModalidad() {
+  const m = document.querySelector('input[name="pu-modalidad"]:checked')?.value;
+  if (!m) return;
+  const mostrar = (id, ver) => { const el = document.getElementById(id); if (el) el.style.display = ver ? '' : 'none'; };
+  mostrar('pu-campo-venta', m !== 'arriendo');
+  mostrar('pu-campo-arriendo', m !== 'venta');
+  mostrar('pu-sugerencia-arriendo', m === 'venta');
+}
+
 function formularioSolicitud() {
   const tipo = state.formAbierto;
   if (!tipo) return '';
@@ -214,7 +240,7 @@ function formularioSolicitud() {
     <div class="pu-card" style="margin-top:14px">
       <h3 style="margin-top:0">${ETIQUETAS_TIPO[tipo]}</h3>
       <form id="pu-solicitud-form" data-tipo="${tipo}">
-        ${esPrecio ? `<label for="pu-valor-propuesto">¿A cuánto quieres ajustar el precio?</label><input id="pu-valor-propuesto" type="number" min="0" step="1" placeholder="Ej: 850000000">` : ''}
+        ${esPrecio ? bloquePrecio() : ''}
         <label for="pu-detalle">${esPrecio ? 'Cuéntanos por qué (opcional)' : tipo === 'cambio_fotos' ? '¿Qué fotos quieres cambiar o agregar?' : '¿En qué te gustaría que te asesoremos?'}</label>
         <textarea id="pu-detalle" rows="3" placeholder="Escribe aquí…" ${esPrecio ? '' : 'required'}></textarea>
         <label for="pu-nombre">Tu nombre</label>
@@ -234,6 +260,11 @@ function accionesSolicitud() {
     <h3>¿Quieres algo distinto?</h3>
     <p>Estas acciones le envían una solicitud a tu asesor (y a su supervisor); no cambian nada automáticamente en el anuncio.</p>
     ${state.mensajeExito ? `<div class="pu-card" style="background:#eafaf4;border-color:#bfe8d8">${escapeHtml(state.mensajeExito)}</div>` : ''}
+    ${state.datos?.tipo_oferta === 'Venta' && !state.formAbierto ? `<div class="pu-card" style="background:#eef8f7;border-color:#bfe3e0;margin-bottom:14px">
+      <strong>💡 ¿Y si también lo arriendas?</strong>
+      <p style="margin:6px 0 10px">Mientras se vende, un arriendo puede generarte ingresos. Hacemos un <strong>estudio de mercado sin costo</strong> para decirte a cuánto arrendarlo.</p>
+      <button type="button" class="pu-ver-inmueble" data-abrir="asesoria" data-detalle="Quiero el estudio de mercado sin costo para arrendar mi inmueble.">🔑 Quiero el estudio de mercado sin costo</button>
+    </div>` : ''}
     <div style="display:flex;flex-direction:column;gap:10px">
       <button type="button" class="pu-ver-inmueble" data-abrir="cambio_precio">Solicitar cambio de precio</button>
       <button type="button" class="pu-ver-inmueble" data-abrir="cambio_fotos">Solicitar cambio de fotos</button>
@@ -268,7 +299,11 @@ function render() {
 
 async function enviarSolicitud(form) {
   const tipo = form.dataset.tipo;
-  const valorInput = form.querySelector('#pu-valor-propuesto');
+  const modalidad = form.querySelector('input[name="pu-modalidad"]:checked')?.value || null;
+  const numero = (id) => { const v = form.querySelector(id)?.value; return v ? Number(v) : null; };
+  const valorVenta = modalidad && modalidad !== 'arriendo' ? numero('#pu-valor-venta') : null;
+  const valorArriendo = modalidad && modalidad !== 'venta' ? numero('#pu-valor-arriendo') : null;
+  const quiereEstudio = modalidad === 'venta' && !!form.querySelector('#pu-quiere-estudio')?.checked;
   const detalle = form.querySelector('#pu-detalle').value.trim();
   const nombre = form.querySelector('#pu-nombre').value.trim();
   const correo = form.querySelector('#pu-correo').value.trim();
@@ -297,7 +332,11 @@ async function enviarSolicitud(form) {
     body: {
       token: state.token,
       tipo,
-      valor_propuesto: valorInput && valorInput.value ? Number(valorInput.value) : null,
+      valor_propuesto: valorVenta ?? valorArriendo,
+      modalidad,
+      valor_venta: valorVenta,
+      valor_arriendo: valorArriendo,
+      quiere_estudio: quiereEstudio,
       detalle: detalle || null,
       propietario_nombre: nombre,
       propietario_email: correo,
@@ -326,6 +365,7 @@ function cablear() {
       state.mensajeExito = '';
       render();
       const detalle = document.getElementById('pu-detalle');
+      if (detalle && b.dataset.detalle) detalle.value = b.dataset.detalle;
       if (detalle) detalle.focus();
     });
   });
@@ -339,6 +379,8 @@ function cablear() {
   }
   const form = document.getElementById('pu-solicitud-form');
   if (form) {
+    form.querySelectorAll('input[name="pu-modalidad"]').forEach((r) => r.addEventListener('change', actualizarModalidad));
+    actualizarModalidad();
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       enviarSolicitud(form);

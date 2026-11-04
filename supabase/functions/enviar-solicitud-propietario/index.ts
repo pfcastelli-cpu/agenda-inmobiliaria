@@ -86,6 +86,17 @@ Deno.serve(async (req) => {
   const detalle = body.detalle ? String(body.detalle).slice(0, 2000) : null;
   const propietarioNombre = body.propietario_nombre ? String(body.propietario_nombre).slice(0, 200) : null;
   const propietarioEmail = body.propietario_email ? String(body.propietario_email).slice(0, 200) : null;
+  // Cambio de precio: venta, arriendo o ambos, y si pidió el estudio de mercado sin costo para arrendar.
+  const modalidad = ['venta', 'arriendo', 'ambos'].includes(String(body.modalidad)) ? String(body.modalidad) : null;
+  const numOpt = (v: unknown) => (v != null && v !== '' && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null);
+  const valorVenta = numOpt(body.valor_venta);
+  const valorArriendo = numOpt(body.valor_arriendo);
+  const quiereEstudio = body.quiere_estudio === true;
+  const dinero = (n: number | null) => (n != null ? `$${n.toLocaleString('es-CO')}` : 'sin valor');
+  const resumenPrecio = tipo === 'cambio_precio' && modalidad
+    ? [`Modalidad: ${modalidad === 'ambos' ? 'venta y arriendo' : modalidad}`, valorVenta != null ? `Precio de venta propuesto: ${dinero(valorVenta)}` : '', valorArriendo != null ? `Canon de arriendo propuesto: ${dinero(valorArriendo)}` : '', quiereEstudio ? 'Pidió el estudio de mercado sin costo para arrendar.' : ''].filter(Boolean).join('\n')
+    : '';
+  const detalleGuardado = [resumenPrecio, detalle].filter(Boolean).join('\n\n').slice(0, 2000) || null;
 
   const anonimo = createClient(SUPABASE_URL, ANON_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
@@ -93,7 +104,7 @@ Deno.serve(async (req) => {
     p_token: token,
     p_tipo: tipo,
     p_valor_propuesto: valorPropuesto,
-    p_detalle: detalle,
+    p_detalle: detalleGuardado,
     p_propietario_nombre: propietarioNombre,
     p_propietario_email: propietarioEmail,
   });
@@ -220,10 +231,12 @@ Deno.serve(async (req) => {
   const filasDetalle: string[] = [
     filaCorreo(marca, 'Inmueble', `Nº ${numeroInmueble}`),
   ];
-  if (tipo === 'cambio_precio' && valorPropuesto != null) {
-    filasDetalle.push(
-      filaCorreo(marca, 'Precio propuesto por el propietario', `$${valorPropuesto.toLocaleString('es-CO')}`),
-    );
+  if (tipo === 'cambio_precio') {
+    if (modalidad) filasDetalle.push(filaCorreo(marca, 'Quiere ajustar', modalidad === 'ambos' ? '🏠 Venta y arriendo' : modalidad === 'venta' ? '🏷️ Venta' : '🔑 Arriendo'));
+    if (valorVenta != null) filasDetalle.push(filaCorreo(marca, 'Nuevo precio de venta', dinero(valorVenta)));
+    if (valorArriendo != null) filasDetalle.push(filaCorreo(marca, 'Nuevo canon de arriendo', dinero(valorArriendo)));
+    if (!modalidad && valorPropuesto != null) filasDetalle.push(filaCorreo(marca, 'Precio propuesto por el propietario', dinero(valorPropuesto)));
+    if (modalidad === 'venta') filasDetalle.push(filaCorreo(marca, 'Estudio de mercado para arrendar', quiereEstudio ? '✅ Lo pidió: sin costo' : 'No lo pidió'));
   }
   if (detalle) {
     filasDetalle.push(
@@ -242,7 +255,7 @@ Deno.serve(async (req) => {
       </div>`
     : '';
 
-  const html = correoBase(marca, { titulo: ETIQUETAS_TIPO[tipo], tema: 'sala', cuerpo: `<p>El propietario del inmueble Nº ${numeroInmueble}${nombreAsesor ? ` (tu inmueble, ${escaparHtml(nombreAsesor)})` : ''} escribió desde el informe en vivo:</p><table style="width:100%;border-collapse:collapse;margin-top:18px">${filasDetalle.join('')}</table>`, modoPruebas, destinatarioReal: `${destinoReal.to}${destinoReal.cc ? ` (con copia a ${destinoReal.cc})` : ''}` }); /*
+  const html = correoBase(marca, { titulo: ETIQUETAS_TIPO[tipo], tema: 'sala', cuerpo: `<p>El propietario del inmueble Nº ${numeroInmueble}${nombreAsesor ? ` (tu inmueble, ${escaparHtml(nombreAsesor)})` : ''} escribió desde el informe en vivo:</p><table style="width:100%;border-collapse:collapse;margin-top:18px">${filasDetalle.join('')}</table>${tipo === 'cambio_precio' && modalidad === 'venta' ? `<div style="margin-top:18px;padding:14px 16px;border-radius:14px;background:#eef8f7;border:1px solid #bfe3e0;font-size:14px;line-height:1.55"><b>💡 Para tu llamada:</b> es solo venta. Sugiérele también <b>arrendar</b> y ofrécele el <b>estudio de mercado sin costo</b>.</div>` : ''}`, botones: propietarioEmail ? [{ texto: '✉️ Responder al propietario', url: `mailto:${propietarioEmail}`, variante: 'principal' }] : undefined, modoPruebas, destinatarioReal: `${destinoReal.to}${destinoReal.cc ? ` (con copia a ${destinoReal.cc})` : ''}` }); /*
   const htmlLegacy = `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>

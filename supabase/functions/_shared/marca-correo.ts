@@ -43,7 +43,7 @@ export function marcaCorreo(config: any): MarcaCorreo {
 // Encabezado de marca: franja blanca con el logo centrado (sin línea de acento) y,
 // debajo, la fotografía de la empresa (imagen_correo_url) a todo el ancho. Sin logo ni foto,
 // queda solo el filo de color. Minimalista a propósito: la marca se nota por el orden, no por el ruido.
-export type TemaFoto = 'visita' | 'hogar' | 'opinion' | 'llaves' | 'fachada' | 'sala' | 'conjunto' | 'acceso' | 'soporte' | 'demanda' | 'ninguna';
+export type TemaFoto = 'visita' | 'hogar' | 'opinion' | 'llaves' | 'fachada' | 'sala' | 'conjunto' | 'lujo' | 'visitaprop' | 'informe' | 'cambio' | 'arrendatario' | 'acceso' | 'soporte' | 'demanda' | 'ninguna';
 
 // `tema` elige una fotografía realista con personas según el tipo de correo (archivos en aplicacion/public/correo/, que
 // Netlify publica en citas.patrimonios.co/correo/). Solo se usan esas fotos con logo para la empresa de slug exacto patrimonios.

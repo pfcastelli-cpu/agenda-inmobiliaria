@@ -162,7 +162,7 @@ function plantilla(o: {
   remitente: string;
   marca: MarcaCorreo;
 }) {
-  return correoBase(o.marca, { titulo: o.titulo, cuerpo: o.cuerpo, tema: 'visita', modoPruebas: o.modoPruebas, destinatarioReal: o.destinatarioReal, botones: o.boton ? [{ ...o.boton, variante: 'principal' }] : undefined });
+  return correoBase(o.marca, { titulo: o.titulo, cuerpo: o.cuerpo, tema: 'cambio', modoPruebas: o.modoPruebas, destinatarioReal: o.destinatarioReal, botones: o.boton ? [{ ...o.boton, variante: 'principal' }] : undefined });
 }
 
 Deno.serve(async (req) => {

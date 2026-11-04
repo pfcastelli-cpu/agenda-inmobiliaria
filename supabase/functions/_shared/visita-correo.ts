@@ -1,4 +1,4 @@
-import { type MarcaCorreo } from './marca-correo.ts';
+import { type MarcaCorreo, type TemaFoto } from './marca-correo.ts';
 import { botonCorreo, botonesCorreo, correoBase } from './plantilla-correo.ts';
 
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -33,8 +33,8 @@ export function bloquePuntualidad(marca: MarcaCorreo): string {
 // cuerpo y despues son HTML escapado por el llamador. El botón, título y preheader se escapan aquí.
 // puntualidad: añade el recuadro «Tu asesor no puede esperar» después del cuerpo (correos al cliente de una visita).
 export function correoVisita(marca: MarcaCorreo, o: {
-  titulo: string; preheader?: string; cuerpo: string; despues?: string; puntualidad?: boolean;
+  titulo: string; preheader?: string; cuerpo: string; despues?: string; puntualidad?: boolean; tema?: TemaFoto;
   boton?: { texto: string; url: string }; modoPruebas: boolean; destinatarioReal: string;
 }): string {
-  return correoBase(marca, { ...o, tema: 'visita', botones: o.boton ? [{ ...o.boton, variante: 'principal' }] : undefined, cuerpo: `${o.cuerpo}${o.puntualidad ? bloquePuntualidad(marca) : ''}` });
+  return correoBase(marca, { ...o, tema: o.tema ?? 'visita', botones: o.boton ? [{ ...o.boton, variante: 'principal' }] : undefined, cuerpo: `${o.cuerpo}${o.puntualidad ? bloquePuntualidad(marca) : ''}` });
 }

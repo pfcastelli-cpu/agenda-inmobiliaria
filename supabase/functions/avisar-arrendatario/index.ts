@@ -259,6 +259,7 @@ Deno.serve(async (req) => {
   const remitenteNombre = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
 
   const html = (destinatarioReal: string) => correoVisita(marca, {
+    tema: 'arrendatario',
     titulo: recordatorio ? 'Confirma tu visita' : varias ? `Tienes ${proximas.length} visitas programadas` : 'Tienes una visita programada',
     preheader: recordatorio ? `Inmueble ${inmueble.numero_inmueble}. Aún no nos confirmas la visita: toca el botón.` : `Inmueble ${inmueble.numero_inmueble}. Confírmanos que estarás con el botón de cada visita.`,
     modoPruebas, destinatarioReal,
@@ -270,7 +271,9 @@ Deno.serve(async (req) => {
         <b>${escaparHtml(formatearFecha(c.fecha))}</b><br><span style="font-size:20px">${escaparHtml(formatearHora(c.hora_inicio.slice(0, 5)))}</span>
         ${c.id === cita.id && !recordatorio ? '<span style="font-size:12px"> (nueva)</span>' : ''}<br>
         ${c.arrendatario_confirmado_en ? '<span style="font-size:14px;font-weight:700">✔ Ya confirmaste esta visita</span><br>' : botonConfirmarAsistencia(`${SITIO_URL}/arrendatario/${c.token_arrendatario}?accion=confirmar`, marca)}<br>
-        ${enlaceVisita(`${SITIO_URL}/arrendatario/${c.token_arrendatario}?accion=otra_hora`, 'No puedo a esa hora: cambiar esta visita', marca)}</td></tr>`).join('')}</table>
+        ${enlaceVisita(`${SITIO_URL}/arrendatario/${c.token_arrendatario}?accion=otra_hora`, '🕐 No puedo a esa hora: sugerir otra', marca)}
+        ${enlaceVisita(`${SITIO_URL}/arrendatario/${c.token_arrendatario}?accion=dia&fecha=${c.fecha}`, '🗓️ No puedo ese día: sugerir otro día', marca)}</td></tr>`).join('')}</table>
+      ${enlaceVisita(`${enlacePortal}?accion=pausa`, '⏸️ No puedo recibir visitas por un tiempo', marca)}
       <p style="margin:0 0 10px">Desde tu agenda puedes cambiar una hora, ajustar varios días o pausar visitas hasta por 14 días. Avisaremos a los interesados afectados para que elijan otro horario dentro de un plazo. Si no responden, la visita se cancela.</p>
       ${asesorNombre ? `<p style="margin:0">Asesor: <b>${escaparHtml(asesorNombre)}</b></p>` : ''}
       ${celularWa.length >= 11 ? enlaceVisita(`https://wa.me/${celularWa}`, 'Escribir al asesor', marca) + enlaceVisita(`tel:+${celularWa}`, 'Llamar al asesor', marca) : ''}
