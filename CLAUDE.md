@@ -2,12 +2,16 @@
 
 Fuente única de instrucciones para Claude Code y Codex (`AGENTS.md` apunta aquí).
 
-## Inicio de cada tarea
-- Leer este archivo y `docs/ESTADO-ACTUAL.md`.
-- Ejecutar `git status --short` y `git diff --stat`.
+## Inicio de cada tarea (y cómo ahorrar tokens)
+- Leer este archivo. `docs/ESTADO-ACTUAL.md` (≈3 KB) solo si la tarea toca trabajo pendiente o no hay otra pista.
+- Ejecutar `git status --short -uno` y `git diff --stat` (sin `-uno` aparece ruido de carpetas sin versionar).
 - Abrir solo los archivos directamente relacionados con la tarea. No leer históricos,
   guías completas ni módulos grandes por defecto.
-- Para una tarea concreta, preferir `rg` y rangos pequeños de líneas a volcar archivos enteros.
+- Archivos de más de ~300 líneas (`agenda-real.js`, `administracion.js`, `arrendatario.js`, `portal-visita`, etc.): nunca enteros.
+  Buscar la función en `docs/MAPA-MODULOS.md` (o con Grep `-n`) y leer solo ese rango con offset/limit.
+- `.ignore` oculta a la búsqueda `tmp/`, `reports/`, `research_notes/`, `correos/`, `docs/historico/`, `tests/fixtures/`, PDF/zip y la demo
+  de la raíz. Si hace falta algo de ahí, abrir por ruta exacta. No volcar HTML/PDF generados ni salidas largas de comandos (usar `| head`, `--stat`).
+- No lanzar subagentes ni lecturas "por si acaso"; una pregunta puntual se responde con 1–3 búsquedas.
 
 ## Qué es
 Agenda de citas para asesores inmobiliarios (multi-ciudad, multi-asesor, pensada para venderse como
@@ -35,6 +39,7 @@ SaaS). Reemplaza un sistema legado en Google Calendar + Apps Script + Sheets. `P
 - Dato que no guarda, permisos o cruce de citas -> `sql/` correspondiente, RPC, grants y RLS antes del frontend.
 - Diseño, colores o móvil -> `aplicacion/estilos/` + `paletas.js`/`marca-publica.js`.
 - Si la ruta no es evidente -> consultar la tabla completa de `docs/GUIA-DEL-CODIGO.md` por palabra clave.
+- Función dentro de un módulo grande -> `docs/MAPA-MODULOS.md` (regenerar con `node tests/generar-mapa-codigo.mjs` si las líneas no cuadran).
 
 ## Reglas de seguridad (seguir siempre)
 - Todo lo que necesite la `service_role` (crear usuarios, cambiar contraseñas, leer Vault) va en una Edge

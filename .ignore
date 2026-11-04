@@ -1,0 +1,26 @@
+# Lo que NO debe leer ni buscar un asistente (Claude Code, Codex): ripgrep respeta este archivo.
+# No afecta a git ni a la app; es solo para ahorrar tokens. Si hace falta abrir algo de aquí, pídelo con la ruta exacta.
+
+# Temporales, informes y notas de investigación (no son código)
+tmp/
+reports/
+research_notes/
+respaldos/
+supabase/.temp/
+.agents/
+
+# Correos: fotos y pruebas ya enviadas; el código de los correos está en supabase/functions/
+correos/
+
+# Historia y vistas previas generadas (consultar solo por palabra clave y ruta exacta)
+docs/historico/
+tests/fixtures/
+
+# Demo vieja de la raíz (no se toca) y archivos grandes que no son código
+/index.html
+/referencia-visual.html
+/LEEME-*.md
+/PROYECTO.md
+package-lock.json
+*.pdf
+*.zip
