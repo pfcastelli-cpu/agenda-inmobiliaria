@@ -21,7 +21,8 @@ Actualizado: 04-nov-2026. Detalle completo anterior: `docs/historico/ESTADO-2026
 
 - 041/042 captación por ciudad y `/consignar` (+ `captacion_publica_activa`); 044 tipos de actividad; 045 soporte inmutable; 046 demanda sin tope (alertas en Informes); 047 roles propios y 32 permisos (Fase A: solo afinan la pantalla; el rol base manda en RLS); 048 confirmación del arrendatario (+ cron `recordar-arrendatario` cada hora al minuto 5).
 - Sin aplicar: `sql/043-captacion-video.sql` (video de `/consignar`).
-- Pruebas de producción: citas `[PRUEBA]` con `es_prueba=true`, canceladas, nunca borradas.
+- 049 importación de Calendar y bot (`agenda_citas_calendar`, `agenda_intereses_bot`; sin datos personales, solo huella anónima). Script: `sincronizacion/importar-calendar-y-bot.gs` (Apps Script «SEDI A SUPABASE», activadores cada hora, `IMPORTAR_DESDE`=2026-11-05; historial ene–nov ya cargado: 869 citas, 239 intereses). Siguiente: módulo «Salud del inmueble» y lista de solicitudes de propietarios.
+- 05-nov-2026 Felipe ordenó borrar las citas de prueba (82) y los 10 usuarios «QA …»; quedó respaldo en el esquema privado `respaldo_20261105` (borrarlo solo con orden de Felipe). A partir de ahora las pruebas nuevas siguen con `es_prueba=true`.
 
 ## Reglas operativas vigentes
 
