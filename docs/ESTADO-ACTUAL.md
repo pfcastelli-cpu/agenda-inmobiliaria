@@ -5,8 +5,8 @@ Actualizado: 06-nov-2026. Detalle anterior: `docs/historico/ESTADO-2026-11-04-co
 ## Urgente (06-nov, tras la simulación de 2 semanas)
 
 - **Desplegadas el 06-nov** (verify_jwt conservado: públicas sin JWT; `enviar-informe-propietario` y `avisar-arrendatario` con JWT): calendario-ics, enviar-correo-cita, enviar-correo-propietario, enviar-encuesta-cliente, enviar-encuestas-pendientes, enviar-resumen-propietarios, recordar-arrendatario, enviar-informe-propietario, avisar-arrendatario. Calendario por asesor probado (200 / 404 con token inválido); el enlace «Todas las agendas» (token en `agenda_calendario_empresa`) NO se pudo probar con red real: abrirlo/suscribirlo y confirmar.
-- `gestion-accesos`: arreglos de `crear` en `main` pero SIN desplegar. El «Eliminar usuario» (superadmin) sigue SIN commitear, sin revisar ni desplegar.
-- Probar con sesión real: alta de acceso con login (Administración → Accesos, `sim+prueba@example.com`, sin contraseña) y alta de asesor nuevo. Nunca ejecutadas con red real.
+- Probado con red real el 06-nov: `gestion-accesos` v17 (alta por invitación `sim+invitacion@example.com`, botón «usuario de prueba», «Eliminar usuario»), alta de asesor desde el formulario (`[SIM] Asesor Alta Formulario`) y enlace «Todas las agendas» (200, text/calendar, 146 eventos). El correo de invitación a una dirección real no se vio llegar (se usó example.com).
+- Usuarios de prueba `sim+prueba2`, `sim+prueba3` y `sim+invitacion` ya eliminados (06-nov). Queda el asesor `[SIM] Asesor Alta Formulario` (sin acceso).
 
 ## Aplicado en producción el 06-nov
 
