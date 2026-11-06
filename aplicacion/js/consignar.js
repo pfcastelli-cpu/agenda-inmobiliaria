@@ -169,7 +169,7 @@ function pasoHorario() {
   const delDia = state.slots.filter((s) => s.fecha === state.fechaSel);
   return `<button class="pu-volver" type="button" data-ir="inmueble">← Volver</button>
   <span class="pu-paso">Paso 2 de 3</span>
-  <h2>Elige el día y la hora</h2><p>La visita dura unos 90 minutos. ${esc(ciudadSel()?.nombre || '')}.</p>
+  <h2>Elige el día y la hora</h2><p>La visita dura entre 1 hora y 1 hora y media. ${esc(ciudadSel()?.nombre || '')}.</p>
   ${state.cargandoSlots ? '<div class="pu-spinner">Buscando horarios…</div>' : !dias.length ? `<div class="pu-vacio">${state.error ? esc(state.error) : 'Por ahora no hay horarios libres en los próximos días para esta ciudad. Escríbenos por WhatsApp o llámanos y te agendamos.'}</div>` : `
   <div class="pu-card">
     <div class="pu-fechas" role="tablist">${dias.map((d) => { const x = fechaCorta(d); return `<button type="button" class="pu-fecha ${d === state.fechaSel ? 'activa' : ''}" data-fecha="${d}">${x.dia}<strong>${x.num}</strong>${x.mes}</button>`; }).join('')}</div>

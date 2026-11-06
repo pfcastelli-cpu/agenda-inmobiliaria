@@ -6,6 +6,7 @@ import { abrirVisorEncuestaDesdeUrl } from './visor-encuesta.js';
 import { claveHorario, revisarCruce, htmlAvisoCruce, puedeCruzar, estadoReunion, htmlCampoReunion, crearEnlaceReunion, htmlEnlaceReunion } from './citas-cruce-virtual.js';
 import { ORIGENES_CAPTACION, cargarCiudadesYZonas, buscarHorariosCaptacion, seleccionarHorario, htmlCiudadYZona, htmlHorariosCaptacion } from './captacion-horarios.js';
 import { renderPendientes, reiniciarPendientes } from './pendientes.js';
+import { renderEstudios } from './estudios-mercado.js';
 import { renderTickets, reiniciarTickets, abrirTicket } from './tickets.js';
 import { montarInformeDemanda } from './informe-demanda.js';
 import { puede } from './permisos.js';
@@ -155,7 +156,7 @@ export function iniciarAgendaReal(acceso) {
   if (insignia) insignia.textContent = 'Datos reales';
   const pie = root.querySelector('.v-footnote');
   if (pie) pie.textContent = 'Datos reales · las citas y cancelaciones se guardan en Supabase';
-  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes', bitacora: 'Bitácora', pendientes: 'Pendientes', soporte: 'Soporte' };
+  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes', bitacora: 'Bitácora', pendientes: 'Pendientes', estudios: 'Estudios', soporte: 'Soporte' };
   root.querySelectorAll('[data-view]').forEach((b) => {
     const textoIcono = b.querySelector('i');
     const etiqueta = ETIQUETAS_NAV[b.dataset.view] || '';
@@ -172,6 +173,8 @@ export function iniciarAgendaReal(acceso) {
     if (b.dataset.view === 'bitacora') b.hidden = (contexto.rol !== 'administrador' && contexto.rol !== 'coordinador') || !puede('bitacora.ver');
     // Pendientes lo ve todo el equipo; la base de datos decide cuáles le salen a cada uno.
     if (b.dataset.view === 'pendientes') b.hidden = false;
+    // Estudios de mercado: administrador y coordinador.
+    if (b.dataset.view === 'estudios') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
     // Soporte (tickets): lo ve todo el equipo.
     if (b.dataset.view === 'soporte') b.hidden = false;
   });
@@ -596,6 +599,7 @@ async function render() {
     else if (state.view === 'informes') await renderInformes();
     else if (state.view === 'bitacora') await renderBitacora();
     else if (state.view === 'pendientes') await renderPendientes({ el: main(), supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, icon, refreshIcons });
+    else if (state.view === 'estudios') await renderEstudios({ el: main(), supabase, empresaId: contexto.empresaId, escape, icon, refreshIcons });
     else if (state.view === 'soporte') await renderTickets({ el: main(), supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, vistaAnterior: NOMBRES_VISTA[vistaAnteriorSoporte] || '' });
     else if (state.view === 'reserva') await renderReserva();
     else if (state.view === 'exito') renderExito();

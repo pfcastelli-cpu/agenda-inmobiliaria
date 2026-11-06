@@ -119,6 +119,16 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
+  // Si pidió el estudio de mercado (casilla del cambio de precio o botón «¿Y si también lo arriendas?»), queda en la lista de estudios.
+  if (quiereEstudio || /estudio de mercado/i.test(detalle || '')) {
+    try {
+      await admin.from('agenda_estudios_mercado').insert({
+        empresa_id: empresaId, numero_inmueble: numeroInmueble, propietario_nombre: propietarioNombre, propietario_email: propietarioEmail,
+        origen: 'propietario', nota: (detalleGuardado || '').slice(0, 1000) || null,
+      });
+    } catch { /* la solicitud ya quedó guardada; la lista de estudios es un extra */ }
+  }
+
   const { data: config } = await admin
     .from('agenda_configuracion')
     .select(
