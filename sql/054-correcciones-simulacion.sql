@@ -1,5 +1,5 @@
 -- 054 · Correcciones halladas en la simulación de 2 semanas (nov-2026).
--- NO aplicado todavía: requiere autorización de Felipe. Es idempotente.
+-- Aplicado en producción el 06-nov-2026 (migración correcciones_simulacion_054). Es idempotente.
 
 -- 1) El modo de pruebas nunca puede quedar encendido sin destino (si no, los
 --    correos caerían a los destinatarios reales).

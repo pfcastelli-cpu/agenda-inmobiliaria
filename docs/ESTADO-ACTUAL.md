@@ -1,35 +1,35 @@
 # Estado actual
 
-Actualizado: 04-nov-2026. Detalle completo anterior: `docs/historico/ESTADO-2026-11-04-completo.md` (buscar por palabra clave, no leer entero).
+Actualizado: 06-nov-2026. Detalle anterior: `docs/historico/ESTADO-2026-11-04-completo.md` (buscar por palabra clave, no leer entero).
 
-## Prioridad inmediata
+## Urgente (06-nov, tras la simulación de 2 semanas)
 
-- Probar con sesión real: aviso al arrendatario (botones sugerir hora/día/pausa), informe del propietario (sugerencia de arrendar), formulario de cambio de precio en `/propietario/`, y los correos nuevos en Gmail/Outlook.
-- Revisar y, si Felipe autoriza, publicar «Eliminar usuario» (Superadministrador): código en `administracion.js`, `administracion.css`, `sesion.js` (revisar: cambió mucho) y acción `eliminar` en `gestion-accesos`. Sin desplegar ni probar con red real.
-- Subir los 3 Excel de portales (foto inicial). Verificar el interruptor «Habilitar /consignar» (en producción aparece encendido; Felipe debe confirmar que fue a propósito).
-- 05-nov: importadas a `agenda_citas` 838 citas de Calendar CON datos del cliente (818 completadas, 20 confirmadas futuras; 116 sin inmueble, entran como «otro»). 20 no entraron (mismo asesor/fecha/hora ya ocupado, índice `agenda_citas_asesor_slot_unico`). Función `importarCitasAAgenda()` en `sincronizacion/importar-calendar-y-bot.gs` (ya pegada y corrida en Apps Script; es repetible). Para repetir: IMPORTAR_DESDE=2026-01-01, correrla y volver a 2026-11-05. No hay sincronización horaria a agenda_citas todavía. Citas importadas sin commitear.
-- Pendiente: proponer 3 horarios distintos en el portal del arrendatario (hoy solo propone 1; requiere portal + BD).
+- **Desplegar ya las Edge Functions** (pendiente de autorización; el SQL 055 ya está aplicado y rompió el enlace del calendario de TODA la empresa hasta que se despliegue `calendario-ics`): `npx --no-install supabase functions deploy calendario-ics enviar-correo-cita enviar-correo-propietario enviar-encuesta-cliente enviar-encuestas-pendientes enviar-informe-propietario enviar-resumen-propietarios recordar-arrendatario avisar-arrendatario --project-ref ykiuuxludyonkhywtmgu --use-api --yes --no-verify-jwt`. Estas funciones ya están en `main` (commit 44e5e8a), el front ya publicado.
+- `gestion-accesos`: en `main` solo van los arreglos de `crear` (rollback de usuario huérfano). El «Eliminar usuario» (superadmin) sigue SIN commitear en el árbol de trabajo, sin revisar ni desplegar. Desplegar `gestion-accesos` ahora llevaría solo lo commiteado.
+- Probar con sesión real tras desplegar: pestaña Administración → Calendario (enlaces), alta de asesor nuevo, alta de acceso con login.
 
-## Correos (publicado en commits aed8065 y 25081a3; Supabase desplegado)
+## Aplicado en producción el 06-nov
 
-- Plantilla común `supabase/functions/_shared/plantilla-correo.ts` + fotos por tema en `marca-correo.ts` (`TemaFoto`) y `aplicacion/public/correo/foto-*.jpg` (con logo; solo se usan fotos temáticas con slug `patrimonios`).
-- Catálogo visual: `node tests/generar-catalogo-correos.mjs` → `tmp/catalogo-correos.html` → PDF `Catalogo-de-correos.pdf` (raíz, sin versionar).
-- Consignación: foto llaves, pasos y botón 📎 al script de Apps Script (secreto opcional `CAPTACION_INFO_INMUEBLE_URL`). Cambio de precio: venta/arriendo/ambos, valor, estudio de mercado sin costo. Informe y página `/propietario/`: sugerencia de arrendar si el inmueble es solo venta.
-- Pendiente: la encuesta al cliente (`enviar-encuesta-cliente`) conserva diseño propio; el resumen semanal no tiene la sugerencia de arriendo.
-- Modo de pruebas ACTIVO: todo va a `correo_pruebas_destino`. Los correos del sistema viejo (Google Calendar) siguen llegando a clientes reales.
+- `sql/054-correcciones-simulacion.sql`: modo pruebas exige destino, trigger de permisos mover/cancelar del asesor, fechas de bitácora e informe en hora de Bogotá, informe del propietario sin comentarios de clientes ni nota del asesor y solo visitas completadas, encuesta respondible una vez, `agenda_correos_log` acepta `solicitud_propietario`, `propietario_informe`, `estudio_mercado`.
+- `sql/055-proteger-tokens.sql`: token del calendario de la empresa en `agenda_calendario_empresa` (solo admin); `agenda_citas.token_cliente/token_arrendatario` ya no se pueden leer desde el navegador (hay que listar columnas, nunca `select('*')` sobre `agenda_citas`; columna nueva → `grant select (col) on public.agenda_citas to authenticated`).
+- Estudios de mercado probados de punta a punta en producción con el inmueble de prueba 990004 (botón del propietario → lista Estudios → PDF → envío al correo de pruebas): funciona.
 
-## Base de datos aplicada en producción
+## Trabajo de otras sesiones sin commitear (no tocar sin revisar)
 
-- 041/042 captación por ciudad y `/consignar` (+ `captacion_publica_activa`); 044 tipos de actividad; 045 soporte inmutable; 046 demanda sin tope (alertas en Informes); 047 roles propios y 32 permisos (Fase A: solo afinan la pantalla; el rol base manda en RLS); 048 confirmación del arrendatario (+ cron `recordar-arrendatario` cada hora al minuto 5).
-- Sin aplicar: `sql/043-captacion-video.sql` (video de `/consignar`).
-- 049 importación de Calendar y bot (`agenda_citas_calendar`, `agenda_intereses_bot`; sin datos personales, solo huella anónima). Script: `sincronizacion/importar-calendar-y-bot.gs` (Apps Script «SEDI A SUPABASE», activadores cada hora, `IMPORTAR_DESDE`=2026-11-05; historial ene–nov ya cargado: 869 citas, 239 intereses). Siguiente: módulo «Salud del inmueble» y lista de solicitudes de propietarios.
-- 05-nov-2026 Felipe ordenó borrar las citas de prueba (82) y los 10 usuarios «QA …»; quedó respaldo en el esquema privado `respaldo_20261105` (borrarlo solo con orden de Felipe). A partir de ahora las pruebas nuevas siguen con `es_prueba=true`.
+- Alertas de salud del inmueble («inmueble sin movimiento»): `sql/051-alertas-salud-inmueble.sql`, función `enviar-alerta-salud`, cambios en `admin-propietarios.js` y `propietario.js`. Hay dos archivos `sql/051-*`: renumerar uno.
+- «Eliminar usuario»: `administracion.js`, `sesion.js`, `administracion.css`, `gestion-accesos`.
+
+## Pendientes de producto
+
+- Simulación 06-nov: datos `[SIM]`/`[PRUEBA]` siguen en producción (4 asesores 990001–990006, 25 citas `es_prueba`); no borrar sin orden. Para probar flujo de arrendatario poner `estado_crm='rentando'` en 990001/3/5/6.
+- Pendientes menores: `correo_pruebas_destino` ya no puede quedar vacío (CHECK); el destinatario cae al real si falta solo si se fuerza; enlace `/visita/` fijo en `enviar-correo-cita` (ignora `dominio_publico`); resumen semanal solo manda a propietarios con fila en preferencias; la sincronización con el ERP puede marcar los inmuebles de simulación como no disponibles.
+- Subir los 3 Excel de portales; confirmar interruptor «Habilitar /consignar»; proponer 3 horarios en el portal del arrendatario; `sql/043-captacion-video.sql` sin aplicar.
 
 ## Reglas operativas vigentes
 
-- No aplicar SQL, desplegar funciones, commit ni push sin autorización expresa de Felipe para esa tarea.
-- Publicar: primero push (Netlify), después funciones (`--use-api --yes`; públicas con `--no-verify-jwt`).
-- La verificación de correo para reservas debe quedar encendida antes de clientes reales.
+- Modo de pruebas de correo ACTIVO; no apagar sin orden de Felipe. Verificación de correo para reservas encendida antes de clientes reales.
+- Publicar: primero push (Netlify), luego SQL, luego funciones (`--use-api --yes`; públicas con `--no-verify-jwt`).
+- No aplicar SQL, desplegar, commit ni push sin autorización expresa de Felipe para esa tarea. Una sola herramienta edita el checkout a la vez.
 
 ## Cómo actualizar este archivo
 
