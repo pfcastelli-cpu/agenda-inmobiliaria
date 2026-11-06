@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
   }
   const { data: miembroLlamando } = await admin
     .from('agenda_miembros')
-    .select('rol, activo')
+    .select('rol, rol_id, activo')
     .eq('empresa_id', empresaId)
     .eq('usuario_id', quienLlama.user.id)
     .maybeSingle();
@@ -177,6 +177,12 @@ Deno.serve(async (req) => {
 
   const accion = String(body.accion || '');
 
+  // Roles de la empresa que son Superadministrador (para saber quién lo es).
+  const idsRolSuper = async (): Promise<string[]> => {
+    const { data } = await admin.from('agenda_roles').select('id').eq('empresa_id', empresaId).eq('es_super', true);
+    return (data || []).map((r) => r.id as string);
+  };
+
   try {
     if (accion === 'listar') {
       const { data: miembros, error } = await admin
@@ -185,6 +191,7 @@ Deno.serve(async (req) => {
         .eq('empresa_id', empresaId)
         .order('creado_en', { ascending: true });
       if (error) return json({ ok: false, error: 'No se pudieron leer los accesos.' }, 500);
+      const rolesSuper = await idsRolSuper();
       const conCorreo = await Promise.all(
         (miembros || []).map(async (m) => {
           const { data: u } = await admin.auth.admin.getUserById(m.usuario_id);
@@ -193,6 +200,7 @@ Deno.serve(async (req) => {
             nombre: m.nombre,
             rol: m.rol,
             rol_id: m.rol_id ?? null,
+            es_super: !!m.rol_id && rolesSuper.includes(m.rol_id),
             activo: m.activo,
             correo: u?.user?.email || '(correo no disponible)',
             ultimo_acceso: u?.user?.last_sign_in_at || null,
@@ -204,11 +212,15 @@ Deno.serve(async (req) => {
     }
 
     if (accion === 'crear') {
-      const correo = String(body.correo || '').trim().toLowerCase();
+      // TEMPORAL (pruebas): usuario sin correo ni contraseña propios. Se inventa un correo ficticio y una
+      // contraseña aleatoria, no se envía ningún correo y las credenciales se devuelven una sola vez.
+      const sinCredenciales = body.sin_credenciales === true;
+      const aleatorio = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
+      const correo = sinCredenciales ? `prueba-${aleatorio(6)}@sin-correo.test` : String(body.correo || '').trim().toLowerCase();
       const nombre = String(body.nombre || '').trim();
       const rol = String(body.rol || '');
       const redirectTo = body.redirect_to ? String(body.redirect_to) : undefined;
-      const password = body.password ? String(body.password) : '';
+      const password = sinCredenciales ? aleatorio(12) : (body.password ? String(body.password) : '');
       let asesorId = body.asesor_id ? String(body.asesor_id) : '';
       if (!correo || !nombre || !ROLES_VALIDOS.includes(rol)) {
         return json({ ok: false, error: 'Falta el nombre, el correo, o el rol no es válido.' }, 400);
@@ -332,6 +344,7 @@ Deno.serve(async (req) => {
         }
       }
 
+      if (sinCredenciales) return json({ ok: true, usuario_id: usuarioId, correo_enviado: false, credenciales: { correo, password } });
       return json({ ok: true, usuario_id: usuarioId, correo_enviado: Boolean(enlaceInvitacion), ...(avisoVinculo ? { aviso: avisoVinculo } : {}) });
     }
 
@@ -444,6 +457,87 @@ Deno.serve(async (req) => {
         .eq('usuario_id', usuarioId);
       if (errorUpdate) return json({ ok: false, error: 'No se pudo actualizar: ' + errorUpdate.message }, 500);
       return json({ ok: true });
+    }
+
+    // Elimina el acceso (login) de un usuario. Solo el Superadministrador. La ficha del asesor y
+    // las citas se conservan: solo se desvincula agenda_asesores.usuario_id.
+    if (accion === 'eliminar') {
+      const usuarioId = String(body.usuario_id || '');
+      if (!usuarioId) return json({ ok: false, error: 'Falta el usuario.' }, 400);
+
+      const rolesSuper = await idsRolSuper();
+      if (!miembroLlamando.rol_id || !rolesSuper.includes(miembroLlamando.rol_id)) {
+        return json({ ok: false, error: 'Solo un Superadministrador puede eliminar usuarios.' }, 403);
+      }
+      if (usuarioId === quienLlama.user.id) {
+        return json({ ok: false, error: 'No puedes eliminar tu propio usuario.' }, 400);
+      }
+
+      const { data: destino } = await admin
+        .from('agenda_miembros')
+        .select('usuario_id, nombre, rol, rol_id, activo')
+        .eq('empresa_id', empresaId)
+        .eq('usuario_id', usuarioId)
+        .maybeSingle();
+      if (!destino) return json({ ok: false, error: 'Ese usuario no pertenece a tu empresa.' }, 404);
+
+      // Nunca dejar la empresa sin Superadministrador activo.
+      if (destino.rol_id && rolesSuper.includes(destino.rol_id)) {
+        const { count } = await admin
+          .from('agenda_miembros')
+          .select('usuario_id', { count: 'exact', head: true })
+          .eq('empresa_id', empresaId)
+          .eq('activo', true)
+          .in('rol_id', rolesSuper)
+          .neq('usuario_id', usuarioId);
+        if (!count) {
+          return json({ ok: false, error: 'No se puede eliminar al último Superadministrador activo de la empresa.' }, 400);
+        }
+      }
+
+      // Si el mismo usuario pertenece también a otra empresa, solo se le quita esta; la cuenta de login se borra
+      // únicamente cuando no le queda ninguna otra membresía.
+      const { count: otrasEmpresas } = await admin
+        .from('agenda_miembros')
+        .select('usuario_id', { count: 'exact', head: true })
+        .eq('usuario_id', usuarioId)
+        .neq('empresa_id', empresaId);
+
+      // 1) Desvincular la ficha de asesor (se conserva con sus citas).
+      const { error: errorDesvinculo } = await admin
+        .from('agenda_asesores')
+        .update({ usuario_id: null })
+        .eq('empresa_id', empresaId)
+        .eq('usuario_id', usuarioId);
+      if (errorDesvinculo) {
+        return json({ ok: false, error: 'No se pudo desvincular la ficha de asesor: ' + errorDesvinculo.message }, 500);
+      }
+
+      // 2) Quitar la fila de miembro de esta empresa.
+      const { error: errorMiembro } = await admin
+        .from('agenda_miembros')
+        .delete()
+        .eq('empresa_id', empresaId)
+        .eq('usuario_id', usuarioId);
+      if (errorMiembro) return json({ ok: false, error: 'No se pudo quitar al usuario de la empresa: ' + errorMiembro.message }, 500);
+
+      // 3) Borrar el usuario de Auth (si no pertenece a otra empresa).
+      if (!otrasEmpresas) {
+        const { error: errorAuth } = await admin.auth.admin.deleteUser(usuarioId);
+        if (errorAuth) {
+          // Dejar todo como estaba: se restituye la fila de miembro para no dejar un usuario huérfano.
+          await admin.from('agenda_miembros').insert({
+            empresa_id: empresaId,
+            usuario_id: usuarioId,
+            nombre: destino.nombre,
+            rol: destino.rol,
+            rol_id: destino.rol_id,
+            activo: destino.activo,
+          });
+          return json({ ok: false, error: 'No se pudo eliminar el usuario de acceso: ' + errorAuth.message }, 500);
+        }
+      }
+      return json({ ok: true, cuenta_borrada: !otrasEmpresas });
     }
 
     return json({ ok: false, error: 'Acción no reconocida.' }, 400);

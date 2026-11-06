@@ -6,7 +6,7 @@ import { radicacionTab as radicacionTabModulo } from './admin-radicacion.js';
 import { demandaTab as demandaTabModulo } from './admin-demanda.js';
 import { montarBuscador } from './admin-buscador.js';
 import { rolesTab as rolesTabModulo, listarRoles } from './admin-roles.js';
-import { puede } from './permisos.js';
+import { puede, datosPermisos } from './permisos.js';
 import { solicitudesTab as solicitudesTabModulo, saludTab as saludTabModulo } from './admin-propietarios.js';
 import { repartir, montarSubpestanas } from './admin-subpestanas.js';
 import { invalidarDominioPublico } from './agenda-real.js';
@@ -17,6 +17,8 @@ import {
  reenviarInvitacion,
  alternarActivoAcceso,
  vincularAsesorConAcceso,
+ eliminarUsuario,
+ crearAccesoSinCredenciales,
 } from './sesion.js';
 import { aplicarTema, quitarTema, tarjetasPaletas, PALETAS, paletaActiva, derivarPaleta } from './paletas.js';
 import '../estilos/administracion.css';
@@ -584,8 +586,8 @@ async function correoForm(){
   <p class="ad-note" style="margin-top:-6px">Por seguridad, una contraseña ya guardada no se puede volver a mostrar aquí — ni siquiera un administrador puede leerla directamente desde el navegador. El botón "Mostrar" solo revela lo que estás escribiendo en este momento. Si no la recuerdas, usa "Probar configuración" abajo para confirmar que sigue funcionando, o vuelve a pegarla para reemplazarla.</p>
   <h3 style="margin-top:26px">4. Modo de pruebas</h3>
   <label class="ad-toggle"><input type="checkbox" name="correo_modo_pruebas"><span class="ad-toggle-track"><span class="ad-toggle-thumb"></span></span><span>Mientras ajustamos el diseño, enviar TODOS los correos (cliente y propietario) a un solo correo de pruebas</span></label>
-  <div class="ad-grid" style="margin-top:14px">${campo('correo_pruebas_destino','Correo donde quieres recibir las pruebas',config.correo_pruebas_destino||'pf.castelli@patrimonios.co','email','placeholder="tu-correo@patrimonios.co"')}</div>
   <label class="ad-toggle" style="margin-top:12px"><input type="checkbox" name="encuestas_pausadas"><span class="ad-toggle-track"><span class="ad-toggle-thumb"></span></span><span>⏸️ Pausar las encuestas automáticas al cliente <small class="ad-muted">(se aplica al instante; acuérdate de reactivarlas al salir a producción)</small></span></label>
+  <div class="ad-grid" style="margin-top:14px">${campo('correo_pruebas_destino','Correo donde quieres recibir las pruebas',config.correo_pruebas_destino||'pf.castelli@patrimonios.co','email','placeholder="tu-correo@patrimonios.co"')}</div>
   <p class="ad-note">Con el modo de pruebas activo, ningún cliente ni propietario recibe correos todavía: absolutamente todo llega al correo de arriba, para que revises el contenido y el diseño antes de salir a producción. Cuando estés listo, apaga el interruptor y los correos empezarán a llegar a los destinatarios reales.</p>
   <button class="ad-primary" type="submit" style="margin-top:20px">Guardar configuración de correo</button>
  </form>
@@ -601,7 +603,6 @@ async function correoForm(){
  ${bitacoraCorreoHtml(logCorreos)}`;
  el.querySelector('[name=correo_smtp_seguridad]').value=config.correo_smtp_seguridad||PROVEEDORES_CORREO[proveedorInicial].seguridad;
  el.querySelector('[name=correo_modo_pruebas]').checked=modoPruebas;
- {const formCo=el.querySelector('form');const boton=formCo.querySelector('button[type=submit]');
  {const chkPausa=el.querySelector('[name=encuestas_pausadas]');chkPausa.checked=config.encuesta_automatica===false;
   chkPausa.onchange=async()=>{chkPausa.disabled=true;
    const {error}=await supabase.from('agenda_configuracion').update({encuesta_automatica:!chkPausa.checked}).eq('empresa_id',config.empresa_id);
@@ -609,6 +610,7 @@ async function correoForm(){
    if(error){chkPausa.checked=!chkPausa.checked;aviso('No se pudo cambiar la pausa de encuestas. Verifica permisos y conexión.',true);return;}
    config.encuesta_automatica=!chkPausa.checked;
    aviso(chkPausa.checked?'Encuestas en pausa: no se enviará ninguna.':'Encuestas reactivadas: se enviarán después de cada visita.');};}
+ {const formCo=el.querySelector('form');const boton=formCo.querySelector('button[type=submit]');
   const nodos=[...[...formCo.children].filter(n=>n!==boton),...[...el.children].slice([...el.children].indexOf(formCo)+1)];
   const rep=repartir(nodos,t=>/^[123]\./.test(t)?'conexion':/^[45]\./.test(t)?'pruebas':/^6\./.test(t)?'bitacora':undefined,'conexion');
   montarSubpestanas({id:'correo',etiqueta:'Secciones del correo',contenedor:el,antes:formCo,botonGuardar:boton,grupos:[
@@ -724,6 +726,7 @@ async function accesosTab() {
      : `<button type="button" data-cambiar-pass="${m.usuario_id}">Cambiar contraseña</button>`}
     ${!m.ultimo_acceso ? `<button type="button" data-reenviar="${m.usuario_id}">Reenviar invitación</button>` : ''}
     <button type="button" data-alternar="${m.usuario_id}" data-activo-actual="${m.activo ? '1' : '0'}">${m.activo ? 'Desactivar' : 'Reactivar'}</button>
+    ${datosPermisos().esSuper && m.usuario_id !== acceso?.usuario?.id ? `<button type="button" class="ad-peligro" data-eliminar="${m.usuario_id}">Eliminar usuario</button>` : ''}
    </div>
   </li>`;
  };
@@ -744,6 +747,8 @@ async function accesosTab() {
   </fieldset>
   <div id="ad-acceso-clave-directa" hidden><label>Contraseña (mínimo 8 caracteres)<input name="password" type="text" minlength="8" autocomplete="off"></label> <button type="button" id="ad-acceso-generar">Generar una</button><p class="ad-note">Esta contraseña no se envía por correo: cópiala y pásasela tú mismo a la persona.</p></div>
   <button type="submit" class="ad-primary" style="align-self:end">Crear acceso</button>
+  <button type="button" id="ad-acceso-sin-datos" style="align-self:end">Crear usuario de prueba (sin correo ni contraseña)</button>
+  <p class="ad-note" style="margin:0">Temporal para pruebas: solo necesita el nombre y el rol. Se le inventa un correo ficticio y una contraseña, que se muestran una única vez.</p>
  </form>
  <p class="ad-note">Si eliges invitar por correo, la persona recibe un enlace de un solo uso para elegir su propia contraseña. Si no le llega o el enlace expira, usa "Reenviar invitación". También puedes cambiarle la contraseña después con "Cambiar contraseña".</p>`;
 
@@ -820,19 +825,54 @@ async function accesosTab() {
    b.disabled = false;
   }
  }));
+ el.querySelectorAll('[data-eliminar]').forEach(b => b.addEventListener('click', async () => {
+  const m = accesosCache.find(x => x.usuario_id === b.dataset.eliminar);
+  const quien = `${m?.nombre || 'este usuario'} (${m?.correo || ''})`;
+  const ok = window.confirm(
+   `¿Eliminar a ${quien}?\n\n` +
+   'SE PIERDE: su acceso para iniciar sesión (su usuario y contraseña) y su rol. Esto no se puede deshacer.\n\n' +
+   'SE CONSERVA: su ficha de asesor (en Equipo) y todas sus citas históricas. La ficha solo queda sin acceso.\n\n' +
+   'Si solo quieres que no entre por un tiempo, usa "Desactivar".');
+  if (!ok) return;
+  b.disabled = true;
+  try {
+   await eliminarUsuario(config.empresa_id, b.dataset.eliminar);
+   aviso('Usuario eliminado. Su ficha de asesor y sus citas se conservan.');
+   await accesosTab();
+  } catch (err) {
+   aviso(err.message, true);
+   b.disabled = false;
+  }
+ }));
  el.querySelectorAll('[name=modo]').forEach(r => r.addEventListener('change', () => {
   el.querySelector('#ad-acceso-clave-directa').hidden = el.querySelector('[name=modo]:checked').value !== 'directa';
  }));
  el.querySelector('#ad-acceso-generar')?.addEventListener('click', () => {
   el.querySelector('#ad-acceso-form [name=password]').value = generarPasswordAleatoria();
  });
+ el.querySelector('#ad-acceso-sin-datos')?.addEventListener('click', async ev => {
+  const f = el.querySelector('#ad-acceso-form');
+  const nombre = f.nombre.value.trim();
+  if (!nombre) { aviso('Escribe al menos el nombre.', true); return; }
+  ev.target.disabled = true;
+  try {
+   const r = await crearAccesoSinCredenciales(config.empresa_id, { nombre, rol: f.rol.value });
+   window.alert(`Usuario de prueba creado. Anota estos datos, no se vuelven a mostrar:\n\nCorreo: ${r.credenciales.correo}\nContraseña: ${r.credenciales.password}`);
+   f.reset();
+   await accesosTab();
+  } catch (err) {
+   aviso(err.message, true);
+   ev.target.disabled = false;
+  }
+ });
  el.querySelector('#ad-acceso-form').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
   const boton = f.querySelector('button[type=submit]');
   const modo = f.modo.value;
-  const password = modo === 'directa' ? f.password.value : undefined;
-  if (modo === 'directa' && (!password || password.length < 8)) {
+  // Contraseña opcional: si eligen «yo mismo» pero la dejan vacía, se envía la invitación por correo.
+  const password = modo === 'directa' && f.password.value.trim() ? f.password.value : undefined;
+  if (modo === 'directa' && password && password.length < 8) {
    aviso('La contraseña debe tener al menos 8 caracteres.', true);
    return;
   }
