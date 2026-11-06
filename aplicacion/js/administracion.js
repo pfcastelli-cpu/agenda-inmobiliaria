@@ -840,7 +840,7 @@ async function accesosTab() {
   try {
    const r = await crearAcceso(config.empresa_id, { nombre: f.nombre.value.trim(), correo: f.correo.value.trim(), rol: f.rol.value, password });
    if (r.correo_enviado === false && r.aviso) aviso(r.aviso, true);
-   else aviso(modo === 'directa' ? 'Acceso creado con la contraseña que pusiste.' : 'Acceso creado. Le llegará un correo de invitación.');
+   else aviso(password ? 'Acceso creado con la contraseña que pusiste.' : 'Acceso creado. Le llegará un correo de invitación.');
    f.reset();
    await accesosTab();
   } catch (err) {
