@@ -712,7 +712,7 @@ async function accesosTab() {
   const abierta = accesoClaveAbiertaId === m.usuario_id;
   const estado = m.ultimo_acceso
    ? `Último acceso: ${formatearFechaAcceso(m.ultimo_acceso)}`
-   : 'Invitación enviada · nunca ha iniciado sesión';
+   : 'Aún no ha iniciado sesión';
   return `<li>
    <div class="ad-acceso-info"><strong>${esc(m.nombre)}</strong><span class="ad-muted">${esc(m.correo)}</span>
     <span class="ad-pill">${esc(nombreRol(m))}</span><span class="ad-pill">${m.activo ? 'Activo' : 'Inactivo'}</span>
