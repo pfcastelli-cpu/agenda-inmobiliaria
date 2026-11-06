@@ -240,3 +240,9 @@
   .ad-rol-cabecera .ad-primary{width:100%}
   .ad-acceso-rol{width:100%}.ad-acceso-rol select{flex:1;max-width:none}
 }
+
+/* Filtros de Solicitudes de propietarios y Salud de inmuebles */
+.ad-filtros{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+.ad-filtros button{min-height:38px;padding:6px 12px;border-radius:999px}
+.ad-filtros button[aria-pressed="true"]{background:var(--empresa-principal,#1a2c45);color:#fff}
+.ad-solicitud input[data-nota]{min-width:220px;flex:1}
