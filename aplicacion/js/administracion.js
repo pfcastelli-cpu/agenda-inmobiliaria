@@ -229,14 +229,14 @@ function urlCalendario(token){return `${import.meta.env.VITE_SUPABASE_URL}/funct
 const tokenNuevo=()=>crypto.randomUUID().replace(/-/g,'');
 async function calendarioTab(){
  const el=root.querySelector('.ad-subbody');el.innerHTML='<p class="ad-muted">Cargando…</p>';
- const {data:cfg,error:e1}=await supabase.from('agenda_configuracion').select('calendario_token').eq('empresa_id',config.empresa_id).maybeSingle();
+ const {data:cfg,error:e1}=await supabase.from('agenda_calendario_empresa').select('token').eq('empresa_id',config.empresa_id).maybeSingle();
  const {data:ases,error:e2}=await supabase.from('agenda_asesores').select('id,nombre,color,activo,calendario_token').eq('empresa_id',config.empresa_id).order('nombre');
  if(e1||e2){el.innerHTML='<p class="ad-muted">No se pudo cargar. Si es la primera vez, falta aplicar la migración sql/006 en Supabase.</p>';return;}
  const fila=(titulo,token,tipo,id,color)=>`<li style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">${color?`<span style="width:14px;height:14px;border-radius:50%;background:${esc(color)};display:inline-block"></span>`:''}<strong style="min-width:150px">${esc(titulo)}</strong><input class="ad-input" readonly value="${esc(urlCalendario(token))}" style="flex:1;min-width:260px;min-height:36px" data-url-cal><button type="button" data-copiar-cal>Copiar enlace</button><button type="button" data-regenerar-cal="${tipo}" data-id="${id||''}">Regenerar</button></li>`;
  el.innerHTML=`<h2>Calendario compartido</h2>
  <p>Suscribe estos enlaces en <strong>Google Calendar</strong> (Otros calendarios → Desde URL), <strong>Outlook / Microsoft 365</strong> (Agregar calendario → Suscribirse desde la web) o Apple Calendar. Las citas aparecen solas y se actualizan al mover o cancelar. Es solo lectura y no tiene costo.</p>
  <p class="ad-note">El color lo eliges tú en tu calendario al suscribirte: suscribe el enlace de <em>cada asesor</em> por separado y dale un color distinto, o suscribe el de <em>Todas las agendas</em> para verlas juntas (en ese el título lleva el nombre del asesor). Google actualiza los calendarios suscritos cada varias horas; Outlook suele ser más rápido. Quien tenga el enlace ve la agenda: si se filtra, pulsa "Regenerar" y el enlace anterior deja de funcionar.</p>
- <h3>Todas las agendas</h3><ul class="ad-ciudades">${fila('Todas las agendas',cfg?.calendario_token||'','empresa','')}</ul>
+ <h3>Todas las agendas</h3><ul class="ad-ciudades">${fila('Todas las agendas',cfg?.token||'','empresa','')}</ul>
  <h3>Por asesor</h3><ul class="ad-ciudades">${(ases||[]).filter(a=>a.activo).map(a=>fila(a.nombre,a.calendario_token||'','asesor',a.id,a.color)).join('')||'<li class="ad-muted">Sin asesores activos.</li>'}</ul>`;
  el.onclick=async e=>{
   const li=e.target.closest('li');
@@ -244,7 +244,7 @@ async function calendarioTab(){
   const tipo=e.target.dataset.regenerarCal;if(!tipo)return;
   if(!confirm('¿Regenerar este enlace? Los calendarios que ya estén suscritos con el enlace actual dejarán de actualizarse y habrá que suscribirlos de nuevo.'))return;
   const nuevo=tokenNuevo();
-  const q=tipo==='empresa'?supabase.from('agenda_configuracion').update({calendario_token:nuevo}).eq('empresa_id',config.empresa_id):supabase.from('agenda_asesores').update({calendario_token:nuevo}).eq('id',e.target.dataset.id).eq('empresa_id',config.empresa_id);
+  const q=tipo==='empresa'?supabase.from('agenda_calendario_empresa').upsert({empresa_id:config.empresa_id,token:nuevo}):supabase.from('agenda_asesores').update({calendario_token:nuevo}).eq('id',e.target.dataset.id).eq('empresa_id',config.empresa_id);
   const {error}=await q;if(error){aviso('No se pudo regenerar el enlace.',true);return;}
   await calendarioTab();aviso('Enlace regenerado.');
  };
@@ -356,6 +356,8 @@ function editor(a={}){
  el.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.target;const v={};v.nombre=f.nombre.value.trim();v.correo=f.correo.value.trim().toLowerCase();const extras=f.correos_adicionales.value.split(/[;,\s]+/).map(x=>x.trim().toLowerCase()).filter(Boolean);if(extras.some(x=>!/^\S+@\S+\.\S+$/.test(x))){aviso('Revisa los correos adicionales: hay uno con formato inválido.',true);return;}v.correos_adicionales=[...new Set(extras)].join('; ')||null;v.celular=f.celular.value.replace(/[\s()-]/g,'');v.rol=f.rol.value;v.prioridad=Number(f.prioridad.value);v.tipo_vinculacion=f.tipo_vinculacion.value;v.color=f.color.value;v.supervisor_id=f.supervisor_id.value||null;v.empresa_id=config.empresa_id;v.permiso_mover_citas=f.permiso_mover_citas.checked;v.permiso_eliminar_citas=f.permiso_eliminar_citas.checked;v.atiende_sabado=f.atiende_sabado.checked;v.atiende_domingo=f.atiende_domingo.checked;v.atiende_festivos=f.atiende_festivos.checked;v.jornada_inicio=f.jornada_inicio.value;v.jornada_fin=f.jornada_fin.value;v.jornada_fin_sabado=f.jornada_fin_sabado.value;v.almuerzo_activo=f.almuerzo_activo_personal.checked?true:null;v.almuerzo_inicio=f.almuerzo_activo_personal.checked?f.almuerzo_inicio.value:null;v.almuerzo_fin=f.almuerzo_activo_personal.checked?f.almuerzo_fin.value:null;v.horas_minimas_anticipacion=f.anticipacion_personal.checked?Number(f.horas_minimas_anticipacion.value):null;
  const ciudadIds=[...f.querySelectorAll('[name=ciudad]:checked')].map(i=>i.value);
  const coberturaIds=[...f.querySelectorAll('[name=cobertura]:checked')].map(i=>i.value);
+ v.ciudades=ciudadIds.map(id=>ciudades.find(c=>c.id===id)?.nombre).filter(Boolean).join(', ')||a.ciudades||'Sin ciudad asignada'; // columna heredada con CHECK: no puede quedar vacía
+ if(v.celular&&!/^\+[1-9][0-9]{7,14}$/.test(v.celular)){aviso('El celular debe incluir el indicativo del país, por ejemplo +573001234567.',true);return;}
  const b=f.querySelector('[type=submit]');b.disabled=true;
  const q=a.id?supabase.from('agenda_asesores').update(v).eq('id',a.id).eq('empresa_id',config.empresa_id):supabase.from('agenda_asesores').insert(v);
  const {data:guardado,error}=await q.select('id').single();

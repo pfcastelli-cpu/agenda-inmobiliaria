@@ -293,17 +293,22 @@ Deno.serve(async (req) => {
         activo: true,
       });
       if (errorMiembro) {
+        // Deshacemos el usuario recién creado para no dejar uno huérfano.
+        const { error: errorLimpiar } = await admin.auth.admin.deleteUser(usuarioId);
         return json({
           ok: false,
-          error: 'Se creó el usuario pero no se pudo vincular a tu empresa: ' + errorMiembro.message,
+          error: 'No se pudo vincular el usuario a tu empresa' +
+            (errorLimpiar ? ' y quedó un usuario sin empresa que debe revisarse' : ' (no se creó nada)') +
+            ': ' + errorMiembro.message,
         }, 500);
       }
 
+      let avisoVinculo = '';
       if (asesorId) {
-        // No bloqueamos la respuesta por esto: el acceso ya quedó creado y es
-        // lo importante. Si el vínculo falla, el admin puede repetir la
-        // operación o vincularlo luego manualmente en la base de datos.
-        await admin.from('agenda_asesores').update({ usuario_id: usuarioId }).eq('id', asesorId).eq('empresa_id', empresaId);
+        // El acceso ya quedó creado; si el vínculo con la ficha falla se avisa
+        // en la respuesta para que el admin lo repita.
+        const { error: errorVinculo } = await admin.from('agenda_asesores').update({ usuario_id: usuarioId }).eq('id', asesorId).eq('empresa_id', empresaId);
+        if (errorVinculo) avisoVinculo = 'El acceso se creó pero no se pudo vincular con la ficha del asesor: ' + errorVinculo.message;
       }
 
       if (enlaceInvitacion) {
@@ -322,12 +327,12 @@ Deno.serve(async (req) => {
             ok: true,
             usuario_id: usuarioId,
             correo_enviado: false,
-            aviso: 'El acceso quedó creado, pero el correo de invitación no salió. ' + (envio.motivo || '') + ' Usa "Reenviar invitación" o ponle una contraseña directa.',
+            aviso: 'El acceso quedó creado, pero el correo de invitación no salió. ' + (envio.motivo || '') + ' Usa "Reenviar invitación" o ponle una contraseña directa.' + (avisoVinculo ? ' ' + avisoVinculo : ''),
           });
         }
       }
 
-      return json({ ok: true, usuario_id: usuarioId, correo_enviado: Boolean(enlaceInvitacion) });
+      return json({ ok: true, usuario_id: usuarioId, correo_enviado: Boolean(enlaceInvitacion), ...(avisoVinculo ? { aviso: avisoVinculo } : {}) });
     }
 
     if (accion === 'vincular_asesor') {

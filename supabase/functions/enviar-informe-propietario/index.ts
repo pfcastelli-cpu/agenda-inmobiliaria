@@ -218,11 +218,12 @@ Deno.serve(async (req) => {
   // Inmueble solo en venta: se le sugiere también arrendar, con estudio de mercado sin costo.
   const { data: inmuebleOferta } = await admin
     .from('agenda_inmuebles')
-    .select('tipo_oferta')
+    .select('tipo_oferta, estado_crm')
     .eq('empresa_id', empresaId)
     .eq('numero_inmueble', numeroInmueble)
     .maybeSingle();
-  const soloVenta = inmuebleOferta?.tipo_oferta === 'Venta';
+  // Si ya está arrendado no tiene sentido sugerir arrendarlo.
+  const soloVenta = inmuebleOferta?.tipo_oferta === 'Venta' && !/rent/i.test(String(inmuebleOferta?.estado_crm || ''));
   const correoEstudio = marca.contacto?.correo || '';
   const sugerenciaArriendo = soloVenta
     ? `<div style="margin-top:20px;padding:16px 18px;border-radius:16px;background:#eef8f7;border:1px solid #bfe3e0;font-size:14px;line-height:1.6"><b>💡 ¿Y si también lo arriendas?</b><br>Mientras se vende, un arriendo puede generarte ingresos. Hacemos un <b>estudio de mercado sin costo</b> para decirte a cuánto arrendarlo.</div>`

@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
     const filas: FilaInmueble[] = [];
     for (const i of inmuebles ?? []) {
       const mias = (citas ?? []).filter((c) => c.inmueble_id === i.id);
-      const realizadas = mias.filter((c) => c.estado !== 'cancelada' && c.fecha < hoy.fecha).length;
+      const realizadas = mias.filter((c) => c.estado === 'completada' && c.fecha < hoy.fecha).length;
       const proximas = mias.filter((c) => c.estado !== 'cancelada' && c.fecha >= hoy.fecha).sort((a, b) => (a.fecha + a.hora_inicio).localeCompare(b.fecha + b.hora_inicio)).map((c) => ({ fecha: c.fecha, hora: c.hora_inicio }));
       const canceladas = mias.filter((c) => c.estado === 'cancelada' && c.fecha >= desde && c.fecha < hoy.fecha).length;
       if (realizadas || proximas.length || canceladas) filas.push({ numero: i.numero_inmueble, direccion: i.direccion || '', token: i.token_informe_propietario, realizadas, proximas, canceladas });

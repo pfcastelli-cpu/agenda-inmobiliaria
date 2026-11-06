@@ -45,6 +45,8 @@ Deno.serve(async (req) => {
     .select('id, fecha, hora_inicio, arrendatario_avisado_en, inmueble_id')
     .eq('tipo_cita', 'visita_cliente')
     .eq('estado', 'confirmada')
+    .eq('es_prueba', false)
+    .is('reubicacion_pendiente_desde', null)
     .is('arrendatario_confirmado_en', null)
     .is('arrendatario_recordado_en', null)
     .not('arrendatario_avisado_en', 'is', null)

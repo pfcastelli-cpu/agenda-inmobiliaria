@@ -518,10 +518,13 @@ async function cargarCoberturas() {
   return coberturasCache;
 }
 
+const CITA_COLUMNAS = 'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, cliente_nombre, cliente_telefono, cliente_email, estado, evento_calendar_id, notas, creado_por, creado_en, actualizado_en, tipo_cita, titulo, direccion_libre, ciudad_libre, motivo_cancelacion, cancelado_por, feedback_cliente, cobertura_id, tipo_inmueble_captacion, valor_estimado_captacion, mandato_exclusivo, origen_captacion, actualizado_por, arrendatario_avisado_en, arrendatario_avisado_por, reubicacion_pendiente_desde, es_prueba, reubicacion_vence_en, reubicacion_motivo, reubicacion_recordada_en, reubicacion_recordada2_en, cruce_autorizado, cruce_autorizado_por, modalidad, enlace_virtual, proveedor_virtual, virtual_evento_id, llegada_en, llegada_lat, llegada_lon, llegada_distancia_m, llegada_valida, radicacion_enviada_en, arrendatario_confirmado_en, arrendatario_recordado_en';
+
 async function cargarCitas(fecha) {
   const { data, error } = await supabase
     .from('agenda_citas')
-    .select('*, agenda_inmuebles(*), agenda_asesores(*)')
+    // sin token_cliente/token_arrendatario: no se pueden leer desde el navegador (sql/055)
+    .select(CITA_COLUMNAS + ', agenda_inmuebles(*), agenda_asesores(*)')
     .eq('empresa_id', contexto.empresaId)
     .eq('fecha', fecha)
     .neq('estado', 'cancelada')
@@ -533,7 +536,8 @@ async function cargarCitas(fecha) {
 async function cargarCitasRango(fechaInicio, fechaFin) {
   const { data, error } = await supabase
     .from('agenda_citas')
-    .select('*, agenda_inmuebles(*), agenda_asesores(*)')
+    // sin token_cliente/token_arrendatario: no se pueden leer desde el navegador (sql/055)
+    .select(CITA_COLUMNAS + ', agenda_inmuebles(*), agenda_asesores(*)')
     .eq('empresa_id', contexto.empresaId)
     .gte('fecha', fechaInicio)
     .lte('fecha', fechaFin)
@@ -1314,7 +1318,17 @@ async function renderInformes() {
   const puedeEditarAlertas = contexto.rol === 'administrador';
 
   const [citasR, correosR, propietariosR, inmuebles, asesores] = await Promise.all([
-    supabase.from('agenda_citas').select('estado, motivo_cancelacion, tipo_cita, inmueble_id, fecha').eq('empresa_id', contexto.empresaId),
+    // Se pagina de 1000 en 1000: PostgREST corta en 1000 filas y los totales saldrían bajos sin avisar.
+    (async () => {
+      const filas = [];
+      for (let desde = 0; desde < 50000; desde += 1000) {
+        const { data, error } = await supabase.from('agenda_citas').select('estado, motivo_cancelacion, tipo_cita, inmueble_id, fecha').eq('empresa_id', contexto.empresaId).eq('es_prueba', false).order('fecha').order('id').range(desde, desde + 999);
+        if (error) return { data: null, error };
+        filas.push(...data);
+        if (data.length < 1000) break;
+      }
+      return { data: filas, error: null };
+    })(),
     supabase.from('agenda_correos_log').select('destinatario_tipo, estado').eq('empresa_id', contexto.empresaId),
     supabase.from('agenda_propietarios').select('numero_inmueble, email', { count: 'exact' }).eq('empresa_id', contexto.empresaId).limit(5000),
     cargarTodosInmuebles(),
@@ -1391,7 +1405,7 @@ async function renderInformes() {
   // --- Citas de cliente por inmueble: base para "atención", "sin citas" y la
   // tabla inmueble por inmueble. Solo cuentan visitas de cliente (no
   // inventarios/inspecciones/captaciones internas).
-  const citasCliente = citas.filter((c) => c.tipo_cita === 'visita_cliente' && c.inmueble_id);
+  const citasCliente = citas.filter((c) => c.tipo_cita === 'visita_cliente' && c.inmueble_id && c.estado !== 'cancelada');
   const porInmueble = new Map();
   for (const c of citasCliente) {
     const fila = porInmueble.get(c.inmueble_id) || { total: 0, ultimaFecha: null };

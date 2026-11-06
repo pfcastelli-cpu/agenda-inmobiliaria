@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
 
   const { data: cita, error: errorCita } = await admin
     .from('agenda_citas')
-    .select('id, empresa_id, inmueble_id, fecha, tipo_cita, cliente_nombre, cliente_email')
+    .select('id, empresa_id, inmueble_id, fecha, tipo_cita, cliente_nombre, cliente_email, estado, es_prueba')
     .eq('id', citaId)
     .maybeSingle();
 
@@ -104,6 +104,8 @@ Deno.serve(async (req) => {
   const marca = marcaCorreo(config);
 
   const modoPruebas = config?.correo_modo_pruebas !== false;
+  if (cita.estado === 'cancelada') return json({ ok: true, enviado: false, motivo: 'La cita está cancelada: no se envía encuesta.' });
+  if (cita.es_prueba && !modoPruebas) return json({ ok: true, enviado: false, motivo: 'Cita de prueba: no se escribe a correos reales.' });
   const asunto = '¿Cómo te pareció el inmueble?';
 
   if (!config?.correo_smtp_host || !config?.correo_smtp_password_secret_id) {
@@ -206,7 +208,7 @@ Deno.serve(async (req) => {
     ${encabezadoImagen(marca, 'Tu opinión sobre la visita', 'opinion')}
     <div style="padding:28px 26px;text-align:center">
     <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 10px">¿Cómo te pareció el inmueble? 🏡</h1>
-    <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 22px">Hola ${escaparHtml(cita.cliente_nombre) || ''}, gracias por visitar el inmueble. Toca la opción que mejor describa lo que sentiste y te llevamos a un formulario cortico con tu respuesta ya marcada. Tu opinión nos ayuda a mejorar nuestro servicio.</p>
+    <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 22px">Hola${cita.cliente_nombre ? ' ' + escaparHtml(cita.cliente_nombre) : ''}, gracias por visitar el inmueble. Toca la opción que mejor describa lo que sentiste y te llevamos a un formulario cortico con tu respuesta ya marcada. Tu opinión nos ayuda a mejorar nuestro servicio.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
       ${[
         ['me_gusto_mucho', '😍', 'Me gustó mucho'],

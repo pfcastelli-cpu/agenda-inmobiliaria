@@ -231,7 +231,7 @@ Deno.serve(async (req) => {
   const { data: cita, error: errorCita } = await admin
     .from('agenda_citas')
     .select(
-      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, cliente_nombre, cliente_email, cliente_telefono, tipo_cita, direccion_libre, ciudad_libre, token_cliente',
+      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, cliente_nombre, cliente_email, cliente_telefono, tipo_cita, direccion_libre, ciudad_libre, token_cliente, estado, es_prueba',
     )
     .eq('id', citaId)
     .maybeSingle();
@@ -253,6 +253,12 @@ Deno.serve(async (req) => {
     )
     .eq('empresa_id', cita.empresa_id)
     .maybeSingle();
+  if (cita.estado === 'cancelada') {
+    return json({ ok: true, enviado: false, motivo: 'La cita está cancelada: no se envía confirmación.' });
+  }
+  if (cita.es_prueba && config?.correo_modo_pruebas === false) {
+    return json({ ok: true, enviado: false, motivo: 'Cita de prueba: no se escribe a correos reales.' });
+  }
   const marca = marcaCorreo(config);
 
   const modoPruebas = config?.correo_modo_pruebas !== false;
@@ -369,9 +375,9 @@ Deno.serve(async (req) => {
 
   const html = correoVisita(marca, {
     titulo: reagendada ? 'Tu nuevo horario está confirmado' : 'Tu visita está confirmada',
-    preheader: `Inmueble ${numeroInmueble || ''}: ${fechaTexto}, ${horaTexto}. Consulta o cambia tu visita.`,
+    preheader: `${numeroInmueble ? `Inmueble ${numeroInmueble}: ` : ''}${fechaTexto}, ${horaTexto}. Consulta o cambia tu visita.`,
     modoPruebas, destinatarioReal, puntualidad: true,
-    cuerpo: `<p style="margin:0 0 12px">Hola ${escaparHtml(cita.cliente_nombre)}. ${reagendada ? 'Este horario reemplaza al anterior.' : 'Estos son los datos de tu visita.'}</p><table role="presentation" width="100%" style="border-collapse:collapse">${filasDatos}</table>`,
+    cuerpo: `<p style="margin:0 0 12px">${cita.cliente_nombre ? `Hola ${escaparHtml(cita.cliente_nombre)}. ` : ''}${reagendada ? 'Este horario reemplaza al anterior.' : 'Estos son los datos de tu visita.'}</p><table role="presentation" width="100%" style="border-collapse:collapse">${filasDatos}</table>`,
     boton: cita.token_cliente ? { texto: 'Ver, cambiar o cancelar mi visita', url: `https://citas.patrimonios.co/visita/${cita.token_cliente}` } : undefined,
     despues: `${inmuebleOcupado ? '<p style="margin:0 0 12px"><b>Inmueble ocupado:</b> tu visita sigue confirmada. Si recibes un aviso para elegir otra hora, no vayas a la hora anterior. Revisa tu correo antes de salir.</p>' : ''}${enlaces}<p style="font-size:13px;margin:12px 0 0">Puedes añadir el archivo adjunto a tu calendario.</p>`,
   });

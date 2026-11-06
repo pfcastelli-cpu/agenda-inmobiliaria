@@ -340,6 +340,6 @@ Deno.serve(async (req) => {
   await admin
     .from('agenda_citas')
     .update({ arrendatario_avisado_en: new Date().toISOString(), arrendatario_avisado_por: usuario?.id ?? null })
-    .eq('id', cita.id);
+    .in('id', proximas.map((c) => c.id)); // el correo lista todas las visitas próximas: todas quedan avisadas (y reciben recordatorio)
   return json({ ok: true, enviado: true, enviados });
 });

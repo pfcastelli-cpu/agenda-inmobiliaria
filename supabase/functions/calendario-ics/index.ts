@@ -73,10 +73,16 @@ Deno.serve(async (req) => {
     asesorFiltro = { id: asesor.id, nombre: asesor.nombre };
     nombreCalendario = `Citas · ${asesor.nombre}`;
   } else {
+    const { data: tk } = await admin
+      .from('agenda_calendario_empresa')
+      .select('empresa_id')
+      .eq('token', token)
+      .maybeSingle();
+    if (!tk) return new Response('Enlace inválido.', { status: 404 });
     const { data: cfg } = await admin
       .from('agenda_configuracion')
       .select('empresa_id, nombre_comercial')
-      .eq('calendario_token', token)
+      .eq('empresa_id', tk.empresa_id)
       .maybeSingle();
     if (!cfg) return new Response('Enlace inválido.', { status: 404 });
     empresaId = cfg.empresa_id;
@@ -90,7 +96,7 @@ Deno.serve(async (req) => {
   let consulta = admin
     .from('agenda_citas')
     .select(
-      'id, asesor_id, inmueble_id, fecha, hora_inicio, hora_fin, cliente_nombre, cliente_telefono, tipo_cita, titulo, direccion_libre, ciudad_libre, notas, estado, actualizado_en',
+      'id, asesor_id, inmueble_id, fecha, hora_inicio, hora_fin, cliente_nombre, cliente_telefono, tipo_cita, titulo, direccion_libre, ciudad_libre, notas, estado, actualizado_en, reubicacion_pendiente_desde',
     )
     .eq('empresa_id', empresaId)
     .neq('estado', 'cancelada')
@@ -149,7 +155,8 @@ Deno.serve(async (req) => {
     const base = inm
       ? `Visita #${inm.numero_inmueble}`
       : c.titulo || (c.tipo_cita === 'captacion' ? 'Captación' : 'Cita');
-    const resumen = asesorFiltro ? base : `${nombreAsesor ? nombreAsesor + ' · ' : ''}${base}`;
+    const conAsesor = asesorFiltro ? base : `${nombreAsesor ? nombreAsesor + ' · ' : ''}${base}`;
+    const resumen = c.reubicacion_pendiente_desde ? `[Por reubicar] ${conAsesor}` : conAsesor;
     const descripcion = [
       `Asesor: ${nombreAsesor}`,
       c.cliente_nombre ? `Cliente: ${c.cliente_nombre}` : '',

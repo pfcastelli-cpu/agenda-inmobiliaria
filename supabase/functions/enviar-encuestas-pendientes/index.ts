@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       .select('id, fecha, hora_fin')
       .eq('empresa_id', cfg.empresa_id)
       .eq('tipo_cita', 'visita_cliente')
+      .eq('es_prueba', false)
       .in('estado', ['confirmada', 'completada'])
       .not('cliente_email', 'is', null)
       .gte('fecha', ayerDe(ahora.fecha))

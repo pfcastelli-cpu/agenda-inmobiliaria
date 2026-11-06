@@ -228,7 +228,7 @@ const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function extraerCorreosValidos(campoEmail: string | null | undefined): string[] {
   if (!campoEmail) return [];
   return campoEmail
-    .split(/[;,]/)
+    .split(/[;,\s]+/)
     .map((c) => c.trim().toLowerCase())
     .filter((c) => REGEX_EMAIL.test(c));
 }
@@ -253,7 +253,7 @@ Deno.serve(async (req) => {
 
   const { data: cita, error: errorCita } = await admin
     .from('agenda_citas')
-    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, tipo_cita')
+    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, tipo_cita, estado, es_prueba')
     .eq('id', citaId)
     .maybeSingle();
 
@@ -281,6 +281,8 @@ Deno.serve(async (req) => {
   const marca = marcaCorreo(config);
 
   const modoPruebas = config?.correo_modo_pruebas !== false;
+  if (cita.estado === 'cancelada') return json({ ok: true, enviados: 0, motivo: 'La cita está cancelada.' });
+  if (cita.es_prueba && !modoPruebas) return json({ ok: true, enviados: 0, motivo: 'Cita de prueba: no se escribe a correos reales.' });
 
   if (!config?.correo_smtp_host || !config?.correo_smtp_password_secret_id) {
     await registrarLog(admin, {
