@@ -4,9 +4,9 @@ Actualizado: 06-nov-2026. Detalle anterior: `docs/historico/ESTADO-2026-11-04-co
 
 ## Urgente (06-nov, tras la simulación de 2 semanas)
 
-- **Desplegar ya las Edge Functions** (pendiente de autorización; el SQL 055 ya está aplicado y rompió el enlace del calendario de TODA la empresa hasta que se despliegue `calendario-ics`): `npx --no-install supabase functions deploy calendario-ics enviar-correo-cita enviar-correo-propietario enviar-encuesta-cliente enviar-encuestas-pendientes enviar-informe-propietario enviar-resumen-propietarios recordar-arrendatario avisar-arrendatario --project-ref ykiuuxludyonkhywtmgu --use-api --yes --no-verify-jwt`. Estas funciones ya están en `main` (commit 44e5e8a), el front ya publicado.
-- `gestion-accesos`: en `main` solo van los arreglos de `crear` (rollback de usuario huérfano). El «Eliminar usuario» (superadmin) sigue SIN commitear en el árbol de trabajo, sin revisar ni desplegar. Desplegar `gestion-accesos` ahora llevaría solo lo commiteado.
-- Probar con sesión real tras desplegar: pestaña Administración → Calendario (enlaces), alta de asesor nuevo, alta de acceso con login.
+- **Desplegadas el 06-nov** (verify_jwt conservado: públicas sin JWT; `enviar-informe-propietario` y `avisar-arrendatario` con JWT): calendario-ics, enviar-correo-cita, enviar-correo-propietario, enviar-encuesta-cliente, enviar-encuestas-pendientes, enviar-resumen-propietarios, recordar-arrendatario, enviar-informe-propietario, avisar-arrendatario. Calendario por asesor probado (200 / 404 con token inválido); el enlace «Todas las agendas» (token en `agenda_calendario_empresa`) NO se pudo probar con red real: abrirlo/suscribirlo y confirmar.
+- `gestion-accesos`: arreglos de `crear` en `main` pero SIN desplegar. El «Eliminar usuario» (superadmin) sigue SIN commitear, sin revisar ni desplegar.
+- Probar con sesión real: alta de acceso con login (Administración → Accesos, `sim+prueba@example.com`, sin contraseña) y alta de asesor nuevo. Nunca ejecutadas con red real.
 
 ## Aplicado en producción el 06-nov
 
