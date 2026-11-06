@@ -580,6 +580,7 @@ async function correoForm(){
   <h3 style="margin-top:26px">4. Modo de pruebas</h3>
   <label class="ad-toggle"><input type="checkbox" name="correo_modo_pruebas"><span class="ad-toggle-track"><span class="ad-toggle-thumb"></span></span><span>Mientras ajustamos el diseño, enviar TODOS los correos (cliente y propietario) a un solo correo de pruebas</span></label>
   <div class="ad-grid" style="margin-top:14px">${campo('correo_pruebas_destino','Correo donde quieres recibir las pruebas',config.correo_pruebas_destino||'pf.castelli@patrimonios.co','email','placeholder="tu-correo@patrimonios.co"')}</div>
+  <label class="ad-toggle" style="margin-top:12px"><input type="checkbox" name="encuestas_pausadas"><span class="ad-toggle-track"><span class="ad-toggle-thumb"></span></span><span>⏸️ Pausar las encuestas automáticas al cliente <small class="ad-muted">(se aplica al instante; acuérdate de reactivarlas al salir a producción)</small></span></label>
   <p class="ad-note">Con el modo de pruebas activo, ningún cliente ni propietario recibe correos todavía: absolutamente todo llega al correo de arriba, para que revises el contenido y el diseño antes de salir a producción. Cuando estés listo, apaga el interruptor y los correos empezarán a llegar a los destinatarios reales.</p>
   <button class="ad-primary" type="submit" style="margin-top:20px">Guardar configuración de correo</button>
  </form>
@@ -596,6 +597,13 @@ async function correoForm(){
  el.querySelector('[name=correo_smtp_seguridad]').value=config.correo_smtp_seguridad||PROVEEDORES_CORREO[proveedorInicial].seguridad;
  el.querySelector('[name=correo_modo_pruebas]').checked=modoPruebas;
  {const formCo=el.querySelector('form');const boton=formCo.querySelector('button[type=submit]');
+ {const chkPausa=el.querySelector('[name=encuestas_pausadas]');chkPausa.checked=config.encuesta_automatica===false;
+  chkPausa.onchange=async()=>{chkPausa.disabled=true;
+   const {error}=await supabase.from('agenda_configuracion').update({encuesta_automatica:!chkPausa.checked}).eq('empresa_id',config.empresa_id);
+   chkPausa.disabled=false;
+   if(error){chkPausa.checked=!chkPausa.checked;aviso('No se pudo cambiar la pausa de encuestas. Verifica permisos y conexión.',true);return;}
+   config.encuesta_automatica=!chkPausa.checked;
+   aviso(chkPausa.checked?'Encuestas en pausa: no se enviará ninguna.':'Encuestas reactivadas: se enviarán después de cada visita.');};}
   const nodos=[...[...formCo.children].filter(n=>n!==boton),...[...el.children].slice([...el.children].indexOf(formCo)+1)];
   const rep=repartir(nodos,t=>/^[123]\./.test(t)?'conexion':/^[45]\./.test(t)?'pruebas':/^6\./.test(t)?'bitacora':undefined,'conexion');
   montarSubpestanas({id:'correo',etiqueta:'Secciones del correo',contenedor:el,antes:formCo,botonGuardar:boton,grupos:[
