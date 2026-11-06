@@ -180,3 +180,90 @@ function crearActivadores() {
   ScriptApp.newTrigger('importarCitasCalendar').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('importarInteresesBot').timeBased().everyHours(1).create();
 }
+
+/**
+ * ===== IMPORTAR A LA AGENDA (con datos del cliente) — autorizado por Felipe el 2026-11-05 =====
+ * Copia las citas de los Calendar DIRECTO a la tabla agenda_citas (nombre, correo y teléfono incluidos), para ver todo en
+ * citas.patrimonios.co. Es seguro correrla varias veces: salta las que ya existen (evento_calendar_id) y solo actualiza
+ * las que se cancelaron en Calendar. No envía correos por sí sola.
+ * Antes de correrla: poner IMPORTAR_DESDE = 2026-01-01 en las propiedades del script.
+ * Orden: 1) PRUEBA_agendaEnSeco() (no guarda, muestra cuántas y cuáles no encuentran inmueble)  2) importarCitasAAgenda().
+ */
+function mapaAgenda_(cfg) {
+  const asesores = {}; rest_(cfg, 'get', 'agenda_asesores?select=id,nombre&empresa_id=eq.' + cfg.empresaId).forEach(a => { asesores[a.nombre] = a.id; });
+  const inmuebles = {}; let off = 0;
+  for (;;) {
+    const lote = rest_(cfg, 'get', 'agenda_inmuebles?select=id,numero_inmueble&empresa_id=eq.' + cfg.empresaId + '&limit=1000&offset=' + off);
+    lote.forEach(i => { inmuebles[i.numero_inmueble] = i.id; });
+    if (lote.length < 1000) break; off += 1000;
+  }
+  return { asesores: asesores, inmuebles: inmuebles };
+}
+
+function citaDeEvento_(ev, cal, pb, mapa, empresaId) {
+  const ini = ev.getStartTime(), fin = ev.getEndTime(), ahora = new Date();
+  const fecha = Utilities.formatDate(ini, TZ_IMP, 'yyyy-MM-dd');
+  const hi = Utilities.formatDate(ini, TZ_IMP, 'HH:mm:ss'), hf = Utilities.formatDate(fin, TZ_IMP, 'HH:mm:ss');
+  const inmuebleId = pb.inmueble ? (mapa.inmuebles[pb.inmueble] || null) : null;
+  const asesorId = mapa.asesores[pb.asesor || cal.asesor] || mapa.asesores[cal.asesor] || null;
+  return {
+    empresa_id: empresaId, evento_calendar_id: ev.getId(), inmueble_id: inmuebleId, asesor_id: asesorId,
+    fecha: fecha, hora_inicio: hi, hora_fin: hf > hi ? hf : hi.slice(0, 3) + '59:00',
+    cliente_nombre: pb.nombre || 'Cliente de Calendar', cliente_telefono: pb.telefono || '', cliente_email: pb.email || '',
+    estado: fin < ahora ? 'completada' : 'confirmada',
+    tipo_cita: inmuebleId ? 'visita_cliente' : 'otro', titulo: inmuebleId ? '' : (ev.getTitle() || 'Cita importada'),
+    direccion_libre: inmuebleId ? '' : (pb.direccion || ev.getLocation() || ''),
+    notas: 'Importada de Google Calendar (' + cal.ciudad + ')' + (pb.inmueble && !inmuebleId ? ' · inmueble Nº ' + pb.inmueble + ' no encontrado' : ''),
+    es_prueba: false,
+  };
+}
+
+function PRUEBA_agendaEnSeco() {
+  const cfg = propsImp_(), v = ventana_(cfg), mapa = mapaAgenda_(cfg);
+  CALENDARIOS.forEach(cal => {
+    let n = 0, sinInm = 0, sinAs = 0;
+    CalendarApp.getCalendarById(cal.id).getEvents(v.desde, v.hasta).forEach(ev => {
+      const pb = parsearDescripcion_(ev.getDescription());
+      if (!pb.email && !pb.telefono && !pb.inmueble) return;
+      const c = citaDeEvento_(ev, cal, pb, mapa, cfg.empresaId); n++;
+      if (!c.inmueble_id) sinInm++; if (!c.asesor_id) sinAs++;
+    });
+    Logger.log('[' + cal.ciudad + '] ' + n + ' citas · sin inmueble encontrado: ' + sinInm + ' · sin asesor: ' + sinAs);
+  });
+}
+
+function importarCitasAAgenda() {
+  const cfg = propsImp_(), v = ventana_(cfg), mapa = mapaAgenda_(cfg);
+  const existentes = {};
+  for (let off = 0; ; off += 1000) {
+    const lote = rest_(cfg, 'get', 'agenda_citas?select=id,evento_calendar_id,estado&evento_calendar_id=not.is.null&empresa_id=eq.' + cfg.empresaId + '&limit=1000&offset=' + off);
+    lote.forEach(c => { existentes[c.evento_calendar_id] = c; });
+    if (lote.length < 1000) break;
+  }
+  const nuevas = [], visto = {}; let fallos = 0;
+  CALENDARIOS.forEach(cal => {
+    CalendarApp.getCalendarById(cal.id).getEvents(v.desde, v.hasta).forEach(ev => {
+      const pb = parsearDescripcion_(ev.getDescription());
+      if (!pb.email && !pb.telefono && !pb.inmueble) return;
+      visto[ev.getId()] = true;
+      if (!existentes[ev.getId()]) nuevas.push(citaDeEvento_(ev, cal, pb, mapa, cfg.empresaId));
+    });
+  });
+  const hoy = Utilities.formatDate(new Date(), TZ_IMP, 'yyyy-MM-dd');
+  const pasadas = nuevas.filter(c => c.fecha < hoy), futuras = nuevas.filter(c => c.fecha >= hoy);
+  // Las pasadas no pasan por el control de choques: van por lotes. Si un lote falla, se reintenta fila por fila.
+  for (let i = 0; i < pasadas.length; i += 50) {
+    const lote = pasadas.slice(i, i + 50);
+    try { rest_(cfg, 'post', 'agenda_citas', lote, { Prefer: 'return=minimal' }); }
+    catch (e) { lote.forEach(c => { try { rest_(cfg, 'post', 'agenda_citas', [c], { Prefer: 'return=minimal' }); } catch (e2) { fallos++; Logger.log('FALLÓ ' + c.evento_calendar_id + ' ' + c.fecha + ': ' + e2.message); } }); }
+  }
+  // Las de hoy en adelante van una por una: si chocan con otra, se registra en el log y se sigue.
+  futuras.forEach(c => { try { rest_(cfg, 'post', 'agenda_citas', [c], { Prefer: 'return=minimal' }); } catch (e) { fallos++; Logger.log('FALLÓ ' + c.evento_calendar_id + ' ' + c.fecha + ': ' + e.message); } });
+  // Citas que se borraron en Calendar: quedan canceladas (no se borran de la base).
+  let canceladas = 0;
+  Object.keys(existentes).forEach(id => {
+    const c = existentes[id];
+    if (!visto[id] && c.estado === 'confirmada') { rest_(cfg, 'patch', 'agenda_citas?id=eq.' + c.id, { estado: 'cancelada', motivo_cancelacion: 'Eliminada en Google Calendar' }, { Prefer: 'return=minimal' }); canceladas++; }
+  });
+  Logger.log('Listo. Nuevas: ' + nuevas.length + ' (pasadas ' + pasadas.length + ', futuras ' + futuras.length + ') · fallos: ' + fallos + ' · canceladas: ' + canceladas);
+}

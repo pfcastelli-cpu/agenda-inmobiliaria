@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     const { data: r, error } = await admin.rpc('agenda_demanda_resumen', { p_empresa_id: e.empresa_id, p_dias: 3 });
     if (error || !r) { console.error('avisar-demanda resumen:', error?.message); continue; }
     const u = { info: Number(r.umbral_info || 3), urgente: Number(r.umbral_urgente || 5) };
-    const candidatas = (r.inmuebles || []).map((m: Fila) => ({ m, nivel: nivelDemanda(m, u) })).filter((x: { nivel: string }) => x.nivel !== 'normal');
+    const candidatas = (r.inmuebles || []).map((m: Fila) => ({ m, nivel: nivelDemanda(m, u) })).filter((x: { m: Fila; nivel: string }) => x.nivel !== 'normal' && String(x.m.estado_crm || '').trim().toLowerCase() !== 'arrendado o vendido'); // un inmueble ya arrendado/vendido no necesita alerta de demanda
     if (!candidatas.length) continue;
     // No repetir el mismo nivel en 24 h (subir de atención a urgente sí avisa).
     const { data: previos } = await admin.from('agenda_demanda_avisos').select('numero_inmueble, nivel').eq('empresa_id', e.empresa_id).gte('enviado_en', new Date(Date.now() - 24 * 3600_000).toISOString());

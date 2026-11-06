@@ -7,6 +7,7 @@ Actualizado: 04-nov-2026. Detalle completo anterior: `docs/historico/ESTADO-2026
 - Probar con sesión real: aviso al arrendatario (botones sugerir hora/día/pausa), informe del propietario (sugerencia de arrendar), formulario de cambio de precio en `/propietario/`, y los correos nuevos en Gmail/Outlook.
 - Revisar y, si Felipe autoriza, publicar «Eliminar usuario» (Superadministrador): código en `administracion.js`, `administracion.css`, `sesion.js` (revisar: cambió mucho) y acción `eliminar` en `gestion-accesos`. Sin desplegar ni probar con red real.
 - Subir los 3 Excel de portales (foto inicial). Verificar el interruptor «Habilitar /consignar» (en producción aparece encendido; Felipe debe confirmar que fue a propósito).
+- 05-nov: importadas a `agenda_citas` 838 citas de Calendar CON datos del cliente (818 completadas, 20 confirmadas futuras; 116 sin inmueble, entran como «otro»). 20 no entraron (mismo asesor/fecha/hora ya ocupado, índice `agenda_citas_asesor_slot_unico`). Función `importarCitasAAgenda()` en `sincronizacion/importar-calendar-y-bot.gs` (ya pegada y corrida en Apps Script; es repetible). Para repetir: IMPORTAR_DESDE=2026-01-01, correrla y volver a 2026-11-05. No hay sincronización horaria a agenda_citas todavía. Citas importadas sin commitear.
 - Pendiente: proponer 3 horarios distintos en el portal del arrendatario (hoy solo propone 1; requiere portal + BD).
 
 ## Correos (publicado en commits aed8065 y 25081a3; Supabase desplegado)
