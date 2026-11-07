@@ -13,7 +13,8 @@ Actualizado: 06-nov-2026. Detalle anterior: `docs/historico/ESTADO-2026-11-04-co
 - `enviar-informe-propietario` v17: el correo salía en blanco (plantilla vieja en un comentario se tragó el `return`); corregido, desplegado y verificado en Gmail.
 - `sql/056-arreglo-cancelar-y-mover-cita.sql` aplicado en producción: cancelar y mover cita fallaban con «permission denied for table agenda_citas» desde la 055 (`select *` en funciones SECURITY INVOKER). Probados con red real: cancelar, mover y radicación, con sus correos (llegan completos al correo de pruebas). Citas de prueba creadas ese día quedaron canceladas y marcadas.
 - Contraste corregido (rojo de errores en accesos en modo oscuro, «Volver a la agenda», avatares). Checklist para probar antes de salir: `docs/CHECKLIST-PRUEBAS.md`.
-- Sin probar aún: recordatorios, encuestas (están pausadas), solicitudes de propietarios, contraseña olvidada, avisos de tickets y la vista móvil. Regla: SQL/docs/funciones con `[skip netlify]` en el commit para ahorrar créditos.
+- Probado también con red real el 07-nov (todo llega completo al correo de pruebas): contraseña olvidada, solicitud del propietario («Pedir una asesoría»), ticket de soporte (#7, de prueba, queda en la consola), aviso al arrendatario + «Confirmo que estaré» (inmueble 990005 puesto en «Rentando» solo durante la prueba y devuelto a «Disponible»), cancelar y mover. Vista móvil (375 px) sin desbordes en propietario, arrendatario, reservar, inicio y administración.
+- Sin probar: encuestas (`encuestas_pausadas` activo; probarlas exige levantar la pausa, orden de Felipe) y el recordatorio de 24 h al arrendatario (lo dispara pg_cron con secreto y excluye citas `es_prueba`). Regla: SQL/docs/funciones con `[skip netlify]` en el commit para ahorrar créditos.
 
 ## Aplicado en producción el 06-nov
 
