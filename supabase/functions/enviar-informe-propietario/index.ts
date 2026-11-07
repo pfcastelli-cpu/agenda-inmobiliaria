@@ -233,40 +233,7 @@ Deno.serve(async (req) => {
     : [];
 
   function construirHtml(nombrePropietario: string, destinatarioRealCorreo: string) {
-    /* const bannerPruebas = modoPruebas
-      ? `<div style="background:#FEF3C7;color:#92400E;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600">
-        MODO DE PRUEBAS — este correo iba dirigido en realidad a: ${escaparHtml(destinatarioRealCorreo)}
-      </div>`
-      : '';
-    return correoBase(marca, { titulo: `Informe de tu inmueble Nº ${numeroInmueble}`, tema: 'informe', cuerpo: `<p>Hola ${escaparHtml(nombrePropietario) || ''}, te compartimos el link con el informe en vivo de tu inmueble: cuántas visitas ha tenido, qué han dicho los clientes que lo han visto, y un espacio para pedirnos un cambio de precio, de fotos, o una asesoría cuando quieras. Se actualiza solo, así que puedes volver a verlo cuando quieras con este mismo link.</p>${sugerenciaArriendo}`, botones: [{ texto: 'Ver el informe de mi inmueble', url: linkInforme, variante: 'principal' }, ...botonEstudio], despues: `${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}<p>Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}`, modoPruebas, destinatarioReal: destinatarioRealCorreo }); /*
-    return `<!doctype html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet"></head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:28px 16px">
-  ${bannerPruebas}
-  <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb">
-    ${encabezadoImagen(marca, `Informe de tu inmueble`)}
-    <div style="padding:28px 26px 10px">
-      <h1 style="color:${marca.principal};font-size:26px;line-height:1.25;font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0 0 4px">El informe de tu inmueble Nº ${numeroInmueble} 📊</h1>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 20px">Hola ${escaparHtml(nombrePropietario) || ''}, te compartimos el link con el informe en vivo de tu inmueble: cuántas visitas ha tenido, qué han dicho los clientes que lo han visto, y un espacio para pedirnos un cambio de precio, de fotos, o una asesoría cuando quieras. Se actualiza solo, así que puedes volver a verlo cuando quieras con este mismo link.</p>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td align="center" bgcolor="${marca.principal}" style="border-radius:999px">
-          <a href="${linkInforme}" target="_blank" style="display:block;padding:15px 18px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px">
-            📊 Ver el informe de mi inmueble
-          </a>
-        </td>
-      </tr></table>
-    </div>
-    ${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}
-    <div style="background:#f4f4f4;padding:20px 28px;border-top:1px solid #efefef">
-      <p style="color:#4d4d4d;text-align:justify;font-size:12px;margin:0">Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>
-    </div>
-  </div>
-  ${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}
-</div>
-</body>
-</html>`; */
+    return correoBase(marca, { titulo: `Informe de tu inmueble Nº ${numeroInmueble}`, tema: 'informe', cuerpo: `<p>Hola ${escaparHtml(nombrePropietario) || ''}, te compartimos el link con el informe en vivo de tu inmueble: cuántas visitas ha tenido, qué han dicho los clientes que lo han visto, y un espacio para pedirnos un cambio de precio, de fotos, o una asesoría cuando quieras. Se actualiza solo, así que puedes volver a verlo cuando quieras con este mismo link.</p>${sugerenciaArriendo}`, botones: [{ texto: 'Ver el informe de mi inmueble', url: linkInforme, variante: 'principal' }, ...botonEstudio], despues: `${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}<p>Este link es personal de tu inmueble; no lo compartas si prefieres que la información quede solo entre nosotros.</p>${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}`, modoPruebas, destinatarioReal: destinatarioRealCorreo });
   }
 
   let enviados = 0;
