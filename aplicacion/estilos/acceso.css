@@ -88,7 +88,7 @@
   color: var(--pa-text);
   margin-top: 14px;
 }
-#pat-access .pa-aviso-error { color: #d43228; }
+#pat-access .pa-aviso-error { color: light-dark(#b3261e, #ffa4ad); }
 #pat-access .pa-foot {
   font-size: 14px;
   text-align: center;
