@@ -27,6 +27,8 @@ Actualizado: 06-nov-2026. Detalle anterior: `docs/historico/ESTADO-2026-11-04-co
 - `sql/055-proteger-tokens.sql`: token del calendario de la empresa en `agenda_calendario_empresa` (solo admin); `agenda_citas.token_cliente/token_arrendatario` ya no se pueden leer desde el navegador (hay que listar columnas, nunca `select('*')` sobre `agenda_citas`; columna nueva → `grant select (col) on public.agenda_citas to authenticated`).
 - Estudios de mercado probados de punta a punta en producción con el inmueble de prueba 990004 (botón del propietario → lista Estudios → PDF → envío al correo de pruebas): funciona.
 
+- `sql/056-captador-primero.sql` aplicado el 09-nov (archivo de referencia sin commitear): el portal ofrece primero al captador (activo y con horarios), si no a la planta de la ciudad, si no al freelance. La función anterior quedó como `agenda_sugerir_horarios_portal_base`. Verificado: inmueble 455 → solo Luis Jiménez; 695 → solo Laura Salcedo.
+
 ## Trabajo de otras sesiones sin commitear (no tocar sin revisar)
 
 - Alertas de salud del inmueble («inmueble sin movimiento»): `sql/051-alertas-salud-inmueble.sql`, función `enviar-alerta-salud`, cambios en `admin-propietarios.js` y `propietario.js`. Hay dos archivos `sql/051-*`: renumerar uno.
