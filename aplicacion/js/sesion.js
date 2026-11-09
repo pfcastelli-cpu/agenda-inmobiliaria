@@ -163,10 +163,6 @@ export function crearAcceso(empresaId, { nombre, correo, rol, password, asesorId
   });
 }
 
-// TEMPORAL (pruebas): crea un usuario con correo ficticio y contraseña aleatoria, sin enviar correos.
-export function crearAccesoSinCredenciales(empresaId, { nombre, rol }) {
-  return llamarGestionAccesos('crear', { empresa_id: empresaId, nombre, rol, sin_credenciales: true });
-}
 
 export function cambiarPasswordDeUsuario(empresaId, usuarioId, password) {
   return llamarGestionAccesos('cambiar_password', { empresa_id: empresaId, usuario_id: usuarioId, password });

@@ -19,7 +19,6 @@ import {
  alternarActivoAcceso,
  vincularAsesorConAcceso,
  eliminarUsuario,
- crearAccesoSinCredenciales,
 } from './sesion.js';
 import { aplicarTema, quitarTema, tarjetasPaletas, PALETAS, paletaActiva, derivarPaleta } from './paletas.js';
 import '../estilos/administracion.css';
@@ -748,8 +747,6 @@ async function accesosTab() {
   </fieldset>
   <div id="ad-acceso-clave-directa" hidden><label>Contraseña (mínimo 8 caracteres)<input name="password" type="text" minlength="8" autocomplete="off"></label> <button type="button" id="ad-acceso-generar">Generar una</button><p class="ad-note">Esta contraseña no se envía por correo: cópiala y pásasela tú mismo a la persona.</p></div>
   <button type="submit" class="ad-primary" style="align-self:end">Crear acceso</button>
-  <button type="button" id="ad-acceso-sin-datos" style="align-self:end">Crear usuario de prueba (sin correo ni contraseña)</button>
-  <p class="ad-note" style="margin:0">Temporal para pruebas: solo necesita el nombre y el rol. Se le inventa un correo ficticio y una contraseña, que se muestran una única vez.</p>
  </form>
  <p class="ad-note">Si eliges invitar por correo, la persona recibe un enlace de un solo uso para elegir su propia contraseña. Si no le llega o el enlace expira, usa "Reenviar invitación". También puedes cambiarle la contraseña después con "Cambiar contraseña".</p>`;
 
@@ -850,21 +847,6 @@ async function accesosTab() {
  }));
  el.querySelector('#ad-acceso-generar')?.addEventListener('click', () => {
   el.querySelector('#ad-acceso-form [name=password]').value = generarPasswordAleatoria();
- });
- el.querySelector('#ad-acceso-sin-datos')?.addEventListener('click', async ev => {
-  const f = el.querySelector('#ad-acceso-form');
-  const nombre = f.nombre.value.trim();
-  if (!nombre) { aviso('Escribe al menos el nombre.', true); return; }
-  ev.target.disabled = true;
-  try {
-   const r = await crearAccesoSinCredenciales(config.empresa_id, { nombre, rol: f.rol.value });
-   window.alert(`Usuario de prueba creado. Anota estos datos, no se vuelven a mostrar:\n\nCorreo: ${r.credenciales.correo}\nContraseña: ${r.credenciales.password}`);
-   f.reset();
-   await accesosTab();
-  } catch (err) {
-   aviso(err.message, true);
-   ev.target.disabled = false;
-  }
  });
  el.querySelector('#ad-acceso-form').addEventListener('submit', async e => {
   e.preventDefault();

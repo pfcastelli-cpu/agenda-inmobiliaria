@@ -5,8 +5,13 @@ Actualizado: 06-nov-2026. Detalle anterior: `docs/historico/ESTADO-2026-11-04-co
 ## Urgente (06-nov, tras la simulación de 2 semanas)
 
 - **Desplegadas el 06-nov** (verify_jwt conservado: públicas sin JWT; `enviar-informe-propietario` y `avisar-arrendatario` con JWT): calendario-ics, enviar-correo-cita, enviar-correo-propietario, enviar-encuesta-cliente, enviar-encuestas-pendientes, enviar-resumen-propietarios, recordar-arrendatario, enviar-informe-propietario, avisar-arrendatario. Calendario por asesor probado (200 / 404 con token inválido); el enlace «Todas las agendas» (token en `agenda_calendario_empresa`) NO se pudo probar con red real: abrirlo/suscribirlo y confirmar.
-- Probado con red real el 06-nov: `gestion-accesos` v17 (alta por invitación `sim+invitacion@example.com`, botón «usuario de prueba», «Eliminar usuario»), alta de asesor desde el formulario (`[SIM] Asesor Alta Formulario`) y enlace «Todas las agendas» (200, text/calendar, 146 eventos). El correo de invitación a una dirección real no se vio llegar (se usó example.com).
+- Probado con red real el 06-nov: `gestion-accesos` v17 (alta por invitación `sim+invitacion@example.com`, «Eliminar usuario»), alta de asesor desde el formulario (`[SIM] Asesor Alta Formulario`) y enlace «Todas las agendas» (200, text/calendar, 146 eventos). El correo de invitación a una dirección real no se vio llegar (se usó example.com).
 - Usuarios de prueba `sim+prueba2`, `sim+prueba3` y `sim+invitacion` ya eliminados (06-nov). Queda el asesor `[SIM] Asesor Alta Formulario` (sin acceso).
+
+## Pendiente de desplegar (09-nov)
+
+- Se quitó el botón temporal «Crear usuario de prueba» (`administracion.js`, `sesion.js`) y la opción `sin_credenciales` de `gestion-accesos`. Falta redesplegar `gestion-accesos` (con JWT, sin `--no-verify-jwt`) para que producción deje de aceptarla; hasta entonces solo un administrador autenticado podría usarla.
+- Errores rojos revisados en CSS e inline: todos con texto rojo y contraste ≥ 6:1 (claro y oscuro); el aviso flotante de error es texto blanco sobre rojo oscuro.
 
 ## Revisión 07-nov (correos, contraste y citas)
 
@@ -25,7 +30,6 @@ Actualizado: 06-nov-2026. Detalle anterior: `docs/historico/ESTADO-2026-11-04-co
 ## Trabajo de otras sesiones sin commitear (no tocar sin revisar)
 
 - Alertas de salud del inmueble («inmueble sin movimiento»): `sql/051-alertas-salud-inmueble.sql`, función `enviar-alerta-salud`, cambios en `admin-propietarios.js` y `propietario.js`. Hay dos archivos `sql/051-*`: renumerar uno.
-- «Eliminar usuario»: `administracion.js`, `sesion.js`, `administracion.css`, `gestion-accesos`.
 
 ## Pendientes de producto
 

@@ -212,15 +212,11 @@ Deno.serve(async (req) => {
     }
 
     if (accion === 'crear') {
-      // TEMPORAL (pruebas): usuario sin correo ni contraseña propios. Se inventa un correo ficticio y una
-      // contraseña aleatoria, no se envía ningún correo y las credenciales se devuelven una sola vez.
-      const sinCredenciales = body.sin_credenciales === true;
-      const aleatorio = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
-      const correo = sinCredenciales ? `prueba-${aleatorio(6)}@sin-correo.test` : String(body.correo || '').trim().toLowerCase();
+      const correo = String(body.correo || '').trim().toLowerCase();
       const nombre = String(body.nombre || '').trim();
       const rol = String(body.rol || '');
       const redirectTo = body.redirect_to ? String(body.redirect_to) : undefined;
-      const password = sinCredenciales ? aleatorio(12) : (body.password ? String(body.password) : '');
+      const password = body.password ? String(body.password) : '';
       let asesorId = body.asesor_id ? String(body.asesor_id) : '';
       if (!correo || !nombre || !ROLES_VALIDOS.includes(rol)) {
         return json({ ok: false, error: 'Falta el nombre, el correo, o el rol no es válido.' }, 400);
@@ -344,7 +340,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (sinCredenciales) return json({ ok: true, usuario_id: usuarioId, correo_enviado: false, credenciales: { correo, password } });
       return json({ ok: true, usuario_id: usuarioId, correo_enviado: Boolean(enlaceInvitacion), ...(avisoVinculo ? { aviso: avisoVinculo } : {}) });
     }
 

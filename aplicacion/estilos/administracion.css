@@ -44,7 +44,7 @@
 .ad-bitacora-correo li.ad-log-fallido{border-left-color:#DC2626;background:#FEF2F2}
 .ad-bitacora-correo li.ad-log-omitido{border-left-color:#D97706}
 .ad-bitacora-linea1{display:flex;justify-content:space-between;gap:10px;font-weight:600}
-.ad-bitacora-fecha{color:#7a8b96;font-weight:400}
+.ad-bitacora-fecha{color:#5b6b76;font-weight:400}
 .ad-bitacora-linea2{color:#526575;margin-top:2px}
 .ad-bitacora-pruebas{color:#92400E;font-weight:600}
 .ad-bitacora-asunto{color:#1A2C45;margin-top:4px}
@@ -218,7 +218,7 @@
 .ad-rol-titulo{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .ad-rol-botones{display:flex;flex-wrap:wrap;gap:8px}
 .ad-rol-botones button{font-size:13.5px;min-height:38px;padding:6px 12px}
-.ad-rol-botones .ad-peligro{border-color:currentColor;color:#b3261e}
+.ad-rol-botones .ad-peligro,.ad-acceso-botones .ad-peligro{border-color:currentColor;color:#b3261e}
 .ad-rol-desc{grid-column:1 / -1}
 .ad-perm-grupos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:10px 0}
 .ad .ad-perm-grupo{grid-column:auto;margin:0;padding:12px 14px}
