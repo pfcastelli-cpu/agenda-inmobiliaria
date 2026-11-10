@@ -58,3 +58,11 @@ Actualizado: 06-nov-2026. Detalle anterior: `docs/historico/ESTADO-2026-11-04-co
 ## Cómo actualizar este archivo
 
 Reemplazar lo superado (no acumular bitácora); máximo ~3 KB. Mover lo cerrado a `docs/historico/`. Sin secretos ni datos personales.
+
+## Aplicado el 10-nov (sin commitear ni publicar: falta commit y push)
+
+- `sql/059-cambiar-cita-exige-celular-y-correo.sql`: ver citas activas, obtener el id y reagendar desde la página pública exigen celular Y correo (antes bastaba uno). Frontend sin cambios.
+- `enviar-encuesta-cliente`: `forzar` solo con sesión o service role. Desplegada el 10-nov (pública, sin JWT).
+- `tests/humo-reservas.sql`: prueba de humo que no deja datos (esperado `HUMO_OK`); corrida el 10-nov con resultado HUMO_OK; repetirla tras cualquier cambio en citas o permisos.
+- SEDI: la documentación (`tech.sedierp.com`, sección «Portal externo») muestra consultas de inmuebles/contratos, propietarios y arrendatarios, pero son por usuario del portal, no masivas. Los códigos de Metrocuadrado/Fincaraíz/Ciencuadras no vienen en `InmueblesConsultar`: preguntar a SEDI por el campo o seguir con los Excel de portales.
+- Decidido no hacer antes de salir: partir `agenda-real.js` (riesgo sin beneficio para el usuario) y entorno de pruebas (requiere crear un segundo proyecto de Supabase).

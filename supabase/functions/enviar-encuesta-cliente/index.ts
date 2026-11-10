@@ -89,7 +89,17 @@ Deno.serve(async (req) => {
 
   // Una sola encuesta enviada por visita (el envío automático corre cada pocos minutos): la marca `enviada_en` de la
   // encuesta es la fuente de verdad. `forzar: true` permite reenviar.
-  if (body.forzar !== true) {
+  // Reenviar a la fuerza solo lo puede pedir alguien con sesión (o el propio servidor), no un visitante.
+  let forzar = false;
+  if (body.forzar === true) {
+    const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    if (jwt && jwt === SERVICE_ROLE_KEY) forzar = true;
+    else if (jwt) {
+      const { data: quien } = await admin.auth.getUser(jwt);
+      forzar = !!quien?.user;
+    }
+  }
+  if (!forzar) {
     const { data: previa } = await admin.from('agenda_encuestas_cliente').select('enviada_en').eq('cita_id', cita.id).maybeSingle();
     if (previa?.enviada_en) return json({ ok: true, enviado: false, motivo: 'La encuesta de esta visita ya se envió.' });
   }
