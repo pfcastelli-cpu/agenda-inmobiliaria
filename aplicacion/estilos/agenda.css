@@ -9,6 +9,7 @@
   --v-green: light-dark(#177153, #78dab5);
   --v-greenbg: light-dark(#e8f6ef, #203f36);
   --v-red: light-dark(#b32f43, #ffa4ad);
+  --v-redbg: light-dark(#fff0f2, #45212a);
   --v-amber: light-dark(#8a5200, #ffc98a);
   --v-amberbg: light-dark(#fff4e5, #3a2c12);
   font: 400 16px/1.45 "Hanken Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -276,6 +277,26 @@
 #visita-app .v-bookinggrid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
 #visita-app .v-full { width: 100%; }
 #visita-app .v-error { color: var(--v-red); font-size: 14px; margin: 10px 0; }
+#visita-app .v-agenda-mini { margin: 4px 0 18px; padding: 14px; background: var(--v-tint); border: 1px solid var(--v-line); border-radius: 14px; }
+#visita-app .v-agenda-minihead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+#visita-app .v-agenda-minihead strong, #visita-app .v-agenda-minihead span { display: block; }
+#visita-app .v-agenda-minihead strong { font-size: 14px; color: var(--v-text); }
+#visita-app .v-agenda-minihead span { margin-top: 3px; color: var(--v-muted); font-size: 12.5px; }
+#visita-app .v-agenda-minirange { white-space: nowrap; font-variant-numeric: tabular-nums; }
+#visita-app .v-agenda-minitrack { position: relative; height: 58px; overflow: hidden; border: 1px solid var(--v-line); border-radius: 9px; background: var(--v-surface); }
+#visita-app .v-agenda-gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--v-line); opacity: .75; }
+#visita-app .v-agenda-minibar { position: absolute; top: 10px; height: 37px; min-width: 20px; overflow: hidden; padding: 4px 7px; border-left: 3px solid var(--v-blue); border-radius: 5px; background: var(--v-blue); color: #fff; font-size: 11px; line-height: 13px; z-index: 1; }
+#visita-app .v-agenda-minibar span, #visita-app .v-agenda-minibar b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#visita-app .v-agenda-minibar span { opacity: .85; font-variant-numeric: tabular-nums; }
+#visita-app .v-agenda-minibar-propuesta { top: 5px; height: 48px; border: 2px solid var(--v-amber); background: var(--v-amberbg); color: var(--v-text); z-index: 2; }
+#visita-app .v-agenda-minibar-cruce { top: 5px; height: 48px; border: 2px solid var(--v-red); background: var(--v-redbg); color: var(--v-red); z-index: 3; }
+#visita-app .v-agenda-minilegend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 9px; color: var(--v-muted); font-size: 12px; }
+#visita-app .v-agenda-minilegend span { display: inline-flex; align-items: center; gap: 5px; }
+#visita-app .v-agenda-swatch { width: 9px; height: 9px; border-radius: 3px; background: var(--v-blue); }
+#visita-app .v-agenda-swatch-propuesta { background: var(--v-amber); }
+#visita-app .v-agenda-miniwarning, #visita-app .v-agenda-minifree { margin: 9px 0 0; font-size: 13px; }
+#visita-app .v-agenda-miniwarning { color: var(--v-red); font-weight: 600; }
+#visita-app .v-agenda-minifree { color: var(--v-muted); }
 #visita-app .v-empty { padding: 32px 18px; text-align: center; color: var(--v-muted); border: 1px dashed var(--v-line); border-radius: 16px; margin: 14px 0; }
 #visita-app .v-empty svg { width: 32px; height: 32px; margin-bottom: 10px; }
 #visita-app .v-success { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 22px; padding: 26px 20px; max-width: 480px; margin: 15px auto; text-align: center; }

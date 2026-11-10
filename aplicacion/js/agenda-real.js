@@ -306,17 +306,62 @@ const GRUPOS_TIPO = [
   ['Otras', [['tramite', 'Diligencia o trámite (notaría, curaduría, banco…)'], ['reunion_interna', 'Capacitación / reunión interna'], ['otro', 'Otra actividad']]],
 ];
 
+const minutosHora = (valor) => {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(valor || ''));
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+const horaDesdeMinutos = (valor) => `${String(Math.floor(valor / 60)).padStart(2, '0')}:${String(valor % 60).padStart(2, '0')}`;
+const duracionInterna = (it) => Number(it.duracion) || DURACION_POR_TIPO[it.tipo] || Number(configPublicaCache?.duracionVisitaMinutos) || 60;
+
+function conflictosLocalesAgenda(it, citas) {
+  const inicio = minutosHora(it.hora);
+  if (!it.asesorId || inicio == null) return [];
+  const fin = inicio + duracionInterna(it);
+  return citas.filter((c) => {
+    const cInicio = minutosHora(c.hora_inicio);
+    const cFin = minutosHora(c.hora_fin);
+    return c.asesor_id === it.asesorId && cInicio != null && cFin != null && cInicio < fin && cFin > inicio;
+  });
+}
+
+function htmlAgendaMiniatura(it, citas, asesores) {
+  const asesor = asesores.find((a) => a.id === it.asesorId);
+  const delDia = citas.filter((c) => c.asesor_id === it.asesorId);
+  const conflictos = conflictosLocalesAgenda(it, citas);
+  const inicioVista = 7 * 60;
+  const finVista = 20 * 60;
+  const posicion = (inicio, fin) => {
+    const left = Math.max(0, Math.min(100, ((inicio - inicioVista) / (finVista - inicioVista)) * 100));
+    const right = Math.max(left + 3, Math.min(100, ((fin - inicioVista) / (finVista - inicioVista)) * 100));
+    return `left:${left}%;width:${right - left}%`;
+  };
+  const bloque = (c, clase = '') => {
+    const inicio = minutosHora(c.hora_inicio) ?? inicioVista;
+    const fin = minutosHora(c.hora_fin) ?? inicio + 60;
+    const titulo = c.titulo || (c.agenda_inmuebles?.numero_inmueble ? `Inmueble #${c.agenda_inmuebles.numero_inmueble}` : TIPOS_CITA[c.tipo_cita] || 'Actividad');
+    return `<div class="v-agenda-minibar ${clase}" style="${posicion(inicio, fin)}" title="${escape(`${horaFmt(c.hora_inicio)}–${horaFmt(c.hora_fin)} · ${titulo}`)}"><span>${escape(horaFmt(c.hora_inicio))}</span><b>${escape(titulo)}</b></div>`;
+  };
+  const propuesta = it.asesorId && it.hora ? { hora_inicio: it.hora, hora_fin: horaDesdeMinutos((minutosHora(it.hora) ?? inicioVista) + duracionInterna(it)), titulo: 'Esta actividad', tipo_cita: 'otro' } : null;
+  return `<section class="v-agenda-mini ${conflictos.length ? 'v-agenda-mini-cruce' : ''}" aria-label="Agenda del asesor para el día">
+    <div class="v-agenda-minihead"><div><strong>Agenda de ${asesor ? escape(asesor.nombre) : 'ese día'}</strong><span>${escape(dateLabel(it.fecha))}</span></div><span class="v-agenda-minirange">07:00 · 20:00</span></div>
+    ${!it.asesorId ? '<p class="v-note">Elige un asesor para ver su agenda.</p>' : `<div class="v-agenda-minitrack"><span class="v-agenda-gridline" style="left:0%"></span><span class="v-agenda-gridline" style="left:23.08%"></span><span class="v-agenda-gridline" style="left:46.15%"></span><span class="v-agenda-gridline" style="left:69.23%"></span><span class="v-agenda-gridline" style="left:92.31%"></span>${delDia.map((c) => bloque(c)).join('')}${propuesta ? bloque(propuesta, conflictos.length ? 'v-agenda-minibar-cruce' : 'v-agenda-minibar-propuesta') : ''}</div>
+      <div class="v-agenda-minilegend"><span><i class="v-agenda-swatch"></i>Citas existentes: ${delDia.length}</span>${propuesta ? `<span><i class="v-agenda-swatch v-agenda-swatch-propuesta"></i>Esta actividad · ${duracionInterna(it)} min</span>` : ''}</div>
+      ${conflictos.length ? `<p class="v-agenda-miniwarning" role="alert">Hay ${conflictos.length === 1 ? 'una cita' : `${conflictos.length} citas`} que se cruza${conflictos.length === 1 ? '' : 'n'} con este horario. El sistema lo volverá a validar al guardar.</p>` : '<p class="v-agenda-minifree">No se ve un cruce con las citas cargadas para ese día.</p>'}`}
+  </section>`;
+}
+
 async function cargarDominioPublico() {
   if (configPublicaCache !== null) return configPublicaCache;
   const { data } = await supabase
     .from('agenda_configuracion')
-    .select('dominio_publico, plantilla_enlace_inmueble, formato_hora, equipo_visible_roles, dias_alerta_sin_citas_arriendo, dias_alerta_sin_citas_venta, logo_url, correo_modo_pruebas, correo_pruebas_destino')
+    .select('dominio_publico, plantilla_enlace_inmueble, formato_hora, duracion_visita_minutos, equipo_visible_roles, dias_alerta_sin_citas_arriendo, dias_alerta_sin_citas_venta, logo_url, correo_modo_pruebas, correo_pruebas_destino')
     .eq('empresa_id', contexto.empresaId)
     .maybeSingle();
   configPublicaCache = {
     dominioPublico: data?.dominio_publico || 'citas.patrimonios.co',
     plantillaEnlaceInmueble: data?.plantilla_enlace_inmueble || '',
     formatoHora: data?.formato_hora === '24h' ? '24h' : '12h',
+    duracionVisitaMinutos: Number(data?.duracion_visita_minutos) || 60,
     logoUrl: data?.logo_url || '',
     modoPruebas: data?.correo_modo_pruebas !== false,
     destinoPruebas: data?.correo_pruebas_destino || '',
@@ -1016,6 +1061,7 @@ async function renderInterna() {
   const inmuebles = await cargarTodosInmuebles();
   const it = state.interna;
   const esCaptacion = it.tipo === 'captacion';
+  const citasDia = it.tipo === 'otro' ? await cargarCitas(it.fecha) : [];
   const { ciudades: ciudadesCap, zonas: zonasCap } = esCaptacion ? await cargarCiudadesZonasCaptacion() : { ciudades: [], zonas: [] };
   const slotElegido = it.slotSeleccionado;
   const estadoReu = await estadoReunion(contexto.empresaId);
@@ -1065,6 +1111,7 @@ async function renderInterna() {
       <label class="v-field" for="v-interna-fecha">Fecha<input class="v-input" id="v-interna-fecha" type="date" value="${it.fecha}"></label>
       <label class="v-field" for="v-interna-hora">Hora<input class="v-input" id="v-interna-hora" type="time" value="${it.hora}"></label>
       <label class="v-field" for="v-interna-duracion">Duración (minutos)<input class="v-input" id="v-interna-duracion" type="number" min="5" step="5" placeholder="${DURACION_POR_TIPO[it.tipo] ? DURACION_POR_TIPO[it.tipo] + ' (se calcula sola si la dejas vacía)' : 'Se calcula sola si la dejas vacía'}" value="${it.duracion}"></label>
+${it.tipo === 'otro' ? htmlAgendaMiniatura(it, citasDia, asesores) : ''}
 ${nuevo_contacto}`
       }
       <label class="v-field" for="v-interna-notas">Notas (opcional)<textarea class="v-input" id="v-interna-notas">${escape(it.notas)}</textarea></label>
@@ -1869,14 +1916,15 @@ function adjuntarEventos(rootEl) {
       state.interna.virtual = e.target.checked;
       render();
     }
-    if (e.target.id === 'v-interna-asesor') state.interna.asesorId = e.target.value;
+    if (e.target.id === 'v-interna-asesor') { state.interna.asesorId = e.target.value; if (state.interna.tipo === 'otro') render(); }
     if (e.target.id === 'v-interna-inmueble') state.interna.inmuebleId = e.target.value;
     if (e.target.id === 'v-interna-fecha') {
       state.interna.fecha = e.target.value;
       if (state.interna.tipo === 'captacion') buscarSlotsCaptacion();
       else render();
     }
-    if (e.target.id === 'v-interna-hora') state.interna.hora = e.target.value;
+    if (e.target.id === 'v-interna-hora') { state.interna.hora = e.target.value; if (state.interna.tipo === 'otro') render(); }
+    if (e.target.id === 'v-interna-duracion') { state.interna.duracion = e.target.value; if (state.interna.tipo === 'otro') render(); }
     if (e.target.id === 'v-interna-ciudad-captacion') {
       const ciudad = (await cargarCiudadesZonasCaptacion()).ciudades.find((c) => c.id === e.target.value);
       state.interna.ciudadId = e.target.value;
@@ -2345,7 +2393,7 @@ function adjuntarEventos(rootEl) {
       boton.disabled = true;
       boton.textContent = 'Guardando…';
       const claveActual = claveHorario({ asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion });
-      if (!esCaptacion && it.inmuebleId && it.cruceOk !== claveActual) {
+      if (!esCaptacion && it.cruceOk !== claveActual) {
         const cruce = await revisarCruce({ empresaId: contexto.empresaId, asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion });
         if (!cruce.libre) {
           boton.disabled = false;
