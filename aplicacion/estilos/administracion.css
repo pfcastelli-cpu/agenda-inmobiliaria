@@ -246,3 +246,6 @@
 .ad-filtros button{min-height:38px;padding:6px 12px;border-radius:999px}
 .ad-filtros button[aria-pressed="true"]{background:var(--empresa-principal,#1a2c45);color:#fff}
 .ad-solicitud input[data-nota]{min-width:220px;flex:1}
+
+.ad-peligro{color:#b42318;border-color:#f3b4ae}
+.ad-peligro:hover{background:#fef3f2}

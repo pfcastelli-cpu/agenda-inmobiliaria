@@ -115,6 +115,8 @@ export async function saludTab({ el, empresaId, aviso, vigente }) {
       <button type="button" data-nivel="verde" aria-pressed="${filtroSalud === 'verde'}">🟢 Con movimiento (${cuenta.verde})</button>
       <button type="button" data-nivel="todos" aria-pressed="${filtroSalud === 'todos'}">Todos</button>
     </div>
+    ${cuenta.rojo && puede('pendientes.gestionar') ? `<p><button type="button" class="ad-primary" data-alertar>✉️ Avisar a los propietarios sin movimiento (máx. 10 por vez)</button>
+      <span class="ad-muted">Antes de enviar te muestro a quiénes. Les ofrece estudio de mercado sin costo, revisar precio o fotos, o dejarlo igual. No repite en 30 días. En modo de pruebas llega al buzón de pruebas.</span></p>` : ''}
     <div style="overflow-x:auto"><table class="ad-tabla">
       <thead><tr><th>Inmueble</th><th>Ciudad</th><th>Oferta</th><th>Precio</th><th>Días en el sistema</th><th>Visitas 30 d</th><th>Personas</th><th>Interesados bot</th><th>Última visita</th><th>Estado</th></tr></thead>
       <tbody>${visibles.length ? visibles.map((f) => `<tr>
@@ -122,5 +124,20 @@ export async function saludTab({ el, empresaId, aviso, vigente }) {
         <td>${esc(f.dias_en_sistema)}</td><td>${esc(f.visitas)}</td><td>${esc(f.personas_visitas)}</td><td>${esc(f.personas_interes)}</td>
         <td>${esc(f.ultima_visita ? fecha(f.ultima_visita) : '—')}</td><td>${NIVEL[f.nivel]?.[0] || ''} ${esc(NIVEL[f.nivel]?.[1] || f.nivel)}</td></tr>`).join('') : '<tr><td colspan="10" class="ad-muted">No hay inmuebles en esta lista.</td></tr>'}</tbody>
     </table></div>`;
+  el.querySelector('[data-alertar]')?.addEventListener('click', async (ev) => {
+    const boton = ev.currentTarget;
+    boton.disabled = true;
+    try {
+      const sim = await supabase.functions.invoke('enviar-alerta-salud', { body: { empresa_id: empresaId, simular: true } });
+      if (sim.error || !sim.data?.ok) throw new Error(sim.data?.error || 'No se pudo preparar el aviso.');
+      const lista = sim.data.candidatos || [];
+      if (!lista.length) { aviso(sim.data.mensaje || 'Ningún inmueble cumple las condiciones para avisar hoy.'); return; }
+      const detalle = lista.map((c) => `• ${c.numero} ${c.tipo || ''} ${c.barrio ? '· ' + c.barrio : ''}`).join('\n');
+      if (!window.confirm(`Se enviará el aviso a los propietarios de ${lista.length} inmuebles:\n\n${detalle}\n\n¿Enviar ahora?`)) return;
+      const r = await supabase.functions.invoke('enviar-alerta-salud', { body: { empresa_id: empresaId } });
+      if (r.error || !r.data?.ok) throw new Error(r.data?.error || 'No se pudo enviar el aviso.');
+      aviso(`Avisos enviados: ${r.data.enviados}${r.data.fallidos?.length ? ` · fallaron ${r.data.fallidos.length}` : ''}${r.data.modo_pruebas ? ' (modo de pruebas: llegaron al buzón de pruebas)' : ''}.`);
+    } catch (e) { aviso(e.message, true); } finally { boton.disabled = false; }
+  });
   el.querySelectorAll('[data-nivel]').forEach((b) => b.addEventListener('click', () => { filtroSalud = b.dataset.nivel; saludTab({ el, empresaId, aviso, vigente }); }));
 }

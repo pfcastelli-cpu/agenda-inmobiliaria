@@ -271,7 +271,7 @@ function estadoAccesoHtml(a){
 }
 function cards(busqueda=''){
  const rows=asesores.filter(a=>[a.nombre,a.correo,nombresCiudades(a.id)].join(' ').toLocaleLowerCase().includes(busqueda.toLocaleLowerCase()));
- const c=root.querySelector('.ad-cards');c.innerHTML=rows.length?rows.map(a=>`<article><div class="ad-avatar" style="background:${a.color||'#e3f8f7'};color:${textoSobre(a.color)}">${esc(a.nombre.slice(0,1).toUpperCase())}</div><div><h3>${esc(a.nombre)}</h3><p>${esc(a.correo)}<br>${esc(a.celular)}<br>${esc(nombresCiudades(a.id))}</p><span class="ad-pill">${a.activo?'Activo':'Inactivo'}</span> <span class="ad-pill">${esc(a.rol)} · Prioridad ${a.prioridad}</span><span class="ad-pill">${a.tipo_vinculacion==='freelance'?'Freelance':'De planta'}</span><span class="ad-pill">${a.rol==='asesor'?(a.permiso_mover_citas&&a.permiso_eliminar_citas?'Mover y cancelar':a.permiso_mover_citas?'Solo mover':a.permiso_eliminar_citas?'Solo cancelar':'Sin permiso de mover/cancelar'):'Mover y cancelar (por rol)'}</span><span class="ad-pill">${a.atiende_domingo?'Atiende domingos':'No atiende domingos'}</span><span class="ad-pill">${a.atiende_festivos?'Atiende festivos':'No atiende festivos'}</span>${a.supervisor_id?`<span class="ad-pill">Supervisor: ${esc(asesores.find(x=>x.id===a.supervisor_id)?.nombre||'—')}</span>`:''}${estadoAccesoHtml(a)}<button data-edit="${a.id}">Editar</button> <button data-toggle="${a.id}">${a.activo?'Desactivar':'Reactivar'}</button></div></article>`).join(''):'<p>No hay asesores para mostrar. Crea el primero para comenzar.</p>';
+ const c=root.querySelector('.ad-cards');c.innerHTML=rows.length?rows.map(a=>`<article><div class="ad-avatar" style="background:${a.color||'#e3f8f7'};color:${textoSobre(a.color)}">${esc(a.nombre.slice(0,1).toUpperCase())}</div><div><h3>${esc(a.nombre)}</h3><p>${esc(a.correo)}<br>${esc(a.celular)}<br>${esc(nombresCiudades(a.id))}</p><span class="ad-pill">${a.activo?'Activo':'Inactivo'}</span> <span class="ad-pill">${esc(a.rol)} · Prioridad ${a.prioridad}</span><span class="ad-pill">${a.tipo_vinculacion==='freelance'?'Freelance':'De planta'}</span><span class="ad-pill">${a.rol==='asesor'?(a.permiso_mover_citas&&a.permiso_eliminar_citas?'Mover y cancelar':a.permiso_mover_citas?'Solo mover':a.permiso_eliminar_citas?'Solo cancelar':'Sin permiso de mover/cancelar'):'Mover y cancelar (por rol)'}</span><span class="ad-pill">${a.atiende_domingo?'Atiende domingos':'No atiende domingos'}</span><span class="ad-pill">${a.atiende_festivos?'Atiende festivos':'No atiende festivos'}</span>${a.supervisor_id?`<span class="ad-pill">Supervisor: ${esc(asesores.find(x=>x.id===a.supervisor_id)?.nombre||'—')}</span>`:''}${estadoAccesoHtml(a)}<button data-edit="${a.id}">Editar</button> <button data-toggle="${a.id}">${a.activo?'Desactivar':'Reactivar'}</button> <button data-eliminar="${a.id}" class="ad-peligro">Eliminar</button></div></article>`).join(''):'<p>No hay asesores para mostrar. Crea el primero para comenzar.</p>';
  c.onclick=async e=>{
   const darAccesoId=e.target.dataset.darAcceso;
   const gestionarId=e.target.dataset.gestionarAcceso;
@@ -283,6 +283,16 @@ function cards(busqueda=''){
    return;
   }
   if(gestionarId){root.querySelector('[data-subtab=accesos]')?.click();return;}
+  const eliminarId=e.target.dataset.eliminar;
+  if(eliminarId){
+   const a=asesores.find(x=>x.id===eliminarId);if(!a)return;
+   if(!confirm(`¿Eliminar definitivamente a ${a.nombre}? Esto no se puede deshacer. Si tiene citas reales en su historial, el sistema no lo permitirá (en ese caso usa Desactivar). Su cuenta de acceso, si tiene, no se borra.`))return;
+   e.target.disabled=true;
+   const {data,error}=await supabase.rpc('agenda_eliminar_asesor',{p_asesor_id:eliminarId});
+   if(error){aviso(error.message||'No se pudo eliminar el asesor.',true);e.target.disabled=false;}
+   else{await equipo();aviso(`${a.nombre} eliminado${data?.citas_prueba_borradas?` (y ${data.citas_prueba_borradas} cita(s) de prueba)`:''}.`);}
+   return;
+  }
   const id=e.target.dataset.edit || e.target.dataset.toggle;if(!id)return;const a=asesores.find(x=>x.id===id);if(e.target.dataset.edit){editor(a);return;}if(!confirm(`${a.activo?'Desactivar':'Reactivar'} a ${a.nombre}? Se conservará su ficha. Esto todavía no modifica cuentas de acceso ni citas.`))return;e.target.disabled=true;const {error}=await supabase.from('agenda_asesores').update({activo:!a.activo}).eq('id',id).eq('empresa_id',config.empresa_id).select('id').single();if(error){aviso('No se pudo cambiar el estado.',true);e.target.disabled=false;}else{await equipo();aviso('Estado actualizado.');}};
 }
 function formularioAcceso(a){
@@ -596,8 +606,10 @@ async function correoForm(){
  <div class="ad-probar-correo">
   <input type="email" class="ad-probar-correo-destino" placeholder="Correo de destino" value="${esc(config.correo_pruebas_destino||'')}">
   <button type="button" class="ad-secondary" data-probar-correo>Enviar correo de prueba</button>
+  <button type="button" class="ad-secondary ad-peligro" data-limpiar-pruebas>Borrar datos de prueba</button>
  </div>
  <div class="ad-probar-correo-resultado" role="status"></div>
+ <p class="ad-note">«Borrar datos de prueba» elimina solo las citas marcadas como PRUEBA, los asesores de simulación ([SIM]) y los accesos de prueba (sim+…@example.com). Antes de borrar te muestra cuántos son. Nunca toca citas reales, asesores reales ni tu propio acceso.</p>
  <h3 style="margin-top:34px">6. Bitácora de envíos</h3>
  <p class="ad-note">Aquí ves los últimos intentos de envío del correo de confirmación a clientes, incluidas las fallas, para poder revisar qué pasó cuando alguien reserve una visita.</p>
  ${bitacoraCorreoHtml(logCorreos)}`;
@@ -650,6 +662,18 @@ async function correoForm(){
    resultado.textContent='❌ No se pudo conectar con el servicio de correo.';
    resultado.classList.add('error');
   }
+  boton.disabled=false;
+ });
+ el.querySelector('[data-limpiar-pruebas]').addEventListener('click',async ev=>{
+  const boton=ev.currentTarget;const resultado=el.querySelector('.ad-probar-correo-resultado');
+  boton.disabled=true;resultado.classList.remove('error');resultado.textContent='Calculando…';
+  const {data:prev,error:e1}=await supabase.rpc('agenda_limpiar_datos_prueba',{p_empresa_id:config.empresa_id,p_ejecutar:false});
+  if(e1){resultado.textContent='❌ '+(e1.message||'No se pudo calcular.');resultado.classList.add('error');boton.disabled=false;return;}
+  if(!prev.citas&&!prev.asesores&&!prev.usuarios){resultado.textContent='No hay datos de prueba para borrar.';boton.disabled=false;return;}
+  if(!confirm(`Se borrarán definitivamente: ${prev.citas} cita(s) de prueba, ${prev.asesores} asesor(es) de prueba y ${prev.usuarios} usuario(s) de prueba. No se puede deshacer. ¿Continuar?`)){resultado.textContent='Cancelado, no se borró nada.';boton.disabled=false;return;}
+  const {data,error}=await supabase.rpc('agenda_limpiar_datos_prueba',{p_empresa_id:config.empresa_id,p_ejecutar:true});
+  if(error){resultado.textContent='❌ '+(error.message||'No se pudo borrar.');resultado.classList.add('error');}
+  else resultado.textContent=`✅ Borrado: ${data.citas} cita(s), ${data.asesores} asesor(es) y ${data.usuarios} usuario(s) de prueba.`;
   boton.disabled=false;
  });
  el.querySelector('form').onsubmit=async e=>{

@@ -8,6 +8,16 @@ Actualizado: 06-nov-2026. Detalle anterior: `docs/historico/ESTADO-2026-11-04-co
 - Probado con red real el 06-nov: `gestion-accesos` v17 (alta por invitación `sim+invitacion@example.com`, «Eliminar usuario»), alta de asesor desde el formulario (`[SIM] Asesor Alta Formulario`) y enlace «Todas las agendas» (200, text/calendar, 146 eventos). El correo de invitación a una dirección real no se vio llegar (se usó example.com).
 - Usuarios de prueba `sim+prueba2`, `sim+prueba3` y `sim+invitacion` ya eliminados (06-nov). Queda el asesor `[SIM] Asesor Alta Formulario` (sin acceso).
 
+## Revisión general 10-nov (solo lectura; nada aplicado)
+
+- **Corregido el 10-nov** (`sql/058-verificacion-correo-en-servidor.sql`, aplicado en producción, archivo sin commitear): el código de verificación solo lo genera `service_role`; agendar/reagendar públicos son envolturas que exigen correo verificado (si `verificar_correo_reserva` está encendido; hoy apagado) y tope de 5 visitas por contacto en 6 meses (pedido por Felipe); las originales quedaron como `..._base` (solo `service_role`). Probado el 10-nov por la API pública con la llave anon (agendar y reagendar OK; generar código y `_base` → 401) y, en transacción revertida, el flujo del código con la verificación encendida (sin código bloquea; con código agenda). Clientes reales: máximo 3.
+- **API de SEDI (evaluada 10-nov, nada construido):** `POST ns3.sedierp.com/API_SIS/api/Login/OauthTokenIntegrador` da token (dura ~8 h) y `POST /api_gbi/api/Inmuebles/InmueblesConsultar {rows:1000}` devuelve 697 inmuebles con 41 campos (Consecutivo = número de inmueble, EstadoInmueble Libre/Arrendado/Retirado, canon, venta, ciudad, barrio, coordenadas, nombre del propietario). Sirve para reemplazar el Excel de inmuebles. No trae correo/teléfono del propietario ni datos del arrendatario: habría que probar `Terceros/*` y los contratos (sin probar). El token también permite insertar/borrar en el ERP: guardar los 4 identificadores en Vault, usar solo rutas `*Consultar`, nunca en el navegador ni en el repo.
+- Medio: `agenda_cliente_citas_activas`, `agenda_cita_id_publica` y `agenda_reagendar_cita_publica` funcionan solo con teléfono o correo (quien conozca el celular ve/mueve la cita). `agenda_correo_tiene_password` ejecutable por anon. `enviar-encuesta-cliente` acepta `forzar` sin autenticación.
+- 10-nov: `sql/057` aplicado (botones «Eliminar asesor» y «Borrar datos de prueba»); `gestion-accesos` redesplegada (con JWT); SQL repetidos renombrados a `051b` y `056b`; del tope quedan exentos los correos del dominio del remitente de la empresa (patrimonios.co). Commit hecho, **falta push** para que los botones nuevos y las alertas de salud lleguen a la página. Datos de prueba por borrar con el botón: 30 citas, 5 asesores `[SIM]` (los 7 inmuebles 99000x no los toca el botón).
+- CLI de Supabase: `npx --no-install supabase` ya no arranca (pide 3.1.0); funciona `node %LOCALAPPDATA%/npm-cache/_npx/aa8e5c70f9d8d161/node_modules/supabase/dist/supabase.js` (3.0.0, ya autenticado).
+- Menor: protección de contraseñas filtradas apagada en Auth; ~30 llaves foráneas sin índice; sin cabeceras de seguridad en `netlify.toml`; colores fijos nuevos en `propietario.js` (`#eef8f7`).
+- Bien: RLS en todas las tablas, `search_path` en todas las SECURITY DEFINER, cron con Vault, build y prueba de contacto (12/12) pasan.
+
 ## Pendiente de desplegar (09-nov)
 
 - Se quitó el botón temporal «Crear usuario de prueba» (`administracion.js`, `sesion.js`) y la opción `sin_credenciales` de `gestion-accesos`. Falta redesplegar `gestion-accesos` (con JWT, sin `--no-verify-jwt`) para que producción deje de aceptarla; hasta entonces solo un administrador autenticado podría usarla.
@@ -27,11 +37,11 @@ Actualizado: 06-nov-2026. Detalle anterior: `docs/historico/ESTADO-2026-11-04-co
 - `sql/055-proteger-tokens.sql`: token del calendario de la empresa en `agenda_calendario_empresa` (solo admin); `agenda_citas.token_cliente/token_arrendatario` ya no se pueden leer desde el navegador (hay que listar columnas, nunca `select('*')` sobre `agenda_citas`; columna nueva → `grant select (col) on public.agenda_citas to authenticated`).
 - Estudios de mercado probados de punta a punta en producción con el inmueble de prueba 990004 (botón del propietario → lista Estudios → PDF → envío al correo de pruebas): funciona.
 
-- `sql/056-captador-primero.sql` aplicado el 09-nov (archivo de referencia sin commitear): el portal ofrece primero al captador (activo y con horarios), si no a la planta de la ciudad, si no al freelance. La función anterior quedó como `agenda_sugerir_horarios_portal_base`. Verificado: inmueble 455 → solo Luis Jiménez; 695 → solo Laura Salcedo.
+- `sql/056b-captador-primero.sql` aplicado el 09-nov (archivo de referencia sin commitear): el portal ofrece primero al captador (activo y con horarios), si no a la planta de la ciudad, si no al freelance. La función anterior quedó como `agenda_sugerir_horarios_portal_base`. Verificado: inmueble 455 → solo Luis Jiménez; 695 → solo Laura Salcedo.
 
 ## Trabajo de otras sesiones sin commitear (no tocar sin revisar)
 
-- Alertas de salud del inmueble («inmueble sin movimiento»): `sql/051-alertas-salud-inmueble.sql`, función `enviar-alerta-salud`, cambios en `admin-propietarios.js` y `propietario.js`. Hay dos archivos `sql/051-*`: renumerar uno.
+- Alertas de salud del inmueble («inmueble sin movimiento»): `sql/051b-alertas-salud-inmueble.sql`, función `enviar-alerta-salud`, cambios en `admin-propietarios.js` y `propietario.js`.
 
 ## Pendientes de producto
 

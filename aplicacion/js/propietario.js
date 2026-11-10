@@ -18,6 +18,8 @@ const state = {
   enviando: false,
   errorForm: '',
   mensajeExito: '',
+  pausa: null, // null | 'seguir' | 'esperar' (viene del correo de inmueble sin movimiento)
+  detalleInicial: '',
 };
 
 function tokenDesdeUrl() {
@@ -78,7 +80,38 @@ async function cargarInforme() {
   }
   state.datos = data;
   state.paso = 'listo';
+  // Enlaces del correo «inmueble sin movimiento»: ?accion=precio|estudio|fotos abre el formulario; seguir|esperar pide confirmar.
+  const accion = new URLSearchParams(window.location.search).get('accion');
+  if (accion === 'precio') state.formAbierto = 'cambio_precio';
+  else if (accion === 'fotos') state.formAbierto = 'cambio_fotos';
+  else if (accion === 'estudio') { state.formAbierto = 'asesoria'; state.detalleInicial = 'Quiero el estudio de mercado sin costo.'; }
+  else if (accion === 'seguir' || accion === 'esperar') state.pausa = accion;
   render();
+  const detalleEl = document.getElementById('pu-detalle');
+  if (detalleEl && state.detalleInicial) detalleEl.value = state.detalleInicial;
+}
+
+async function responderPausa(respuesta) {
+  const { data, error } = await supabase.rpc('agenda_alerta_responder', { p_token: state.token, p_respuesta: respuesta });
+  state.pausa = null;
+  state.mensajeExito = error || data?.error
+    ? 'No pudimos guardar tu respuesta. Inténtalo de nuevo en unos minutos.'
+    : respuesta === 'seguir'
+      ? 'Listo, dejamos todo como está. No te escribiremos de este tema por un buen tiempo.'
+      : 'Listo, esperamos un mes más. Si cambias de opinión, aquí mismo puedes pedirnos lo que necesites.';
+  render();
+}
+
+function tarjetaPausa() {
+  if (!state.pausa) return '';
+  return `<div class="pu-card" style="background:#eef8f7;border-color:#bfe3e0;margin-bottom:14px">
+    <strong>¿Quieres dejarlo como está por ahora?</strong>
+    <p style="margin:6px 0 10px">Está bien: tú decides. ${state.pausa === 'seguir' ? 'Seguiremos igual y no te escribiremos de este tema por un buen tiempo.' : 'Esperaremos un mes más antes de volver a escribirte de este tema.'}</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button type="button" class="pu-main" data-pausa="${state.pausa}">${state.pausa === 'seguir' ? 'Sí, seguir igual' : 'Sí, esperar un mes más'}</button>
+      <button type="button" class="pu-link" data-pausa="no">No, quiero ver las opciones</button>
+    </div>
+  </div>`;
 }
 
 function vistaCargando() {
@@ -276,6 +309,7 @@ function accionesSolicitud() {
 
 function vistaListo() {
   return `
+    ${tarjetaPausa()}
     ${tarjetaInmueble()}
     ${tarjetaPublicacion()}
     ${tarjetaActividad()}
@@ -357,6 +391,13 @@ async function enviarSolicitud(form) {
 }
 
 function cablear() {
+  raiz.querySelectorAll('[data-pausa]').forEach((b) => {
+    b.addEventListener('click', () => {
+      if (b.dataset.pausa === 'no') { state.pausa = null; render(); return; }
+      b.disabled = true;
+      responderPausa(b.dataset.pausa);
+    });
+  });
   const botonesAbrir = raiz.querySelectorAll('[data-abrir]');
   botonesAbrir.forEach((b) => {
     b.addEventListener('click', () => {
