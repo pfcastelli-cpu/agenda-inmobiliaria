@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
   // tiene uno configurado, su supervisor — ver la pestaña Equipo.
   let correoAsesor: string | null = null;
   let nombreAsesor: string | null = null;
-  let correoSupervisor: string | null = null;
+  const correosSupervisores = new Set<string>();
   if (asesorComercializacion) {
     const { data: asesor } = await admin
       .from('agenda_asesores')
@@ -171,13 +171,18 @@ Deno.serve(async (req) => {
     if (asesor) {
       correoAsesor = asesor.correo || null;
       nombreAsesor = asesor.nombre;
-      if (asesor.supervisor_id) {
-        const { data: supervisor } = await admin
-          .from('agenda_asesores')
-          .select('correo')
-          .eq('id', asesor.supervisor_id)
-          .maybeSingle();
-        correoSupervisor = supervisor?.correo || null;
+      const { data: relaciones, error: errorRelaciones } = await admin
+        .from('agenda_asesor_supervisores')
+        .select('supervisor_usuario_id')
+        .eq('asesor_id', asesor.id);
+      if (!errorRelaciones) {
+        for (const relacion of relaciones || []) {
+          const { data: usuario } = await admin.auth.admin.getUserById(relacion.supervisor_usuario_id);
+          if (usuario?.user?.email) correosSupervisores.add(usuario.user.email);
+        }
+      } else if (asesor.supervisor_id) {
+        const { data: supervisor } = await admin.from('agenda_asesores').select('correo').eq('id', asesor.supervisor_id).maybeSingle();
+        if (supervisor?.correo) correosSupervisores.add(supervisor.correo);
       }
     }
   }
@@ -233,7 +238,7 @@ Deno.serve(async (req) => {
     },
   });
 
-  const destinoReal = { to: destinatarioPrincipal, cc: correoSupervisor || undefined };
+  const destinoReal = { to: destinatarioPrincipal, cc: correosSupervisores.size ? [...correosSupervisores].join(',') : undefined };
   const destino = modoPruebas
     ? { to: config.correo_pruebas_destino || destinatarioPrincipal, cc: undefined }
     : destinoReal;

@@ -1019,6 +1019,13 @@ async function renderInterna() {
   const { ciudades: ciudadesCap, zonas: zonasCap } = esCaptacion ? await cargarCiudadesZonasCaptacion() : { ciudades: [], zonas: [] };
   const slotElegido = it.slotSeleccionado;
   const estadoReu = await estadoReunion(contexto.empresaId);
+  const nuevo_contacto = TIPOS_CON_CONTACTO.includes(it.tipo)
+    ? `<fieldset class="v-fieldset"><legend>${escape(ETIQUETA_CONTACTO[it.tipo] || 'Persona relacionada')}</legend>
+        <label class="v-field" for="v-interna-contacto-nombre">Nombre<input class="v-input" id="v-interna-contacto-nombre" type="text" maxlength="120" value="${escape(it.contactoNombre)}" required></label>
+        <label class="v-field" for="v-interna-contacto-telefono">Celular<input class="v-input" id="v-interna-contacto-telefono" type="tel" maxlength="20" value="${escape(it.contactoTelefono)}" placeholder="+573001234567" required></label>
+        <label class="v-field" for="v-interna-contacto-email">Correo electrónico<input class="v-input" id="v-interna-contacto-email" type="email" maxlength="160" value="${escape(it.contactoEmail)}" required></label>
+      </fieldset>`
+    : '';
   if (it.cruce && it.cruceClave !== claveHorario({ asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion })) it.cruce = null;
   main().innerHTML = `<div class="v-top"><button class="v-btn v-quiet" data-volver-agenda>${icon('arrow-left')}Volver</button><span class="v-demo">Actividad interna</span></div>
     <form id="v-interna-form">

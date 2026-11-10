@@ -164,11 +164,19 @@ async function destinatariosAdmin(admin: Admin, empresaId: string, config: Cfg):
 
 // Quién supervisa a un asesor: su supervisor (ficha del asesor, pestaña Equipo) + los correos que Configuración defina para los avisos de encuesta.
 // Si no hay ninguno de los dos, los administradores activos. Así los avisos no «enloquecen» a todo el equipo.
-async function destinatariosSupervision(admin: Admin, empresaId: string, config: Cfg, supervisorId: string | null): Promise<string[]> {
+async function destinatariosSupervision(admin: Admin, empresaId: string, config: Cfg, asesorId: string | null, supervisorIdLegado: string | null): Promise<string[]> {
   const correos = new Set<string>(correosDe(config.encuesta_aviso_correos));
-  if (supervisorId) {
-    const { data: sup } = await admin.from('agenda_asesores').select('correo, correos_adicionales').eq('id', supervisorId).maybeSingle();
-    for (const c of [...correosDe(sup?.correo), ...correosDe(sup?.correos_adicionales)]) correos.add(c);
+  if (asesorId) {
+    const { data: relaciones, error: errorRelaciones } = await admin.from('agenda_asesor_supervisores').select('supervisor_usuario_id').eq('asesor_id', asesorId);
+    if (!errorRelaciones) {
+      for (const relacion of relaciones || []) {
+        const { data: usuario } = await admin.auth.admin.getUserById(relacion.supervisor_usuario_id);
+        if (usuario?.user?.email) correos.add(usuario.user.email);
+      }
+    } else if (supervisorIdLegado) {
+      const { data: sup } = await admin.from('agenda_asesores').select('correo, correos_adicionales').eq('id', supervisorIdLegado).maybeSingle();
+      for (const c of [...correosDe(sup?.correo), ...correosDe(sup?.correos_adicionales)]) correos.add(c);
+    }
   }
   if (correos.size) return [...correos];
   return await destinatariosAdmin(admin, empresaId, config);
@@ -252,7 +260,7 @@ ${enc.comentario ? `<p style="margin:14px 0 0;padding:12px 14px;background:#f4f4
     const { data: reclamo } = await admin.from('agenda_encuestas_cliente').update(marcas).eq('id', enc.id).is('aviso_calidad_en', null).select('id').maybeSingle();
     if (reclamo) {
       enc.aviso_admin_en = marcas.aviso_admin_en ?? enc.aviso_admin_en;
-      const correos = await destinatariosSupervision(admin, enc.empresa_id, ctx.config, asesor?.supervisor_id ?? null);
+      const correos = await destinatariosSupervision(admin, enc.empresa_id, ctx.config, cita.asesor_id ?? null, asesor?.supervisor_id ?? null);
       if (ctx.config.alerta_baja_incluye_asesor && asesor) for (const c of [...correosDe(asesor.correo), ...correosDe(asesor.correos_adicionales)]) if (!correos.includes(c)) correos.push(c);
       resultado.admin += await enviar(
         admin, enc.empresa_id, enc.cita_id, correos,
@@ -278,7 +286,7 @@ ${enc.comentario ? `<p style="margin:14px 0 0;padding:12px 14px;background:#f4f4
   if (modo === 'cada' && !enc.aviso_admin_en) {
     const { data: reclamo } = await admin.from('agenda_encuestas_cliente').update({ aviso_admin_en: new Date().toISOString() }).eq('id', enc.id).is('aviso_admin_en', null).select('id').maybeSingle();
     if (reclamo) {
-      const correos = await destinatariosSupervision(admin, enc.empresa_id, ctx.config, asesor?.supervisor_id ?? null);
+      const correos = await destinatariosSupervision(admin, enc.empresa_id, ctx.config, cita.asesor_id ?? null, asesor?.supervisor_id ?? null);
       resultado.admin += await enviar(
         admin, enc.empresa_id, enc.cita_id, correos,
         `${imp ? imp[0] : '⭐'} Nueva opinión de un cliente · Inmueble ${num}`,
