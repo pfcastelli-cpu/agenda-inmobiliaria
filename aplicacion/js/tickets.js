@@ -2,7 +2,7 @@
 // Cada quien ve los suyos; el administrador ve todos los de su empresa y sus métricas. La base decide quién ve qué (RLS y funciones
 // de sql/022–025); aquí solo se pinta. Vocabulario, formato, línea de tiempo y llamadas a la base están en ./soporte-comun/.
 import { crearApiSoporte } from './soporte-comun/api.js';
-import { COLOR_ESTADO, COLOR_PRIORIDAD, EMOJI_TIPO, ESTADOS_FINALES, ESTADOS_USUARIO, PRIORIDADES, PUNTOS, SLA_HORAS, TIPOS, sePuedeCalificar, soporteYaRespondio } from './soporte-comun/constantes.js';
+import { COLOR_ESTADO, COLOR_PRIORIDAD, EMOJI_TIPO, ESTADOS_FINALES, ESTADOS_USUARIO, PRIORIDADES, PRIORIDADES_USUARIO, PUNTOS, SLA_HORAS, TIPOS, sePuedeCalificar, soporteYaRespondio } from './soporte-comun/constantes.js';
 import { duracionMin, escapar as esc, estrellas, fechaCorta, fechaHora, minutosParaSla } from './soporte-comun/formato.js';
 import { construirLinea, textoEvento } from './soporte-comun/linea-tiempo.js';
 import { EVENTO_AVISOS } from './soporte-comun/campana.js';
@@ -10,7 +10,8 @@ import { montarFallos } from './fallos-sistema.js';
 
 const ESTADOS_ADMIN = { en_espera: 'Esperando respuesta de quien escribió', en_revision: 'En revisión', resuelto: 'Resuelto', cerrado: 'Cerrado', descartado: 'Descartado' };
 
-const nuevoBorrador = () => ({ tipo: 'error', titulo: '', descripcion: '' });
+const nuevoBorrador = () => ({ tipo: 'error', titulo: '', descripcion: '', prioridad: 'normal' });
+const textoHoras = (h) => (h % 24 === 0 && h >= 48 ? `${h / 24} días` : h === 1 ? '1 hora' : `${h} horas`);
 const estadoInicial = () => ({
   filtro: 'abiertos', mensaje: '', error: '', enviando: false, borrador: nuevoBorrador(), abierto: null, detalle: null, uid: null,
   exito: null, respuestas: {}, estadoAdmin: {}, puntos: {}, comentario: {}, reabriendo: {},
@@ -49,6 +50,9 @@ export async function renderTickets(ctx) {
   const [acceso, metricas] = esAdmin
     ? await Promise.all([api.accesoEstado(empresaId).then((r) => r.data), api.metricas(empresaId, 30).then((r) => r.data)])
     : [null, null];
+  // Plazos de respuesta de la empresa (si la base aún no los tiene, los de siempre).
+  const slaR = await api.slaObtener(empresaId);
+  const sla = slaR.data || SLA_HORAS;
   // La conversación del ticket abierto se pide aparte: trae mensajes y eventos que la lista no incluye.
   ui.detalle = null;
   const abierto = tickets.find((x) => x.id === ui.abierto);
@@ -71,6 +75,8 @@ export async function renderTickets(ctx) {
     <form id="tk-form" class="v-form" style="margin-top:14px;display:flex;flex-direction:column;gap:12px;max-width:640px">
       <label class="v-field">¿Qué necesitas?
         <select id="tk-tipo" class="v-input">${Object.entries(TIPOS).map(([v, t]) => `<option value="${v}" ${b.tipo === v ? 'selected' : ''}>${EMOJI_TIPO[v]} ${t}</option>`).join('')}</select></label>
+      <label class="v-field">¿Qué tan importante es?
+        <select id="tk-prio" class="v-input">${PRIORIDADES_USUARIO.map((v) => `<option value="${v}" ${b.prioridad === v ? 'selected' : ''}>${PRIORIDADES[v]} · respondemos en máximo ${textoHoras(sla[v])}</option>`).join('')}</select></label>
       <label class="v-field">Título (qué pasa, en pocas palabras)
         <input id="tk-titulo" class="v-input" maxlength="140" required placeholder="Ej: No me deja mover una cita" value="${esc(b.titulo)}"></label>
       <label class="v-field">Detalles (qué hacías, qué esperabas, qué pasó)
@@ -78,8 +84,9 @@ export async function renderTickets(ctx) {
       ${ui.error ? `<div class="v-error" role="alert">${esc(ui.error)}</div>` : ''}
       ${ui.mensaje && !ui.exito ? `<p class="v-note" role="status">${esc(ui.mensaje)}</p>` : ''}
       <div><button type="submit" class="v-btn v-primary" ${ui.enviando ? 'disabled' : ''}>${ui.enviando ? 'Enviando…' : 'Enviar ticket'}</button>
-        <span class="v-muted" style="margin-left:8px;font-size:13px">Respondemos en un máximo de ${SLA_HORAS.normal} horas. Una vez enviado no se edita; podrás agregar comentarios.</span></div>
+        <span class="v-muted" style="margin-left:8px;font-size:13px">Respondemos en un máximo de ${textoHoras(sla[b.prioridad] ?? sla.normal)}. Una vez enviado no se edita; podrás agregar comentarios.</span></div>
     </form>
+    ${esAdmin && slaR.data ? bloqueSla(sla) : ''}
     ${acceso ? bloqueAcceso(acceso) : ''}
     <h3 style="margin:26px 0 8px">${esAdmin ? 'Tickets del equipo' : 'Mis tickets'}</h3>
     <label class="v-field" style="max-width:240px">Ver<select id="tk-filtro" class="v-input">
@@ -97,6 +104,7 @@ export async function renderTickets(ctx) {
     form.insertAdjacentHTML('beforebegin', `<div class="v-card" id="tk-exito" role="status" style="max-width:640px;margin-top:14px;padding:16px;border:2px solid var(--empresa-accion,#00a9a5);border-radius:12px"><h3 style="margin:0 0 6px">✅ Ticket #${esc(ui.exito)} guardado</h3><p style="margin:0 0 12px">${esc(ui.mensaje)}</p><button type="button" class="v-btn v-primary" id="tk-otro">Crear otro ticket</button> <span class="v-muted">Tu ticket aparece en la lista de abajo.</span></div>`);
     el.querySelector('#tk-otro').onclick = () => { ui.exito = null; ui.mensaje = ''; repintar(); };
   }
+  el.querySelector('#tk-prio').onchange = (e) => { ui.borrador.prioridad = e.target.value; repintar(); };
   el.querySelector('#tk-tipo').onchange = (e) => { ui.borrador.tipo = e.target.value; };
   el.querySelector('#tk-titulo').oninput = (e) => { ui.borrador.titulo = e.target.value; };
   el.querySelector('#tk-desc').oninput = (e) => { ui.borrador.descripcion = e.target.value; };
@@ -109,7 +117,7 @@ export async function renderTickets(ctx) {
     ui.enviando = false;
     if (r.error) ui.error = r.error;
     else {
-      ui.mensaje = `Listo: recibimos tu ticket #${r.data.numero}. Te respondemos en un máximo de ${SLA_HORAS.normal} horas y te avisamos por la campana y por correo.`;
+      ui.mensaje = `Listo: recibimos tu ticket #${r.data.numero}. Te respondemos en un máximo de ${textoHoras(r.data.horas ?? sla.normal)} y te avisamos por la campana y por correo.`;
       ui.borrador = nuevoBorrador();
       ui.exito = r.data.numero;
       api.avisar(r.data.id, 'creado');
@@ -117,6 +125,15 @@ export async function renderTickets(ctx) {
     repintar();
   };
 
+  el.querySelector('#tk-sla-guardar')?.addEventListener('click', async () => {
+    const h = {};
+    el.querySelectorAll('[data-sla]').forEach((i) => { h[i.dataset.sla] = Number(i.value); });
+    if (Object.values(h).some((n) => !Number.isInteger(n) || n < 1 || n > 720)) { ui.error = 'Cada tiempo debe ser un número de horas entre 1 y 720.'; ui.mensaje = ''; return repintar(); }
+    const r = await api.slaGuardar(empresaId, h);
+    ui.error = r.error || '';
+    ui.mensaje = r.error ? '' : 'Guardamos los tiempos de respuesta.';
+    repintar();
+  });
   el.querySelector('#tk-fallos')?.addEventListener('click',()=>montarFallos({el,supabase,empresaId,volver:repintar}));
 
   // ---- acceso de ayuda (administrador)
@@ -226,6 +243,16 @@ function bloqueAcceso(acceso) {
     ${hasta ? `<p style="margin:0 0 10px"><strong>✓ Acceso activo hasta ${esc(hasta)}</strong></p><button type="button" class="v-btn v-quiet" data-acceso-revocar>Quitar el acceso ahora</button>`
       : `<p style="margin:0 0 10px"><strong>✕ Sin acceso de ayuda</strong></p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="v-btn v-primary" data-acceso-horas="24">Dar acceso 24 horas</button><button type="button" class="v-btn v-quiet" data-acceso-horas="72">3 días</button><button type="button" class="v-btn v-quiet" data-acceso-horas="168">7 días</button></div>`}
     ${aud ? `<p class="v-muted" style="margin:12px 0 4px;font-size:13px">Registro reciente:</p><ul style="margin:0;padding-left:18px;font-size:13px">${aud}</ul>` : ''}
+  </section>`;
+}
+
+function bloqueSla(sla) {
+  const campo = (clave, nombre) => `<label class="v-field" style="flex:1;min-width:120px">${nombre} (horas)<input class="v-input" type="number" min="1" max="720" inputmode="numeric" data-sla="${clave}" value="${sla[clave]}"></label>`;
+  return `<section class="v-card" style="margin-top:18px;padding:14px 16px;border:1px solid var(--v-line);border-radius:12px;max-width:640px">
+    <h3 style="margin:0 0 6px">Tiempos de respuesta</h3>
+    <p class="v-muted" style="margin:0 0 10px;font-size:13.5px">Cuántas horas tiene soporte para dar la primera respuesta, según la prioridad que elija quien escribe el ticket. Se cuentan en horas corridas. Los tickets que ya esperan respuesta conservan su plazo.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${campo('baja', 'Baja')}${campo('normal', 'Media')}${campo('alta', 'Alta')}${campo('urgente', 'Urgente (solo soporte)')}</div>
+    <div style="margin-top:10px"><button type="button" class="v-btn v-primary" id="tk-sla-guardar">Guardar tiempos</button></div>
   </section>`;
 }
 

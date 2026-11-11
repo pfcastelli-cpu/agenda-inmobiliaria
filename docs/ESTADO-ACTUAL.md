@@ -83,3 +83,24 @@ Reemplazar lo superado (no acumular bitácora); máximo ~3 KB. Mover lo cerrado 
 - Hecho también: acompañantes en una visita (065) y destinatarios elegidos de avisos de propietarios + informe de gestión (064).
 - Hecho también: Registro de cambios del sistema (066, permiso `auditoria.ver`, menú «Registro»), resumen automático por correo (067), `consignar_url` configurable (063).
 - Falta: horarios recurrentes/indefinidos del arrendatario (hoy son franjas por fecha en `agenda_inmueble_ventanas`; requiere tabla de patrones semanales y que el motor o un job los materialice), saber QUIÉN dio clic en «Quiero consignar» (requiere enlace con token por destinatario).
+
+## Pendiente de autorizar (botones de la visita)
+- Correo de confirmación al cliente (`enviar-correo-cita`): botones Maps, Waze, WhatsApp y Llamar (código listo, falta redesplegar con `--no-verify-jwt`).
+- Página tras agendar (`reservar.js`): mismos botones, usa `sql/072-contacto-visita-publica.sql` (falta aplicar en producción; sin él la página queda como antes).
+- Falta commit/push. No probado con red real ni en el navegador (solo `npm run build`).
+
+## Pendiente de autorizar (horario por día del arrendatario)
+- `sql/073-horario-por-dia.sql`: columna `agenda_inmuebles.horario_por_dia` + `agenda_sugerir_horarios_portal_base` respeta el rango de cada día + guardar horario uniforme desde la agenda lo limpia. SIN aplicar.
+- `portal-visita` (guardar_horario acepta `por_dia`) y `arrendatario.js` (modo «mismo horario» / «distinto por día», selectores cada 30 min, resumen). SIN desplegar.
+- ORDEN: aplicar SQL 073 PRIMERO, luego desplegar `portal-visita` (consulta la columna nueva; sin SQL fallaría). Después push (Netlify).
+- Sin probar en navegador ni con red real; solo `npm run build`.
+- Agenda interna (agenda-real.js) aún no edita el horario por día: solo lo limpia si el admin guarda uno uniforme.
+- ACTUALIZACIÓN 11-nov-2026: SQL 072 y 073 YA APLICADOS en producción. Siguen sin desplegar: `portal-visita` y `enviar-correo-cita`; y sin commit/push.
+
+## Pendiente de autorizar (11-nov-2026, lote 3)
+- `sql/074-preferencias-tipos-de-aviso.sql`: el propietario elige qué avisos recibe (visita nueva / cambio de hora / cancelación). SIN aplicar.
+- `sql/075-tickets-prioridad-y-tiempos.sql`: prioridad baja/media/alta al crear el ticket + tiempos de respuesta por empresa (admin los edita en Soporte). SIN aplicar.
+- Funciones a desplegar: `notificar-cambio-cita` (cancelación a propietario y arrendatario con explicación, datos del asesor, botones WhatsApp/llamar e informe), `enviar-correo-propietario` (respeta avisos), `avisar-ticket` (plazo real). `portal-visita` y `enviar-correo-cita` siguen sin desplegar. Los SQL 072/073 ya están aplicados.
+- ORDEN: aplicar 074 y 075 ANTES de desplegar/subir (la pantalla de tickets y la de preferencias llaman funciones nuevas; si faltan, quedan tolerantes pero sin la función nueva). Luego push.
+- Sin probar en navegador ni con red real; solo `npm run build`.
+- ACTUALIZACIÓN 11-nov-2026: SQL 074 y 075 aplicados; desplegadas portal-visita, enviar-correo-cita, enviar-correo-propietario (públicas), notificar-cambio-cita y avisar-ticket (con JWT). Falta solo lo visible del front (push → Netlify).

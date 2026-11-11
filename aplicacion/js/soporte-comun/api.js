@@ -9,7 +9,9 @@ export function crearApiSoporte(supabase) {
     return { data: error ? null : data, error: error ? limpiarError(error.message) : null };
   };
   return {
-    crear: (empresaId, borrador, pagina) => rpc('agenda_ticket_crear', { p_empresa_id: empresaId, p_tipo: borrador.tipo, p_titulo: borrador.titulo, p_descripcion: borrador.descripcion, p_pagina: pagina || '' }),
+    crear: (empresaId, borrador, pagina) => rpc('agenda_ticket_crear', { p_empresa_id: empresaId, p_tipo: borrador.tipo, p_titulo: borrador.titulo, p_descripcion: borrador.descripcion, p_pagina: pagina || '', p_prioridad: borrador.prioridad || 'normal' }),
+    slaObtener: (empresaId) => rpc('agenda_ticket_sla_obtener', { p_empresa_id: empresaId }),
+    slaGuardar: (empresaId, h) => rpc('agenda_ticket_sla_guardar', { p_empresa_id: empresaId, p_baja: h.baja, p_normal: h.normal, p_alta: h.alta, p_urgente: h.urgente }),
     detalle: (id, como = null) => rpc('agenda_ticket_detalle', { p_id: id, p_como: como }),
     responder: (id, { texto = null, estado = null, como = null } = {}) => rpc('agenda_ticket_responder', { p_id: id, p_texto: texto, p_estado: estado, p_como: como }),
     calificar: (id, puntos, comentario = '') => rpc('agenda_ticket_calificar', { p_id: id, p_puntos: puntos, p_comentario: comentario }),

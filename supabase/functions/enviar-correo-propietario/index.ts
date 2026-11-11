@@ -502,6 +502,13 @@ Deno.serve(async (req) => {
       });
       continue;
     }
+    if (pref && (reagendada ? pref.avisar_cambio === false : pref.avisar_nueva === false)) {
+      await registrarLog(admin, {
+        empresa_id: cita.empresa_id, cita_id: cita.id, destinatario_tipo: 'propietario', destinatario_email: correoPropietario, asunto,
+        estado: 'omitido', detalle_error: `El propietario eligió no recibir el aviso de ${reagendada ? 'cambio de hora' : 'visita nueva'}.`, modo_pruebas: modoPruebas,
+      });
+      continue;
+    }
     const nombrePropietario = nombres[0] || '';
     const destinatarioEnvio = modoPruebas ? config.correo_pruebas_destino || correoPropietario : correoPropietario;
 

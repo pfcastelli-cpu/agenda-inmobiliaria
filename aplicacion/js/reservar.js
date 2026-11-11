@@ -446,6 +446,7 @@ async function confirmarCita() {
   };
   state.paso = 'confirmado';
   render();
+  cargarContactoVisita(data);
 }
 
 // Cuando el cliente ya tiene una cita activa para este mismo inmueble y elige
@@ -506,6 +507,7 @@ async function cambiarCita() {
   };
   state.paso = 'confirmado';
   render();
+  cargarContactoVisita(data);
 }
 
 function vistaInicial() {
@@ -669,6 +671,37 @@ function vistaInmueble() {
   `;
 }
 
+// Botones de la página de confirmación (Maps, Waze, WhatsApp, llamar). Si falla o no hay datos, la página queda como estaba.
+async function cargarContactoVisita(citaId) {
+  try {
+    const { data } = await supabase.rpc('agenda_contacto_visita_publica', { p_cita_id: citaId });
+    if (!data || state.confirmacion?.id !== citaId) return;
+    state.confirmacion.contacto = data;
+    if (state.paso === 'confirmado') render();
+  } catch { /* sin botones */ }
+}
+
+function accionesVisita(c, fecha, hora) {
+  if (!c) return '';
+  const lat = c.latitud, lng = c.longitud;
+  const tieneCoord = lat !== null && lat !== undefined && lng !== null && lng !== undefined;
+  const dir = [c.direccion, c.barrio, c.ciudad].filter(Boolean).join(', ');
+  const q = encodeURIComponent(`${dir}, Colombia`);
+  const maps = tieneCoord ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}` : dir ? `https://www.google.com/maps/search/?api=1&query=${q}` : '';
+  const waze = tieneCoord ? `https://waze.com/ul?ll=${lat},${lng}&navigate=yes` : dir ? `https://waze.com/ul?q=${q}&navigate=yes` : '';
+  const tel = String(c.asesor_celular || '').replace(/[^0-9+]/g, '');
+  const wa = tel.replace(/\D/g, '');
+  const msg = `Hola${c.asesor_nombre ? ' ' + c.asesor_nombre : ''}, te escribo por mi visita del ${DIAS[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]} a las ${hora}.`;
+  const botones = [
+    [maps, '📍 Cómo llegar (Maps)'], [waze, '🚗 Cómo llegar (Waze)'],
+    [wa ? `https://wa.me/${wa}?text=${encodeURIComponent(msg)}` : '', '💬 WhatsApp al asesor'],
+    [tel ? `tel:${tel}` : '', '📞 Llamar al asesor'],
+  ].filter(([u]) => u);
+  if (!botones.length) return '';
+  const esc = (t) => String(t).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  return `${c.asesor_nombre ? `<p>Tu asesor: <b>${esc(c.asesor_nombre)}</b></p>` : ''}<div class="pu-acciones">${botones.map(([u, t]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>`;
+}
+
 function vistaConfirmado() {
   const { fecha, hora } = state.confirmacion;
   return `
@@ -677,7 +710,8 @@ function vistaConfirmado() {
     <div class="pu-card">
       <h3>Ya puedes organizar tu visita</h3>
       ${state.inmueble?.posible_ocupado ? `<p class="pu-nota">Tu visita sigue confirmada. Si recibes un aviso para elegir otra hora, el horario original dejará de estar disponible. Revisa tu correo antes de salir.</p>` : ''}
-      <p>Encontrarás los datos del asesor y el enlace para cambiar o cancelar en el correo de confirmación.</p>
+      ${accionesVisita(state.confirmacion.contacto, fecha, formatoHora(hora.hora_inicio))}
+      <p>Encontrarás también los datos del asesor y el enlace para cambiar o cancelar en el correo de confirmación.</p>
       ${NOTA_PUNTUALIDAD}
       <button class="pu-link" id="pu-nueva">Agendar otra visita</button>
     </div>

@@ -130,13 +130,15 @@ ${textoMensaje ? `<p style="margin:0;padding:12px 14px;background:#f4f4f4;border
   });
   const envios = destinos.map((real) => ({ real, asunto, titulo, cuerpo }));
   if (correoAutor) {
-    // Mismo plazo que ve el usuario en la pantalla (public.agenda_ticket_sla_horas('normal') = 24 h).
+    // Mismo plazo que ve el usuario en la pantalla: el que se calculó al crear el ticket según su prioridad (sql/075); 24 h si falta el dato.
+    const h = t.vence_primera_en && t.creado_en ? Math.max(1, Math.round((new Date(t.vence_primera_en).getTime() - new Date(t.creado_en).getTime()) / 3600000)) : 24;
+    const horasRespuesta = h % 24 === 0 && h >= 48 ? `${h / 24} días` : h === 1 ? '1 hora' : `${h} horas`;
     envios.push({
       real: correoAutor,
       asunto: `Recibimos tu ticket #${t.numero}: ${t.titulo}`,
       titulo: `Recibimos tu ticket #${t.numero}`,
       cuerpo: `<p style="margin:0 0 10px">Gracias por escribirnos. Ya tenemos tu solicitud «<b>${esc(t.titulo)}</b>» y la estamos revisando.</p>
-<p style="margin:0 0 10px">Te respondemos en un máximo de <b>24 horas</b>. Cuando haya novedades te avisaremos en la campana de la aplicación y por correo, y podrás contestar dentro del mismo ticket.</p>
+<p style="margin:0 0 10px">Te respondemos en un máximo de <b>${horasRespuesta}</b>. Cuando haya novedades te avisaremos en la campana de la aplicación y por correo, y podrás contestar dentro del mismo ticket.</p>
 ${t.descripcion ? `<p style="margin:0;padding:12px 14px;background:#f4f4f4;border-radius:10px;white-space:pre-wrap">${esc(t.descripcion)}</p>` : ''}`,
     });
   }

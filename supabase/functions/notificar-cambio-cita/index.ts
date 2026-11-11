@@ -10,7 +10,8 @@
 //                        el arrendatario. La cita ya debe estar cancelada en la base.
 // origen: 'asesor' (agenda interna) | 'cliente' (enlace del cliente). Los textos cambian según el origen y
 // según el tipo de inmueble (vivienda, oficina, local...): no todo lo que se visita es una vivienda.
-import { preferenciasDe } from '../_shared/preferencias-propietario.ts';
+import { preferenciasDe, urlPreferencias } from '../_shared/preferencias-propietario.ts';
+import type { BotonCorreo } from '../_shared/plantilla-correo.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, enlaceInmueble, marcaCorreo, type MarcaCorreo, emojiTitulo, pieContacto } from '../_shared/marca-correo.ts';
 import { correoBase } from '../_shared/plantilla-correo.ts';
@@ -157,12 +158,13 @@ function plantilla(o: {
   titulo: string;
   cuerpo: string; // HTML ya escapado
   boton?: { texto: string; url: string };
+  botones?: BotonCorreo[];
   modoPruebas: boolean;
   destinatarioReal: string;
   remitente: string;
   marca: MarcaCorreo;
 }) {
-  return correoBase(o.marca, { titulo: o.titulo, cuerpo: o.cuerpo, tema: 'cambio', modoPruebas: o.modoPruebas, destinatarioReal: o.destinatarioReal, botones: o.boton ? [{ ...o.boton, variante: 'principal' }] : undefined });
+  return correoBase(o.marca, { titulo: o.titulo, cuerpo: o.cuerpo, tema: 'cambio', modoPruebas: o.modoPruebas, destinatarioReal: o.destinatarioReal, botones: o.botones ?? (o.boton ? [{ ...o.boton, variante: 'principal' }] : undefined) });
 }
 
 Deno.serve(async (req) => {
@@ -217,7 +219,7 @@ Deno.serve(async (req) => {
 
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, sin_aviso_arrendatario')
+    .select('numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, sin_aviso_arrendatario, token_informe_propietario')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
   if (!inmueble) return json({ ok: false, error: 'Inmueble no encontrado.' }, 404);
@@ -286,6 +288,7 @@ Deno.serve(async (req) => {
     titulo: string;
     cuerpo: string;
     boton?: { texto: string; url: string };
+    botones?: BotonCorreo[];
     conIcsCancelacion?: boolean;
     asistenteNombre?: string;
   }) {
@@ -298,7 +301,7 @@ Deno.serve(async (req) => {
           from: `${remitente} <${config!.correo_remitente_email}>`,
           to: destino,
           subject: o.asunto,
-          html: plantilla({ titulo: o.titulo, cuerpo: o.cuerpo, boton: o.boton, modoPruebas, destinatarioReal: correo, remitente, marca }),
+          html: plantilla({ titulo: o.titulo, cuerpo: o.cuerpo, boton: o.boton, botones: o.botones, modoPruebas, destinatarioReal: correo, remitente, marca }),
           ...(o.conIcsCancelacion
             ? {
                 icalEvent: {
@@ -408,17 +411,34 @@ Deno.serve(async (req) => {
     }
   }
   const prefsProp = await preferenciasDe(admin, cita.empresa_id, [...porCorreo.keys()]);
+  const celularWa = String(asesor?.celular || '').replace(/\D/g, '');
+  const motivoPropietario = origen === 'cliente'
+    ? 'La persona interesada canceló su visita desde su enlace.'
+    : origen === 'vencimiento'
+      ? 'Quien vive en el inmueble no podía recibir la visita a esa hora y la persona interesada no eligió una nueva hora a tiempo, así que la visita se canceló.'
+      : 'Tu asesor canceló la visita (por ejemplo, por un imprevisto o un cambio de agenda).';
+  const accionPropietario = origen === 'cliente'
+    ? 'No tienes que hacer nada. La persona puede volver a elegir otro horario cuando quiera; si lo hace, te avisaremos.'
+    : origen === 'vencimiento'
+      ? 'No tienes que hacer nada. Si la persona sigue interesada, puede elegir otro horario y te avisaremos.'
+      : 'No tienes que hacer nada. Tu asesor puede ofrecerle a la persona interesada otro horario; si se agenda, te avisaremos.';
   for (const [correo, nombres] of porCorreo) {
     const prefProp = prefsProp.get(correo.toLowerCase());
     if (prefProp && prefProp.frecuencia !== 'cada_cita') continue; // eligió resumen o ningún correo (sql/032)
+    if (prefProp && prefProp.avisar_cancelacion === false) continue; // eligió no recibir el aviso de cancelación (sql/074)
     await enviar({
       tipo: 'propietario',
       correos: [correo],
       asunto: `Visita cancelada en tu inmueble Nº ${inmueble.numero_inmueble}`,
       titulo: 'Se canceló una visita en tu inmueble',
-      cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(nombres.join(' y '))}, te avisamos que la visita del ${lineaVisita} a tu inmueble Nº ${esc(String(inmueble.numero_inmueble))}${lugar ? ` (${esc(lugar)})` : ''} fue cancelada${origen === 'cliente' ? ' por la persona interesada' : origen === 'vencimiento' ? ' porque el arrendatario no podía recibirla y no se acordó una nueva hora a tiempo' : ''}.</p>
-<p style="margin:0;text-align:justify">No tienes que hacer nada. Si se agenda otra visita, te avisaremos.</p>`,
-      boton: { texto: 'Ver el inmueble en nuestro sitio', url: enlaceInmueble(config, inmueble.numero_inmueble) },
+      cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(nombres.join(' y '))}, te avisamos que la visita del ${lineaVisita} a tu inmueble Nº ${esc(String(inmueble.numero_inmueble))}${lugar ? ` (${esc(lugar)})` : ''} fue cancelada.</p>
+<p style="margin:0 0 10px;text-align:justify"><b>¿Qué pasó?</b> ${esc(motivoPropietario)}</p>
+<p style="margin:0 0 10px;text-align:justify"><b>¿Tienes que hacer algo?</b> ${esc(accionPropietario)}</p>${asesor?.nombre ? `<p style="margin:0 0 10px;text-align:justify"><b>Tu asesor a cargo:</b> ${esc(asesor.nombre)}${asesor.celular ? ` · ${esc(asesor.celular)}` : ''}. Puedes escribirle o llamarle con los botones de abajo.</p>` : ''}${prefProp ? `<p style="margin:12px 0 0;font-size:13px">¿Prefieres otros avisos? <a href="${esc(urlPreferencias(config, prefProp.token))}">Elige qué correos quieres recibir</a>.</p>` : ''}`,
+      botones: [
+        inmueble.token_informe_propietario ? { texto: 'Ver el informe de mi inmueble', url: `${SITIO_URL}/propietario/${inmueble.token_informe_propietario}`, variante: 'principal' } : { texto: 'Ver el inmueble en nuestro sitio', url: enlaceInmueble(config, inmueble.numero_inmueble), variante: 'principal' },
+        celularWa ? { texto: `Escribir a ${asesor?.nombre || 'mi asesor'} por WhatsApp`, url: `https://wa.me/${celularWa}?text=${encodeURIComponent(`Hola${asesor?.nombre ? ' ' + asesor.nombre : ''}, te escribo por la visita cancelada de mi inmueble Nº ${inmueble.numero_inmueble} (${fechaTexto}, ${horaTexto}).`)}`, variante: 'whatsapp' } : null,
+        celularWa ? { texto: `Llamar a ${asesor?.nombre || 'mi asesor'}`, url: `tel:${String(asesor?.celular || '').replace(/\s+/g, '')}`, variante: 'llamar' } : null,
+      ].filter(Boolean) as BotonCorreo[],
       conIcsCancelacion: true,
       asistenteNombre: nombres[0],
     });
@@ -430,8 +450,13 @@ Deno.serve(async (req) => {
       correos: correosArr,
       asunto: `Visita cancelada · ${fechaTexto}`,
       titulo: `Se canceló la visita a tu ${sust.n}`,
-      cuerpo: `<p style="margin:0 0 10px;text-align:justify">${saludoArr}la visita que estaba programada para ${lineaVisita}${lugar ? ` en ${esc(lugar)}` : ''} fue cancelada${origen === 'cliente' ? ' por la persona interesada' : origen === 'vencimiento' ? ' porque la persona interesada no eligió una nueva hora a tiempo' : ''}.</p>
-<p style="margin:0;text-align:justify">No tienes que hacer nada. Gracias por tu colaboración.</p>`,
+      cuerpo: `<p style="margin:0 0 10px;text-align:justify">${saludoArr}la visita que estaba programada para ${lineaVisita}${lugar ? ` en ${esc(lugar)}` : ''} fue cancelada.</p>
+<p style="margin:0 0 10px;text-align:justify"><b>¿Qué pasó?</b> ${esc(origen === 'cliente' ? 'La persona interesada canceló su visita desde su enlace.' : origen === 'vencimiento' ? 'La persona interesada no eligió una nueva hora a tiempo (cuando se le pidió cambiarla porque no podías recibirla), así que la visita se canceló.' : 'El asesor canceló la visita (por ejemplo, por un imprevisto o un cambio de agenda).')}</p>
+<p style="margin:0 0 10px;text-align:justify"><b>¿Tienes que hacer algo?</b> No. Esa hora queda libre para ti y no tienes que preparar nada. Si se agenda otra visita, te avisaremos.</p>${asesor?.nombre ? `<p style="margin:0 0 10px;text-align:justify"><b>Asesor a cargo:</b> ${esc(asesor.nombre)}${asesor.celular ? ` · ${esc(asesor.celular)}` : ''}. Si tienes alguna duda, puedes escribirle o llamarle con los botones de abajo.</p>` : ''}<p style="margin:0;text-align:justify">Gracias por tu colaboración.</p>`,
+      botones: [
+        celularWa ? { texto: `Escribir a ${asesor?.nombre || 'el asesor'} por WhatsApp`, url: `https://wa.me/${celularWa}?text=${encodeURIComponent(`Hola${asesor?.nombre ? ' ' + asesor.nombre : ''}, te escribo por la visita cancelada del ${fechaTexto} a las ${horaTexto}.`)}`, variante: 'whatsapp' } : null,
+        celularWa ? { texto: `Llamar a ${asesor?.nombre || 'el asesor'}`, url: `tel:${String(asesor?.celular || '').replace(/\s+/g, '')}`, variante: 'llamar' } : null,
+      ].filter(Boolean) as BotonCorreo[],
     });
   }
 

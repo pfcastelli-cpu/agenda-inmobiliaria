@@ -12,7 +12,13 @@ const OPCIONES = [
   { valor: 'ninguna', emoji: '🔕', texto: 'No quiero recibir correos de visitas', detalle: 'Podrás ver todo cuando quieras en el informe de tu inmueble.' },
 ];
 
-const state = { token: null, paso: 'cargando', datos: null, frecuencia: 'cada_cita', publicidad: true, guardando: false, error: '' };
+const AVISOS = [
+  { clave: 'nueva', texto: 'Cuando se agenda una visita nueva' },
+  { clave: 'cambio', texto: 'Cuando una visita cambia de hora' },
+  { clave: 'cancelacion', texto: 'Cuando se cancela una visita' },
+];
+
+const state = { token: null, paso: 'cargando', datos: null, frecuencia: 'cada_cita', publicidad: true, avisos: { nueva: true, cambio: true, cancelacion: true }, guardando: false, error: '' };
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -27,7 +33,7 @@ function vista() {
   if (state.paso === 'error') return `<div class="pu-error">${esc(state.error)}</div>`;
   if (state.paso === 'guardado') {
     return `<div class="pu-confirmacion"><div class="pu-icono">✓</div><h2>¡Listo, guardamos tus preferencias!</h2>
-      <p>${esc(OPCIONES.find((o) => o.valor === state.frecuencia)?.texto || '')}${state.publicidad ? '' : ' · Sin publicidad'}.</p>
+      <p>${esc(OPCIONES.find((o) => o.valor === state.frecuencia)?.texto || '')}${state.frecuencia === 'cada_cita' ? ` (${AVISOS.filter((a) => state.avisos[a.clave]).map((a) => a.texto.replace('Cuando ', '').replace('se agenda una visita nueva', 'visita nueva').replace('una visita cambia de hora', 'cambio de hora').replace('se cancela una visita', 'cancelación')).join(', ') || 'ningún aviso'})` : ''}${state.publicidad ? '' : ' · Sin publicidad'}.</p>
       <p style="margin-top:16px"><button type="button" class="pu-link" id="pu-editar">Cambiar de nuevo</button></p></div>`;
   }
   return `<div class="pu-card">
@@ -36,6 +42,9 @@ function vista() {
     <div class="pu-options" style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
       ${OPCIONES.map((o) => `<label class="pu-option" style="display:flex;gap:12px;align-items:flex-start;text-align:left;cursor:pointer"><input type="radio" name="frecuencia" value="${o.valor}" ${o.valor === state.frecuencia ? 'checked' : ''} style="margin-top:5px"><span><strong>${o.emoji} ${esc(o.texto)}</strong><br><small>${esc(o.detalle)}</small></span></label>`).join('')}
     </div>
+    ${state.frecuencia === 'cada_cita' ? `<h3 style="margin-top:22px">¿De qué quieres que te avisemos?</h3>
+    ${AVISOS.map((a) => `<label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;margin:8px 0;min-height:32px"><input type="checkbox" data-aviso="${a.clave}" ${state.avisos[a.clave] ? 'checked' : ''} style="margin-top:4px"><span>${esc(a.texto)}</span></label>`).join('')}
+    <p style="font-size:12.5px;color:#6b6b6b;margin-top:4px">Lo que desmarques no te llegará por correo, pero siempre podrás verlo en el informe de tu inmueble.</p>` : ''}
     <h3 style="margin-top:22px">Publicidad</h3>
     <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="pu-publicidad" ${state.publicidad ? 'checked' : ''} style="margin-top:4px"><span>Quiero recibir propuestas comerciales (por ejemplo, para consignar otro inmueble).</span></label>
     <p style="font-size:12.5px;color:#6b6b6b;margin-top:8px">Si la desmarcas, dejarás de ver publicidad en nuestros correos. Los avisos que elegiste arriba se mantienen.</p>
@@ -46,7 +55,8 @@ function vista() {
 
 function render() {
   raiz.innerHTML = vista();
-  raiz.querySelectorAll('input[name=frecuencia]').forEach((r) => r.addEventListener('change', () => { state.frecuencia = r.value; }));
+  raiz.querySelectorAll('input[name=frecuencia]').forEach((r) => r.addEventListener('change', () => { state.frecuencia = r.value; render(); }));
+  raiz.querySelectorAll('input[data-aviso]').forEach((c) => c.addEventListener('change', () => { state.avisos[c.dataset.aviso] = c.checked; }));
   raiz.querySelector('#pu-publicidad')?.addEventListener('change', (e) => { state.publicidad = e.target.checked; });
   raiz.querySelector('#pu-guardar')?.addEventListener('click', guardar);
   raiz.querySelector('#pu-editar')?.addEventListener('click', () => { state.paso = 'formulario'; render(); });
@@ -57,6 +67,10 @@ async function guardar() {
   state.error = '';
   render();
   const { error } = await supabase.rpc('agenda_preferencias_guardar', { p_token: state.token, p_frecuencia: state.frecuencia, p_publicidad: state.publicidad });
+  if (!error && state.frecuencia === 'cada_cita') {
+    // Los tres avisos se guardan aparte (sql/074); si esa función aún no existe, no se bloquea lo demás.
+    await supabase.rpc('agenda_preferencias_guardar_avisos', { p_token: state.token, p_nueva: state.avisos.nueva, p_cambio: state.avisos.cambio, p_cancelacion: state.avisos.cancelacion });
+  }
   state.guardando = false;
   if (error) {
     state.error = /venci|funciona/i.test(error.message || '') ? 'Este enlace no funciona o ya venció.' : 'No se pudieron guardar tus preferencias. Inténtalo de nuevo.';
@@ -77,6 +91,7 @@ async function iniciar() {
   state.datos = data;
   state.frecuencia = data.frecuencia;
   state.publicidad = data.publicidad !== false;
+  state.avisos = { nueva: data.avisar_nueva !== false, cambio: data.avisar_cambio !== false, cancelacion: data.avisar_cancelacion !== false };
   state.paso = 'formulario';
   render();
 }

@@ -14,7 +14,8 @@
 // mandar un METHOD:CANCEL con el mismo UID sin tener que guardar nada extra.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { marcaCorreo } from '../_shared/marca-correo.ts';
-import { correoVisita, enlaceVisita, TEXTO_PUNTUALIDAD } from '../_shared/visita-correo.ts';
+import { correoVisita, TEXTO_PUNTUALIDAD } from '../_shared/visita-correo.ts';
+import { botonesCorreo, type BotonCorreo } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -357,8 +358,12 @@ Deno.serve(async (req) => {
   const whatsappUrl = celularLimpio ? `https://wa.me/${celularLimpio}?text=${encodeURIComponent(mensajeWhatsapp)}` : null;
   const llamarUrl = asesorCelular ? `tel:${asesorCelular.replace(/\s+/g, '')}` : null;
 
-  const enlaces = [[mapsUrl, 'Cómo llegar'], [wazeUrl, 'Abrir Waze'], [whatsappUrl, 'Escribir al asesor'], [llamarUrl, 'Llamar al asesor']]
-    .filter(([url]) => !!url).map(([url, texto]) => enlaceVisita(url!, texto!, marca)).join('');
+  const enlaces = botonesCorreo(marca, ([
+    { texto: 'Cómo llegar (Google Maps)', url: mapsUrl, variante: 'mapa' },
+    { texto: 'Cómo llegar (Waze)', url: wazeUrl, variante: 'waze' },
+    { texto: 'Escribir por WhatsApp al asesor', url: whatsappUrl, variante: 'whatsapp' },
+    { texto: 'Llamar al asesor', url: llamarUrl, variante: 'llamar' },
+  ] as { texto: string; url: string | null; variante: 'mapa' | 'waze' | 'whatsapp' | 'llamar' }[]).filter((b) => !!b.url) as BotonCorreo[]);
   let filasDatos = numeroInmueble ? filaDato('', 'Inmueble', escaparHtml(String(numeroInmueble))) : '';
   filasDatos += filaDato('', 'Fecha', escaparHtml(fechaTexto));
   filasDatos += filaDato('', 'Hora', escaparHtml(horaTexto));

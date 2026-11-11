@@ -291,3 +291,8 @@
 #pub-app .pu-compromiso { list-style: none; margin: 10px 0; padding: 0; }
 #pub-app .pu-compromiso li { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 14px; line-height: 1.45; }
 #pub-app .pu-confianza small { display: block; color: var(--pu-muted); font-size: 12.5px; line-height: 1.45; }
+
+/* Botones de la visita confirmada: cómo llegar y contactar al asesor */
+#pub-app .pu-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 4px; }
+#pub-app .pu-acciones a { display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--pu-navy); color: var(--pu-navy); background: #fff; font-weight: 700; font-size: 14.5px; text-align: center; text-decoration: none; }
+@media (max-width: 420px) { #pub-app .pu-acciones { grid-template-columns: 1fr; } }

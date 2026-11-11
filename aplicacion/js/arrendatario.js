@@ -58,6 +58,8 @@ const state = {
   diasSel: [],
   desde: '',
   hasta: '',
+  horModo: 'igual', // igual (mismo horario todos los días) | por_dia
+  porDia: {}, // {1:{on,desde,hasta}} cuando horModo = por_dia
   fueraDeHorario: 0,
   ocupado: false,
   confirmando: null, // token de la visita cuya asistencia se está confirmando
@@ -144,6 +146,7 @@ function aplicarDatos(d) {
     state.diasSel = d.inmueble.dias_permitidos?.length ? [...d.inmueble.dias_permitidos] : [1, 2, 3, 4, 5, 6, 7];
     state.desde = d.inmueble.desde || '';
     state.hasta = d.inmueble.hasta || '';
+    iniciarHorarioPorDia(d.inmueble.por_dia);
   }
 }
 
@@ -321,22 +324,84 @@ function bloqueAcciones() {
     </div>`;
 }
 
+const HORAS_30 = (() => { const l = []; for (let m = 360; m <= 1260; m += 30) l.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`); return l; })();
+const sumarHora = (h, min) => { const t = Math.min(Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5)) + min, 1260); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
+const HORARIO_BASE = { desde: '08:00', hasta: '17:00' };
+
+function opcionesHora(sel, despuesDe) {
+  const lista = [...HORAS_30];
+  if (sel && !lista.includes(sel)) { lista.push(sel); lista.sort(); }
+  return lista.filter((h) => !despuesDe || h > despuesDe || h === sel).map((h) => `<option value="${h}" ${h === sel ? 'selected' : ''}>${hora12(h)}</option>`).join('');
+}
+
+// Lee lo guardado: si hay horario por día se muestra ese modo; si no, el horario igual para todos los días.
+function iniciarHorarioPorDia(porDia) {
+  const base = { desde: state.desde || HORARIO_BASE.desde, hasta: state.hasta || HORARIO_BASE.hasta };
+  state.porDia = {};
+  for (let d = 1; d <= 7; d++) {
+    const g = porDia && porDia[String(d)];
+    state.porDia[d] = g ? { on: true, desde: g.desde, hasta: g.hasta } : { on: !porDia && state.diasSel.includes(d), ...base };
+  }
+  state.horModo = porDia ? 'por_dia' : 'igual';
+  if (!state.desde) state.desde = base.desde;
+  if (!state.hasta) state.hasta = base.hasta;
+}
+
+// «Lunes a viernes, de 8:00 a. m. a 5:00 p. m. · Sábado, de … · Domingo: no se muestra.»
+function resumenHorarioTexto() {
+  const dias = state.horModo === 'igual'
+    ? [1, 2, 3, 4, 5, 6, 7].map((d) => (state.diasSel.includes(d) ? { d, desde: state.desde, hasta: state.hasta } : { d }))
+    : [1, 2, 3, 4, 5, 6, 7].map((d) => (state.porDia[d]?.on ? { d, desde: state.porDia[d].desde, hasta: state.porDia[d].hasta } : { d }));
+  const grupos = [];
+  for (const x of dias) {
+    const k = x.desde ? `${x.desde}-${x.hasta}` : 'no';
+    const ult = grupos[grupos.length - 1];
+    if (ult && ult.k === k) ult.fin = x.d; else grupos.push({ k, ini: x.d, fin: x.d, x });
+  }
+  const partes = grupos.map((g) => {
+    const nombre = g.ini === g.fin ? DIAS_LARGO[g.ini] : g.fin === g.ini + 1 ? `${DIAS_LARGO[g.ini]} y ${DIAS_LARGO[g.fin].toLowerCase()}` : `${DIAS_LARGO[g.ini]} a ${DIAS_LARGO[g.fin].toLowerCase()}`;
+    return g.x.desde ? `${nombre}, de ${hora12(g.x.desde)} a ${hora12(g.x.hasta)}` : `${nombre}: no se muestra`;
+  });
+  return partes.join(' · ');
+}
+
 function bloqueHorarioPermitido() {
   if (!esArrendatario()) return '';
+  const igual = state.horModo === 'igual';
   const dias = [1, 2, 3, 4, 5, 6, 7]
     .map((d) => `<button type="button" class="pu-option ${state.diasSel.includes(d) ? 'activa' : ''}" data-dia="${d}" aria-pressed="${state.diasSel.includes(d)}">${state.diasSel.includes(d) ? '✓' : '✕'} ${DIAS_LARGO[d]}</button>`)
     .join('');
-  return `
-    <div class="pu-card">
-      <h3 style="margin-top:0">Cuándo se puede mostrar tu ${esc(state.tipo)}</h3>
-      <p>Estos días y horas se usan para <strong>todas las visitas futuras</strong>. El sistema los combina con la jornada de los asesores, así que solo se ofrecen horarios en los que hay un asesor libre.</p>
-      <h3 class="pu-question">Días</h3>
+  const selector = (id, valor, despuesDe, etiqueta, extra = '') => `<div style="flex:1;min-width:130px"><label for="${id}">${etiqueta}</label><select id="${id}" ${extra} style="min-height:44px;width:100%">${opcionesHora(valor, despuesDe)}</select></div>`;
+  const cuerpoIgual = `
       <p class="pu-vacio" style="margin:0 0 6px;font-size:13px">✓ = se puede mostrar ese día · ✕ = no se muestra</p>
       <div class="pu-options" id="ar-dias">${dias}</div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
-        <div style="flex:1;min-width:130px"><label for="ar-desde">Desde</label><input id="ar-desde" type="time" min="06:00" max="21:00" step="1800" value="${esc(state.desde)}"></div>
-        <div style="flex:1;min-width:130px"><label for="ar-hasta">Hasta</label><input id="ar-hasta" type="time" min="06:00" max="21:00" step="1800" value="${esc(state.hasta)}"></div>
+        ${selector('ar-desde', state.desde, '', 'Desde')}
+        ${selector('ar-hasta', state.hasta, state.desde, 'Hasta')}
       </div>
+      <div class="pu-options" id="ar-atajos" style="margin-top:8px">
+        <button type="button" class="pu-option" data-atajo="manana">Mañana (8–12)</button>
+        <button type="button" class="pu-option" data-atajo="tarde">Tarde (2–6)</button>
+        <button type="button" class="pu-option" data-atajo="todo">Todo el día (8–5)</button>
+      </div>`;
+  const cuerpoPorDia = [1, 2, 3, 4, 5, 6, 7].map((d) => {
+    const g = state.porDia[d];
+    return `<div class="pu-card" style="margin:8px 0;padding:10px 12px">
+        <button type="button" class="pu-option ${g.on ? 'activa' : ''}" data-pd-dia="${d}" aria-pressed="${g.on}" style="width:100%">${g.on ? '✓' : '✕'} ${DIAS_LARGO[d]}${g.on ? '' : ' · No se muestra'}</button>
+        ${g.on ? `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">${selector(`ar-pd-desde-${d}`, g.desde, '', 'Desde', `data-pd-desde="${d}"`)}${selector(`ar-pd-hasta-${d}`, g.hasta, g.desde, 'Hasta', `data-pd-hasta="${d}"`)}</div>
+        ${d > 1 ? `<button type="button" class="pu-link" data-pd-igual="${d}" style="margin-top:6px">Poner igual que el día anterior</button>` : ''}` : ''}
+      </div>`;
+  }).join('');
+  return `
+    <div class="pu-card">
+      <h3 style="margin-top:0">¿Cuándo podemos mostrar tu ${esc(state.tipo)}?</h3>
+      <p>Estos días y horas se usan para <strong>todas las visitas futuras</strong>. El sistema los combina con la jornada de los asesores, así que solo se ofrecen horarios en los que hay un asesor libre.</p>
+      <div class="pu-options" id="ar-hor-modo">
+        <button type="button" class="pu-option ${igual ? 'activa' : ''}" data-modo="igual" aria-pressed="${igual}">${igual ? '✓' : '○'} Mismo horario todos los días</button>
+        <button type="button" class="pu-option ${!igual ? 'activa' : ''}" data-modo="por_dia" aria-pressed="${!igual}">${!igual ? '✓' : '○'} Un horario distinto por día</button>
+      </div>
+      ${igual ? cuerpoIgual : cuerpoPorDia}
+      <p style="margin:12px 0 0;padding:10px 12px;border-radius:8px;background:rgba(0,0,0,.05);font-size:14px"><strong>Así quedaría:</strong> ${esc(resumenHorarioTexto())}</p>
       ${state.vista === 'resumen' && !state.propuesta ? errorBloque() : ''}
       <button class="pu-main" type="button" id="ar-guardar-horario" ${state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Guardando…' : 'Guardar horario'}</button>
       ${
@@ -753,21 +818,41 @@ async function confirmarPausa() {
 async function guardarHorario() {
   state.errorForm = '';
   state.mensaje = '';
-  if (!state.diasSel.length) {
-    state.errorForm = 'Elige al menos un día.';
-    return render();
-  }
-  if (!state.desde || !state.hasta || state.desde >= state.hasta) {
-    state.errorForm = 'Escribe una hora "desde" anterior a la hora "hasta".';
-    return render();
+  let cuerpo;
+  if (state.horModo === 'por_dia') {
+    const por_dia = {};
+    for (let d = 1; d <= 7; d++) {
+      const g = state.porDia[d];
+      if (!g.on) continue;
+      if (!g.desde || !g.hasta || g.desde >= g.hasta) {
+        state.errorForm = `${DIAS_LARGO[d]}: la hora final debe ser después de la inicial.`;
+        return render();
+      }
+      por_dia[d] = { desde: g.desde, hasta: g.hasta };
+    }
+    if (!Object.keys(por_dia).length) {
+      state.errorForm = 'Elige al menos un día en que se pueda mostrar.';
+      return render();
+    }
+    cuerpo = { por_dia };
+  } else {
+    if (!state.diasSel.length) {
+      state.errorForm = 'Elige al menos un día.';
+      return render();
+    }
+    if (!state.desde || !state.hasta || state.desde >= state.hasta) {
+      state.errorForm = 'La hora final debe ser después de la inicial.';
+      return render();
+    }
+    cuerpo = { dias: state.diasSel, desde: state.desde, hasta: state.hasta };
   }
   state.ocupado = true;
   render();
   try {
-    const d = await llamar('guardar_horario', { dias: state.diasSel, desde: state.desde, hasta: state.hasta });
-    state.inmueble = { ...state.inmueble, dias_permitidos: d.inmueble.dias_permitidos, desde: d.inmueble.desde, hasta: d.inmueble.hasta };
+    const d = await llamar('guardar_horario', cuerpo);
+    state.inmueble = { ...state.inmueble, dias_permitidos: d.inmueble.dias_permitidos, desde: d.inmueble.desde, hasta: d.inmueble.hasta, por_dia: d.inmueble.por_dia || null };
     state.fueraDeHorario = d.fuera_de_horario;
-    state.mensaje = 'Guardamos el nuevo horario. Ya se aplica a las próximas visitas.';
+    state.mensaje = `Listo. Así quedó tu horario: ${resumenHorarioTexto()}. Ya se aplica a las próximas visitas.`;
   } catch (e) {
     state.errorForm = e.message;
   }
@@ -954,13 +1039,69 @@ function cablear() {
     render();
   });
   por('ar-motivo')?.addEventListener('input', (e) => { state.motivo = e.target.value; });
-  por('ar-desde')?.addEventListener('change', (e) => { state.desde = e.target.value; });
-  por('ar-hasta')?.addEventListener('change', (e) => { state.hasta = e.target.value; });
+  por('ar-desde')?.addEventListener('change', (e) => {
+    state.desde = e.target.value;
+    if (state.hasta <= state.desde) state.hasta = sumarHora(state.desde, 60);
+    render();
+  });
+  por('ar-hasta')?.addEventListener('change', (e) => { state.hasta = e.target.value; render(); });
   document.querySelectorAll('#ar-dias .pu-option').forEach((b) => {
     b.addEventListener('click', () => {
       const d = Number(b.dataset.dia);
       state.diasSel = state.diasSel.includes(d) ? state.diasSel.filter((x) => x !== d) : [...state.diasSel, d];
       state.errorForm = '';
+      render();
+    });
+  });
+  document.querySelectorAll('#ar-atajos .pu-option').forEach((b) => {
+    b.addEventListener('click', () => {
+      const r = { manana: ['08:00', '12:00'], tarde: ['14:00', '18:00'], todo: ['08:00', '17:00'] }[b.dataset.atajo];
+      [state.desde, state.hasta] = r;
+      render();
+    });
+  });
+  document.querySelectorAll('#ar-hor-modo .pu-option').forEach((b) => {
+    b.addEventListener('click', () => {
+      const modo = b.dataset.modo;
+      if (modo === state.horModo) return;
+      if (modo === 'por_dia') {
+        // Las filas parten del horario sencillo ya elegido.
+        for (let d = 1; d <= 7; d++) state.porDia[d] = { on: state.diasSel.includes(d), desde: state.desde || HORARIO_BASE.desde, hasta: state.hasta || HORARIO_BASE.hasta };
+      } else {
+        const activos = [1, 2, 3, 4, 5, 6, 7].filter((d) => state.porDia[d]?.on);
+        if (activos.length) { state.diasSel = activos; state.desde = state.porDia[activos[0]].desde; state.hasta = state.porDia[activos[0]].hasta; }
+      }
+      state.horModo = modo;
+      state.errorForm = '';
+      render();
+    });
+  });
+  document.querySelectorAll('[data-pd-dia]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const g = state.porDia[Number(b.dataset.pdDia)];
+      g.on = !g.on;
+      if (g.on && (!g.desde || !g.hasta)) { g.desde = HORARIO_BASE.desde; g.hasta = HORARIO_BASE.hasta; }
+      state.errorForm = '';
+      render();
+    });
+  });
+  document.querySelectorAll('[data-pd-desde]').forEach((el) => {
+    el.addEventListener('change', () => {
+      const g = state.porDia[Number(el.dataset.pdDesde)];
+      g.desde = el.value;
+      if (g.hasta <= g.desde) g.hasta = sumarHora(g.desde, 60);
+      render();
+    });
+  });
+  document.querySelectorAll('[data-pd-hasta]').forEach((el) => {
+    el.addEventListener('change', () => { state.porDia[Number(el.dataset.pdHasta)].hasta = el.value; render(); });
+  });
+  document.querySelectorAll('[data-pd-igual]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const d = Number(b.dataset.pdIgual);
+      const ant = state.porDia[d - 1];
+      state.porDia[d].desde = ant.desde || HORARIO_BASE.desde;
+      state.porDia[d].hasta = ant.hasta || HORARIO_BASE.hasta;
       render();
     });
   });

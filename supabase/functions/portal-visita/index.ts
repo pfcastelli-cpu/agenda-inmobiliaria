@@ -136,7 +136,7 @@ async function cargarContexto(admin: Admin, token: string) {
   (cita as Record<string, unknown>).cliente_confirmado_en = confCliente?.cliente_confirmado_en ?? null;
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos, token_arrendatario, sin_aviso_arrendatario')
+    .select('id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, horario_por_dia, duracion_visita_minutos, token_arrendatario, sin_aviso_arrendatario')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
   if (!inmueble) return null;
@@ -265,7 +265,10 @@ async function registrarAccion(
   }
 }
 
-function resumenHorario(i: { dias_visita_permitidos: number[] | null; hora_visita_desde: string | null; hora_visita_hasta: string | null }) {
+function resumenHorario(i: { dias_visita_permitidos: number[] | null; hora_visita_desde: string | null; hora_visita_hasta: string | null; horario_por_dia?: Record<string, { desde: string; hasta: string }> | null }) {
+  if (i.horario_por_dia) {
+    return Object.keys(i.horario_por_dia).sort().map((d) => `${DIAS[Number(d)]} ${formatearHora(i.horario_por_dia![d].desde)}–${formatearHora(i.horario_por_dia![d].hasta)}`).join(' · ');
+  }
   const dias = (i.dias_visita_permitidos || []).map((d) => DIAS[d]).filter(Boolean).join(', ');
   const horas =
     i.hora_visita_desde && i.hora_visita_hasta
@@ -363,7 +366,7 @@ async function propuestaPendiente(
 async function cargarInmueblePorToken(admin: Admin, token: string) {
   const { data } = await admin
     .from('agenda_inmuebles')
-    .select('id, empresa_id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos, token_arrendatario, sin_aviso_arrendatario')
+    .select('id, empresa_id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, horario_por_dia, duracion_visita_minutos, token_arrendatario, sin_aviso_arrendatario')
     .eq('token_arrendatario', token)
     .maybeSingle();
   return data;
@@ -504,6 +507,7 @@ async function manejarInmueble(admin: Admin, inm: NonNullable<Awaited<ReturnType
         dias_permitidos: inm.dias_visita_permitidos || [],
         desde: inm.hora_visita_desde ? inm.hora_visita_desde.slice(0, 5) : null,
         hasta: inm.hora_visita_hasta ? inm.hora_visita_hasta.slice(0, 5) : null,
+        por_dia: inm.horario_por_dia || null,
       },
       citas: (citas || [])
         .filter((c) => !(c.fecha === ahora.fecha && c.hora_inicio.slice(0, 5) <= ahora.hora))
@@ -808,6 +812,7 @@ Deno.serve(async (req) => {
                 dias_permitidos: inmueble.dias_visita_permitidos || [],
                 desde: inmueble.hora_visita_desde ? inmueble.hora_visita_desde.slice(0, 5) : null,
                 hasta: inmueble.hora_visita_hasta ? inmueble.hora_visita_hasta.slice(0, 5) : null,
+                por_dia: inmueble.horario_por_dia || null,
               }
             : {}),
         },
@@ -1099,28 +1104,51 @@ Deno.serve(async (req) => {
     // -------------------------------------------------------- guardar_horario
     if (accion === 'guardar_horario') {
       if (rol !== 'arrendatario') return falla('Esta acción no está disponible desde este enlace.', 403);
-      const dias = Array.isArray(body.dias) ? [...new Set((body.dias as unknown[]).map(Number))] : [];
-      if (!dias.length || dias.some((d) => !Number.isInteger(d) || d < 1 || d > 7)) return falla('Elige al menos un día de la semana.');
-      dias.sort((a, b) => a - b);
-      const desde = String(body.desde || '').slice(0, 5);
-      const hasta = String(body.hasta || '').slice(0, 5);
-      if (!/^\d{2}:\d{2}$/.test(desde) || !/^\d{2}:\d{2}$/.test(hasta)) return falla('Escribe la hora desde y hasta.');
-      if (desde < '06:00' || hasta > '21:00') return falla('El horario debe estar entre las 6:00 a. m. y las 9:00 p. m.');
       const { data: cfgDur } = await admin.from('agenda_configuracion').select('duracion_visita_minutos').eq('empresa_id', cita.empresa_id).maybeSingle();
       const duracion = inmueble.duracion_visita_minutos || cfgDur?.duracion_visita_minutos || 30;
       const minutos = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
-      if (minutos(hasta) - minutos(desde) < duracion) {
-        return falla(`El horario debe permitir al menos una visita completa (${duracion} minutos).`);
+      // Dos formas: el mismo horario para varios días (dias + desde + hasta) o un horario distinto por día (por_dia).
+      let porDia: Record<string, { desde: string; hasta: string }> | null = null;
+      let dias: number[] = [];
+      let desde = '';
+      let hasta = '';
+      if (body.por_dia && typeof body.por_dia === 'object') {
+        porDia = {};
+        for (const [k, v] of Object.entries(body.por_dia as Record<string, { desde?: unknown; hasta?: unknown }>)) {
+          const d = Number(k);
+          if (!Number.isInteger(d) || d < 1 || d > 7) return falla('Día de la semana no válido.');
+          const dd = String(v?.desde || '').slice(0, 5);
+          const hh = String(v?.hasta || '').slice(0, 5);
+          if (!/^\d{2}:\d{2}$/.test(dd) || !/^\d{2}:\d{2}$/.test(hh)) return falla(`Escribe la hora desde y hasta del ${DIAS[d]}.`);
+          if (dd < '06:00' || hh > '21:00') return falla('El horario debe estar entre las 6:00 a. m. y las 9:00 p. m.');
+          if (minutos(hh) - minutos(dd) < duracion) return falla(`El horario del ${DIAS[d]} debe permitir al menos una visita completa (${duracion} minutos).`);
+          porDia[String(d)] = { desde: dd, hasta: hh };
+        }
+        dias = Object.keys(porDia).map(Number).sort((a, b) => a - b);
+        if (!dias.length) return falla('Elige al menos un día de la semana.');
+        desde = dias.map((d) => porDia![String(d)].desde).sort()[0];
+        hasta = dias.map((d) => porDia![String(d)].hasta).sort().slice(-1)[0];
+      } else {
+        dias = Array.isArray(body.dias) ? [...new Set((body.dias as unknown[]).map(Number))] : [];
+        if (!dias.length || dias.some((d) => !Number.isInteger(d) || d < 1 || d > 7)) return falla('Elige al menos un día de la semana.');
+        dias.sort((a, b) => a - b);
+        desde = String(body.desde || '').slice(0, 5);
+        hasta = String(body.hasta || '').slice(0, 5);
+        if (!/^\d{2}:\d{2}$/.test(desde) || !/^\d{2}:\d{2}$/.test(hasta)) return falla('Escribe la hora desde y hasta.');
+        if (desde < '06:00' || hasta > '21:00') return falla('El horario debe estar entre las 6:00 a. m. y las 9:00 p. m.');
+        if (minutos(hasta) - minutos(desde) < duracion) {
+          return falla(`El horario debe permitir al menos una visita completa (${duracion} minutos).`);
+        }
       }
       const anterior = resumenHorario(inmueble);
       const { error: errHorario } = await admin
         .from('agenda_inmuebles')
-        .update({ dias_visita_permitidos: dias, hora_visita_desde: desde, hora_visita_hasta: hasta })
+        .update({ dias_visita_permitidos: dias, hora_visita_desde: desde, hora_visita_hasta: hasta, horario_por_dia: porDia })
         .eq('id', inmueble.id);
       if (errHorario) return falla('No se pudo guardar el horario. Inténtalo de nuevo.', 500);
       await registrarAccion(admin, ctx, 'horario_actualizado', {
         antes: anterior,
-        despues: resumenHorario({ dias_visita_permitidos: dias, hora_visita_desde: desde, hora_visita_hasta: hasta }),
+        despues: resumenHorario({ dias_visita_permitidos: dias, hora_visita_desde: desde, hora_visita_hasta: hasta, horario_por_dia: porDia }),
       });
 
       // Visitas futuras de este inmueble que quedaron fuera del nuevo horario: se respetan (el
@@ -1135,11 +1163,13 @@ Deno.serve(async (req) => {
       const fuera = (futuras || []).filter((c) => {
         if (c.fecha === ahora.fecha && c.hora_inicio.slice(0, 5) <= ahora.hora) return false;
         const dow = new Date(c.fecha + 'T12:00:00Z').getUTCDay() || 7;
-        return !dias.includes(dow) || c.hora_inicio.slice(0, 5) < desde || c.hora_fin.slice(0, 5) > hasta;
+        if (!dias.includes(dow)) return true;
+        const rango = porDia ? porDia[String(dow)] : { desde, hasta };
+        return c.hora_inicio.slice(0, 5) < rango.desde || c.hora_fin.slice(0, 5) > rango.hasta;
       });
       return json({
         ok: true,
-        inmueble: { dias_permitidos: dias, desde, hasta },
+        inmueble: { dias_permitidos: dias, desde, hasta, por_dia: porDia },
         fuera_de_horario: fuera.length,
         esta_fuera: fuera.some((c) => c.id === cita.id),
       });

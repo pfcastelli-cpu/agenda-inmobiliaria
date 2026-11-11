@@ -14,6 +14,11 @@ Tres piezas separadas de producción:
 
 La página decide a qué base se conecta por dos variables (`VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`, ver `aplicacion/js/cliente-supabase.js`). Por eso el mismo código sirve para las dos copias: solo cambian esas variables en Netlify.
 
+## 1b. Costos (consultado el 11-nov-2026; verificar en las páginas oficiales antes de decidir)
+- **Netlify:** según su documentación, las vistas previas y los *branch deploys* cuestan **0 créditos**; solo los despliegues a producción gastan créditos (15 cada uno en el plan gratis de 300). Es decir, la rama `pruebas` no debería gastar los créditos de `main`.
+- **Supabase:** el plan Pro cuesta desde US$25 al mes por organización e incluye 1 proyecto; cada proyecto adicional en esa organización cuesta alrededor de US$10 al mes. El plan **gratis** permite proyectos sin costo, pero se **pausan tras ~7 días sin uso** y tienen 500 MB de base. *Branching* de Supabase se cobra por hora de uso (no es gratis).
+- **Cómo evitar el costo:** crear el proyecto de pruebas en una **organización aparte con plan gratis** (cuesta $0; se «despierta» con un clic cuando se pausa). Alternativa 100 % gratis y local: Supabase en tu computador con Docker (más técnico) y la página con `npm run dev`; no se ve «en la nube».
+
 ## 2. Paso a paso (cuando se decida crearla)
 1. **Crear el proyecto** en Supabase (otra organización o la misma). Tiene costo mensual propio: confirmar el precio vigente en el panel antes de crearlo.
 2. **Copiar la estructura de la base** (sin datos de clientes). Dos caminos:
