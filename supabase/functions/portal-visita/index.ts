@@ -131,6 +131,9 @@ async function cargarContexto(admin: Admin, token: string) {
     .maybeSingle();
   if (!cita || !cita.inmueble_id || cita.tipo_cita !== 'visita_cliente') return null;
   const rol: Rol = cita.token_arrendatario === token ? 'arrendatario' : 'cliente';
+  // Confirmación del cliente (sql/062): consulta aparte y tolerante, para no romper el portal si la columna aún no existe.
+  const { data: confCliente } = await admin.from('agenda_citas').select('cliente_confirmado_en').eq('id', cita.id).maybeSingle();
+  (cita as Record<string, unknown>).cliente_confirmado_en = confCliente?.cliente_confirmado_en ?? null;
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
     .select('id, numero_inmueble, direccion, barrio, ciudad, estado_crm, tipo_inmueble, dias_visita_permitidos, hora_visita_desde, hora_visita_hasta, duracion_visita_minutos, token_arrendatario, sin_aviso_arrendatario')
@@ -795,7 +798,7 @@ Deno.serve(async (req) => {
         reubicacion_vence: cita.reubicacion_pendiente_desde && citaVigente && cita.reubicacion_vence_en ? formatearMomento(new Date(cita.reubicacion_vence_en).getTime()) : null,
         reubicacion_motivo: cita.reubicacion_pendiente_desde && citaVigente ? cita.reubicacion_motivo : null,
         inmueble_token: rol === 'arrendatario' ? inmueble.token_arrendatario : undefined,
-        cita: { fecha: cita.fecha, hora_inicio: horaCita, hora_fin: cita.hora_fin.slice(0, 5), estado: cita.estado, vigente: citaVigente, confirmado_en: rol === 'arrendatario' ? cita.arrendatario_confirmado_en || null : undefined },
+        cita: { fecha: cita.fecha, hora_inicio: horaCita, hora_fin: cita.hora_fin.slice(0, 5), estado: cita.estado, vigente: citaVigente, cliente_confirmado_en: rol === 'cliente' ? cita.cliente_confirmado_en || null : null, confirmado_en: rol === 'arrendatario' ? cita.arrendatario_confirmado_en || null : undefined },
         inmueble: {
           numero: inmueble.numero_inmueble,
           direccion,

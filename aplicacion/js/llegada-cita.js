@@ -5,14 +5,14 @@ import { supabase } from './cliente-supabase.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // HTML para la tarjeta de la cita. hoyISO = fecha de hoy (YYYY-MM-DD) en la hora de Colombia.
-export function htmlLlegada(cita, hoyISO) {
+export function htmlLlegada(cita, hoyISO, mostrarBoton = false) {
   if (cita.tipo_cita !== 'visita_cliente' || cita.estado === 'cancelada') return '';
   if (cita.llegada_en) {
     const hora = new Date(cita.llegada_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' });
     const lejos = cita.llegada_valida === false ? ` · a ${esc(cita.llegada_distancia_m)} m del inmueble` : '';
     return `<p class="v-note" style="margin:6px 0 0">${cita.llegada_valida === false ? '⚠️' : '✅'} Llegada registrada a las ${esc(hora)}${lejos}</p>`;
   }
-  if (cita.fecha !== hoyISO) return '';
+  if (cita.fecha !== hoyISO || !mostrarBoton) return '';
   return `<div class="v-actions" style="margin-top:8px"><button data-llegada="${esc(cita.id)}">Llegué a la visita</button></div>`;
 }
 

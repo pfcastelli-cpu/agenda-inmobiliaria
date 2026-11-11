@@ -356,13 +356,24 @@ const momentoConfirmado = (iso) => new Date(iso).toLocaleString('es-CO', { timeZ
 
 // Confirmación de asistencia del arrendatario (botón «Confirmo que estaré» del correo y del portal).
 function bloqueConfirmacion() {
+  if (state.rol === 'cliente' && state.cita?.vigente && state.cita.estado !== 'cancelada') {
+    if (state.cita.cliente_confirmado_en) {
+      return `<div class="pu-card" id="ar-card-confirmar" style="border-color:var(--pu-teal)"><h3 style="margin-top:0">✔ Ya confirmaste tu asistencia</h3><p style="margin-bottom:0">Gracias. Confirmaste el ${esc(momentoConfirmado(state.cita.cliente_confirmado_en))}. Si algo cambia, puedes cambiar o cancelar tu visita más abajo.</p></div>`;
+    }
+    return `<div class="pu-card" id="ar-card-confirmar" style="border-color:var(--pu-teal)">
+      <h3 style="margin-top:0">¿Podrás asistir a tu visita?</h3>
+      <p>Confírmalo con un toque. Si no te queda bien, puedes cambiar el horario o cancelarla más abajo.</p>
+      ${errorBloque()}
+      <button class="pu-main" type="button" data-confirmar="${esc(state.token)}" ${state.confirmando ? 'disabled' : ''}>${state.confirmando ? 'Un momento…' : 'Confirmo que asistiré'}</button>
+    </div>`;
+  }
   if (!esArrendatario() || !state.cita?.vigente || state.cita.estado === 'cancelada') return '';
   if (state.cita.confirmado_en) {
     return `<div class="pu-card" id="ar-card-confirmar" style="border-color:var(--pu-teal)"><h3 style="margin-top:0">✔ Ya confirmaste que estarás</h3><p style="margin-bottom:0">Gracias. Confirmaste el ${esc(momentoConfirmado(state.cita.confirmado_en))}. Si algo cambia, usa las opciones de abajo para avisarnos.</p></div>`;
   }
   return `<div class="pu-card" id="ar-card-confirmar" style="border-color:var(--pu-teal)">
       <h3 style="margin-top:0">¿Estarás para esta visita?</h3>
-      <p>Confírmanos que podrás recibirla: así el asesor sabe que no pierde el viaje.</p>
+      <p>Gracias por tu tiempo. Confírmanos si podrás recibir la visita; si no te queda bien, en el siguiente paso puedes proponernos otros horarios que te resulten cómodos.</p>
       ${errorBloque()}
       <button class="pu-main" type="button" data-confirmar="${esc(state.token)}" ${state.confirmando ? 'disabled' : ''}>${state.confirmando ? 'Un momento…' : 'Confirmo que estaré'}</button>
     </div>`;
@@ -374,16 +385,17 @@ async function confirmarAsistencia(tokenCita) {
   state.errorForm = '';
   render();
   try {
-    const { data, error } = await supabase.rpc('agenda_arrendatario_confirmar', { p_token: tokenCita });
+    const { data, error } = await supabase.rpc(state.rol === 'cliente' ? 'agenda_cliente_confirmar' : 'agenda_arrendatario_confirmar', { p_token: tokenCita });
     if (error || !data) throw new Error('No pudimos conectar. Revisa tu internet e inténtalo otra vez.');
     if (data.error) throw new Error(data.error);
     if (state.modo === 'inmueble') {
       const fila = state.citasInm.find((c) => c.token === tokenCita);
       if (fila) fila.confirmado_en = data.confirmado_en;
     } else if (state.cita) {
-      state.cita.confirmado_en = data.confirmado_en;
+      if (state.rol === 'cliente') state.cita.cliente_confirmado_en = data.confirmado_en;
+      else state.cita.confirmado_en = data.confirmado_en;
     }
-    state.mensaje = data.resultado === 'ya_confirmada' ? 'Esta visita ya estaba confirmada. ¡Gracias!' : '¡Gracias! Quedó confirmado que estarás para esta visita.';
+    state.mensaje = data.resultado === 'ya_confirmada' ? 'Esta visita ya estaba confirmada. ¡Gracias!' : state.rol === 'cliente' ? '¡Gracias! Quedó confirmada tu asistencia.' : '¡Gracias! Quedó confirmado que estarás para esta visita.';
   } catch (e) {
     state.errorForm = e.message || 'No se pudo confirmar. Inténtalo de nuevo.';
     // En la vista del inmueble no hay recuadro de error junto al botón: el aviso va en el mensaje de arriba.

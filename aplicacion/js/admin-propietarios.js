@@ -4,6 +4,7 @@
 // La salud de inmuebles solo muestra cifras (visitas, personas distintas, interesados): nunca datos de clientes.
 import { supabase } from './cliente-supabase.js';
 import { puede } from './permisos.js';
+import { listarAccesos } from './sesion.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const TIPOS = { cambio_precio: 'Cambio de precio', cambio_fotos: 'Cambio de fotos', asesoria: 'Asesoría' };
@@ -22,7 +23,7 @@ export async function solicitudesTab({ el, empresaId, aviso, vigente }) {
   el.innerHTML = '<p class="ad-muted">Cargando solicitudes…</p>';
   const { data: filas, error } = await supabase
     .from('agenda_solicitudes_propietario')
-    .select('id, inmueble_id, tipo, valor_propuesto, detalle, propietario_nombre, propietario_email, estado, origen, creado_en, hecha_en, nota_cierre, propietario_avisado_en')
+    .select('id, inmueble_id, tipo, valor_propuesto, detalle, propietario_nombre, propietario_email, estado, origen, creado_en, hecha_en, hecha_por, nota_cierre, propietario_avisado_en')
     .eq('empresa_id', empresaId)
     .order('creado_en', { ascending: false })
     .limit(300);
@@ -32,12 +33,14 @@ export async function solicitudesTab({ el, empresaId, aviso, vigente }) {
   const ids = [...new Set(solicitudes.map((s) => s.inmueble_id).filter(Boolean))];
   const inmuebles = {};
   if (ids.length) {
-    const { data: inm } = await supabase.from('agenda_inmuebles').select('id, numero_inmueble, direccion, ciudad').eq('empresa_id', empresaId).in('id', ids);
+    const { data: inm } = await supabase.from('agenda_inmuebles').select('id, numero_inmueble, direccion, ciudad, tipo_oferta, valor_canon, valor_venta').eq('empresa_id', empresaId).in('id', ids);
     for (const i of inm || []) inmuebles[i.id] = i;
   }
   if (!vigente()) return;
 
   const gestiona = puede('pendientes.gestionar');
+  const gestion = await panelGestion(empresaId, solicitudes);
+  if (!vigente()) return;
   const cuenta = { pendiente: 0, hecha: 0 };
   for (const s of solicitudes) if (cuenta[s.estado] !== undefined) cuenta[s.estado]++;
   const visibles = solicitudes.filter((s) => (filtroSolicitudes === 'todas' ? true : s.estado === filtroSolicitudes));
@@ -51,6 +54,7 @@ export async function solicitudesTab({ el, empresaId, aviso, vigente }) {
         <strong>${esc(TIPOS[s.tipo] || s.tipo)}</strong> <span class="ad-pill">${hecha ? '✓ Hecha' : s.estado === 'descartada' ? 'Descartada' : 'Pendiente'}</span>
         <span class="ad-muted">${donde}</span>
         <span class="ad-muted">${esc(s.propietario_nombre || 'Propietario')}${s.propietario_email ? ' · ' + esc(s.propietario_email) : ''} · ${esc(fecha(s.creado_en))}</span>
+        ${i && (i.valor_canon || i.valor_venta) && s.tipo === 'cambio_precio' ? `<span>Precio actual: <strong>${esc(dinero(String(i.tipo_oferta || '').toLowerCase().startsWith('venta') ? i.valor_venta : i.valor_canon))}</strong></span>` : ''}
         ${s.valor_propuesto != null ? `<span>Valor propuesto: <strong>${esc(dinero(s.valor_propuesto))}</strong></span>` : ''}
         ${s.detalle ? `<span>${esc(s.detalle)}</span>` : ''}
         ${hecha ? `<span class="ad-muted">Hecha el ${esc(fecha(s.hecha_en))}${s.nota_cierre ? ' · ' + esc(s.nota_cierre) : ''} · ${s.propietario_avisado_en ? 'propietario avisado el ' + esc(fecha(s.propietario_avisado_en)) : 'propietario SIN avisar'}</span>` : ''}
@@ -69,8 +73,10 @@ export async function solicitudesTab({ el, empresaId, aviso, vigente }) {
       <button type="button" data-filtro="hecha" aria-pressed="${filtroSolicitudes === 'hecha'}">Hechas (${cuenta.hecha})</button>
       <button type="button" data-filtro="todas" aria-pressed="${filtroSolicitudes === 'todas'}">Todas</button>
     </div>
+    ${gestion.html}
     <ul class="ad-accesos">${visibles.length ? visibles.map(fila).join('') : '<p class="ad-muted">No hay solicitudes en esta lista.</p>'}</ul>`;
 
+  gestion.montar(el, aviso);
   el.querySelectorAll('[data-filtro]').forEach((b) => b.addEventListener('click', () => { filtroSolicitudes = b.dataset.filtro; solicitudesTab({ el, empresaId, aviso, vigente }); }));
   el.querySelectorAll('[data-hecha]').forEach((b) => b.addEventListener('click', async () => {
     const li = b.closest('li');
@@ -140,4 +146,60 @@ export async function saludTab({ el, empresaId, aviso, vigente }) {
     } catch (e) { aviso(e.message, true); } finally { boton.disabled = false; }
   });
   el.querySelectorAll('[data-nivel]').forEach((b) => b.addEventListener('click', () => { filtroSalud = b.dataset.nivel; saludTab({ el, empresaId, aviso, vigente }); }));
+}
+
+
+const horas = (a, b) => (new Date(b) - new Date(a)) / 3600000;
+const textoDuracion = (h) => (h < 1 ? 'menos de 1 hora' : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} días`);
+
+// Solo para quien administra accesos: a quién le llega el correo de las solicitudes y qué ha hecho cada persona.
+// Si la lista de accesos no se puede leer (sin permiso), el panel simplemente no aparece.
+async function panelGestion(empresaId, solicitudes) {
+  let miembros;
+  try { miembros = (await listarAccesos(empresaId)).miembros || []; } catch { return { html: '', montar() {} }; }
+  const activos = miembros.filter((m) => m.activo);
+  const nombre = Object.fromEntries(miembros.map((m) => [m.usuario_id, m.nombre || m.correo || 'Usuario']));
+  const { data: elegidosFilas, error } = await supabase.from('agenda_solicitud_avisos_usuarios').select('usuario_id').eq('empresa_id', empresaId);
+  const tablaLista = !error;
+  const elegidos = new Set((elegidosFilas || []).map((x) => x.usuario_id));
+
+  const hechas = solicitudes.filter((s) => s.estado === 'hecha');
+  const pendientes = solicitudes.filter((s) => s.estado === 'pendiente');
+  const porPersona = new Map();
+  for (const s of hechas) {
+    const k = s.hecha_por || 'sin';
+    const e = porPersona.get(k) || { n: 0, h: 0, conTiempo: 0 };
+    e.n++;
+    if (s.creado_en && s.hecha_en) { e.h += horas(s.creado_en, s.hecha_en); e.conTiempo++; }
+    porPersona.set(k, e);
+  }
+  const masVieja = pendientes.length ? Math.max(...pendientes.map((s) => horas(s.creado_en, Date.now()))) : 0;
+  const filasPersona = [...porPersona.entries()].sort((a, b) => b[1].n - a[1].n).map(([k, e]) => `<tr><td>${esc(k === 'sin' ? 'Sin registrar' : nombre[k] || 'Usuario')}</td><td>${e.n}</td><td>${e.conTiempo ? esc(textoDuracion(e.h / e.conTiempo)) : '—'}</td></tr>`).join('');
+  const html = `<details class="ad-gestion" style="margin:12px 0 16px"><summary><strong>Quién recibe los avisos y cómo va la gestión</strong></summary>
+    <div class="ad-grid" style="margin-top:10px;align-items:start">
+      <div><h4 style="margin:0 0 6px">Avisos por correo</h4>
+        <p class="ad-note">Cada solicitud nueva le llega por correo al asesor del inmueble y a sus supervisores. Marca aquí a quién más quieres avisar (no a todos). Los administradores y superadministradores siempre ven las solicitudes en esta pantalla.</p>
+        ${tablaLista ? activos.map((m) => `<label class="ad-check"><input type="checkbox" data-aviso-usuario="${esc(m.usuario_id)}" ${elegidos.has(m.usuario_id) ? 'checked' : ''}> ${esc(m.nombre || m.correo || 'Usuario')}</label>`).join('') : '<p class="ad-note">Para elegir destinatarios falta aplicar el SQL 064.</p>'}
+        ${tablaLista ? '<button type="button" class="ad-primary" data-guardar-avisos style="margin-top:8px">Guardar destinatarios</button>' : ''}
+      </div>
+      <div><h4 style="margin:0 0 6px">Gestión del equipo</h4>
+        <p style="margin:0 0 6px">${pendientes.length} pendientes${pendientes.length ? ` · la más antigua lleva ${esc(textoDuracion(masVieja))}` : ''} · ${hechas.length} hechas</p>
+        ${filasPersona ? `<table class="ad-tabla"><thead><tr><th>Quién la resolvió</th><th>Resueltas</th><th>Tiempo promedio</th></tr></thead><tbody>${filasPersona}</tbody></table>` : '<p class="ad-muted">Todavía no hay solicitudes resueltas.</p>'}
+      </div>
+    </div></details>`;
+  return {
+    html,
+    montar(el, aviso) {
+      const guardar = el.querySelector('[data-guardar-avisos]');
+      if (!guardar) return;
+      guardar.onclick = async () => {
+        guardar.disabled = true;
+        const marcados = [...el.querySelectorAll('[data-aviso-usuario]:checked')].map((i) => i.dataset.avisoUsuario);
+        const { error: e1 } = await supabase.from('agenda_solicitud_avisos_usuarios').delete().eq('empresa_id', empresaId);
+        const { error: e2 } = !e1 && marcados.length ? await supabase.from('agenda_solicitud_avisos_usuarios').insert(marcados.map((usuario_id) => ({ empresa_id: empresaId, usuario_id }))) : { error: null };
+        guardar.disabled = false;
+        aviso(e1 || e2 ? 'No se pudieron guardar los destinatarios.' : 'Destinatarios guardados.', !!(e1 || e2));
+      };
+    },
+  };
 }

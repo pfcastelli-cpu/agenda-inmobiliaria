@@ -13,6 +13,7 @@ export interface MarcaCorreo {
   principal: string;
   accion: string;
   textoAccion: string;
+  consignarUrl: string;
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -37,6 +38,10 @@ export function marcaCorreo(config: any): MarcaCorreo {
     principal,
     accion,
     textoAccion: luz(accion) > 0.179 ? '#111111' : '#ffffff',
+    // Destino del botón «Quiero consignar»: el que defina la empresa (consignar_url) o la página de consignar de la agenda.
+    consignarUrl: /^https:\/\//i.test(String(config?.consignar_url ?? '').trim())
+      ? String(config.consignar_url).trim().replace(/["'<>\s]/g, '')
+      : `https://${String(config?.dominio_publico || 'citas.patrimonios.co').replace(/[^a-zA-Z0-9.-]/g, '')}/consignar`,
   };
 }
 
@@ -80,14 +85,13 @@ export function enlaceInmueble(config: any, numero: number | string): string {
 // arrendatario). Una idea, un botón. Sin cifras ni promesas que no estén confirmadas.
 export function bloqueCaptacion(marca: MarcaCorreo): string {
   if (!contactoLegalCompleto(marca.contacto) || !marca.contacto.correo) return '';
-  const asunto = encodeURIComponent('Quiero consignar un inmueble');
   return `<div style="padding:6px 26px 28px">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
         <td style="background:#f4f4f4;border-radius:24px;padding:26px 24px;text-align:center">
           <div style="font-size:12px;color:#6b6b6b;margin-bottom:6px">📣 Publicidad</div>
           <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:20px;line-height:1.3;color:${marca.principal};margin:0 0 6px">¿Tienes otro inmueble? 🏡</div>
           <div style="font-size:15px;line-height:1.6;color:#4d4d4d;margin:0 0 18px">Consígnanoslo y lo cuidamos con la misma tranquilidad. 🤝</div>
-          <a href="mailto:${escaparContacto(marca.contacto.correo)}?subject=${asunto}" target="_blank" style="display:inline-block;padding:14px 26px;background:${marca.principal};color:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;text-decoration:none;border-radius:999px">🤝&nbsp; Quiero consignar un inmueble</a>
+          <a href="${escaparContacto(marca.consignarUrl)}" target="_blank" style="display:inline-block;padding:14px 26px;background:${marca.principal};color:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;text-decoration:none;border-radius:999px">🤝&nbsp; Quiero consignar un inmueble</a>
         </td>
       </tr></table>
     </div>`;

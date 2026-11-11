@@ -187,6 +187,17 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Usuarios elegidos por la administración para recibir copia de TODAS las solicitudes (sql/064).
+  {
+    const { data: elegidos, error: errorElegidos } = await admin.from('agenda_solicitud_avisos_usuarios').select('usuario_id').eq('empresa_id', empresaId);
+    if (!errorElegidos) {
+      for (const e of elegidos || []) {
+        const { data: usuario } = await admin.auth.admin.getUserById(e.usuario_id);
+        if (usuario?.user?.email) correosSupervisores.add(usuario.user.email);
+      }
+    }
+  }
+
   // Si no se pudo identificar al asesor (o no tiene correo), el aviso va al
   // menos al correo remitente configurado, para que nadie se quede sin saber
   // que un propietario pidió algo.

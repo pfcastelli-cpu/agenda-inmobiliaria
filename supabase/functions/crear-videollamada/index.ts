@@ -136,7 +136,7 @@ async function firmarJwtRS256(claims: Record<string, unknown>, llavePem: string)
     const der = Uint8Array.from(atob(cuerpoPem), (c) => c.charCodeAt(0));
     llave = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
   } catch {
-    throw new ErrorUsuario('La llave privada (private_key) de Google no tiene un formato válido. Pega el JSON de la cuenta de servicio completo.');
+    throw new ErrorUsuario('La llave privada (private_key) de Google no tiene un formato válido. Pega solo su valor PEM, desde -----BEGIN PRIVATE KEY----- hasta -----END PRIVATE KEY-----.');
   }
   const cabecera = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
   const carga = base64url(JSON.stringify(claims));

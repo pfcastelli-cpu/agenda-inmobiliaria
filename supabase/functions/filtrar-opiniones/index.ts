@@ -15,7 +15,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 // Proveedores admitidos (la empresa elige uno en Configuración → Inteligencia artificial) y su modelo por defecto.
 // El modelo puede cambiarse desde la misma pantalla (agenda_configuracion.ia_modelo) sin tocar el código.
 type Proveedor = 'anthropic' | 'openai' | 'google';
-const MODELOS_POR_DEFECTO: Record<Proveedor, string> = { anthropic: 'claude-haiku-5-5', openai: 'gpt-4o-mini', google: 'gemini-2.0-flash' };
+const MODELOS_POR_DEFECTO: Record<Proveedor, string> = { anthropic: 'claude-haiku-5-5', openai: 'gpt-4o-mini', google: 'gemini-2.5-flash' };
 type Credencial = { clave: string; proveedor: Proveedor; modelo: string };
 const LOTE_POR_EMPRESA = 10;
 const MAX_INTENTOS = 3;

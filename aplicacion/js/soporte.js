@@ -231,7 +231,7 @@ async function arrancar() {
 }
 
 if (!hayConfiguracionSupabase()) {
-  raiz.innerHTML = '<p class="error">Falta la configuración de Supabase.</p>';
+  raiz.innerHTML = '<p class="error">Falta la configuración de conexión.</p>';
 } else {
   botonSalir.onclick = async () => { await supabase.auth.signOut(); vistaLogin(); };
   arrancar();

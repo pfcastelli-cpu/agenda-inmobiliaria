@@ -8,9 +8,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 
 // ctx = { el, empresaId, aviso(texto, error?), vigente() } — vigente() devuelve false si el usuario ya cambió de pestaña.
 const PROVEEDORES_IA = {
-  anthropic: { nombre: 'Anthropic (Claude)', modelo: 'claude-haiku-5-5', prefijo: 'sk-ant-…', ayuda: 'Crea la clave en console.anthropic.com → API keys.' },
-  openai: { nombre: 'OpenAI (ChatGPT)', modelo: 'gpt-4o-mini', prefijo: 'sk-…', ayuda: 'Crea la clave en platform.openai.com → API keys.' },
-  google: { nombre: 'Google (Gemini)', modelo: 'gemini-2.0-flash', prefijo: 'AIza…', ayuda: 'Crea la clave en aistudio.google.com → Get API key.' },
+  anthropic: { nombre: 'Anthropic (Claude)', modelo: 'claude-haiku-5-5', modelos: ['claude-haiku-5-5','claude-sonnet-5-5','claude-opus-5-5'], prefijo: 'sk-ant-…', ayuda: 'Crea la clave en console.anthropic.com → API keys.' },
+  openai: { nombre: 'OpenAI (ChatGPT)', modelo: 'gpt-4o-mini', modelos: ['gpt-4o-mini','gpt-4o','gpt-4.1-mini','gpt-4.1'], prefijo: 'sk-…', ayuda: 'Crea la clave en platform.openai.com → API keys.' },
+  google: { nombre: 'Google (Gemini)', modelo: 'gemini-2.5-flash', modelos: ['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.5-pro'], prefijo: 'AIza…', ayuda: 'Crea la clave en aistudio.google.com → Get API key.' },
 };
 
 export async function iaTab(ctx) {
@@ -28,11 +28,11 @@ export async function iaTab(ctx) {
  <form id="ad-ia-form">
   <div class="ad-grid">
    <label>Proveedor de IA<select name="ia_proveedor">${Object.entries(PROVEEDORES_IA).map(([k, v]) => `<option value="${k}" ${k === prov ? 'selected' : ''}>${v.nombre}</option>`).join('')}</select></label>
-   <label>Modelo <small class="ad-muted">(déjalo vacío para usar el recomendado)</small><input name="ia_modelo" value="${esc(estado.modelo || '')}" placeholder="${esc(PROVEEDORES_IA[prov].modelo)}" autocomplete="off"></label>
+   <label>Modelo <small class="ad-muted">(déjalo vacío para usar el recomendado)</small><input name="ia_modelo" value="${esc(estado.modelo || '')}" placeholder="${esc(PROVEEDORES_IA[prov].modelo)}" autocomplete="off" list="ad-ia-modelos"><datalist id="ad-ia-modelos"></datalist><small class="ad-muted">Despliega la flecha para elegir uno sugerido o escribe otro. Formato: Claude <code>claude-haiku-5-5</code> · OpenAI <code>gpt-4o-mini</code> · Gemini <code>gemini-2.5-flash</code> (sin espacios, en minúsculas).</small></label>
    <label>Clave de API${tiene ? ' · <small class="ad-muted">ya guardada, deja este campo vacío para conservarla</small>' : ''}<span class="ad-correo-password-row"><input name="ia_clave" type="password" placeholder="${tiene ? '••••••••••••••••' : 'Pega aquí la clave'}" autocomplete="new-password"><button type="button" class="ad-link-btn" data-reveal-ia>Mostrar</button></span></label>
   </div>
   <p class="ad-note" data-ayuda-ia></p>
-  <p class="ad-note">La clave queda cifrada en la bóveda de Supabase y no se vuelve a mostrar. Si cambias de proveedor, pega también la clave nueva. El costo es mínimo: una opinión equivale a una fracción de centavo. Los nombres de modelos cambian con el tiempo: si el proveedor retira uno, escribe aquí el vigente.</p>
+  <p class="ad-note">La clave queda cifrada en una bóveda segura y no se vuelve a mostrar. Si cambias de proveedor, pega también la clave nueva. El costo es mínimo: una opinión equivale a una fracción de centavo. Los nombres de modelos cambian con el tiempo: si el proveedor retira uno, escribe aquí el vigente.</p>
   <label class="ad-check"><input type="checkbox" name="ia_activa" ${estado.activa ? 'checked' : ''}> Filtrar las opiniones con IA</label>
   <div class="ad-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
    <button type="submit">Guardar</button>
@@ -48,6 +48,7 @@ export async function iaTab(ctx) {
     const p = PROVEEDORES_IA[selProv.value];
     el.querySelector('[data-ayuda-ia]').textContent = `${p.ayuda} La clave suele empezar por ${p.prefijo}`;
     el.querySelector('[name=ia_modelo]').placeholder = p.modelo;
+    el.querySelector('#ad-ia-modelos').innerHTML = p.modelos.map((m) => `<option value="${m}"></option>`).join('');
     el.querySelector('[name=ia_clave]').placeholder = tiene && selProv.value === prov ? '••••••••••••••••' : 'Pega aquí la clave (' + p.prefijo + ')';
   };
   selProv.onchange = pintarAyuda;
@@ -129,16 +130,15 @@ const copiable = (texto) => `<span class="ad-copiable"><code>${esc(texto)}</code
 
 function guiaGoogleMeet() {
   return `<details class="ad-guia" open><summary>Cómo conectar Google Meet, paso a paso</summary>
- <p class="ad-note">Quién lo hace: una persona con acceso de <strong>superadministrador</strong> a Google Workspace (la misma que administra los correos de la empresa). Toma unos 15 minutos. Los nombres de los menús son los que Google usa hoy; si alguno se ve distinto, busca el más parecido.</p>
- <h4>Parte A. Crear el proyecto y la cuenta de servicio (Google Cloud)</h4>
+ <p class="ad-note">Necesitas una persona con acceso de <strong>superadministrador</strong> a Google Workspace y permisos para administrar el proyecto de Google Cloud. Esta integración no usa una clave de API ni un cliente OAuth: usa una cuenta de servicio con delegación en todo el dominio.</p>
+ <h4>Parte A. Preparar el proyecto y la cuenta de servicio (Google Cloud)</h4>
  <ol>
-  <li>Entra a <strong>console.cloud.google.com</strong> con la cuenta de administrador de Workspace.</li>
-  <li>Arriba, junto al logo de Google Cloud, abre el selector de proyectos y pulsa <strong>Proyecto nuevo</strong>. Ponle un nombre (por ejemplo «Agenda citas») y pulsa <strong>Crear</strong>. Luego asegúrate de que ese proyecto quede seleccionado.</li>
-  <li>Abre el menú (☰) → <strong>APIs y servicios</strong> → <strong>Biblioteca</strong>. Busca <strong>Google Calendar API</strong>, ábrela y pulsa <strong>Habilitar</strong>.</li>
-  <li>Menú (☰) → <strong>IAM y administración</strong> → <strong>Cuentas de servicio</strong> → <strong>Crear cuenta de servicio</strong>. Escribe un nombre (por ejemplo «agenda-meet») y pulsa <strong>Listo</strong> (no hace falta asignarle roles).</li>
+  <li>Entra a <strong>console.cloud.google.com</strong> y selecciona el proyecto que se usará para la agenda. Si ya existe un proyecto, no crees otro.</li>
+  <li>En ese mismo proyecto, abre <strong>APIs y servicios</strong> → <strong>Biblioteca</strong> → <strong>Google Calendar API</strong> y confirma que figure como <strong>Habilitada</strong>. Si no, pulsa <strong>Habilitar</strong>.</li>
+  <li>Abre <strong>IAM y administración</strong> → <strong>Cuentas de servicio</strong> → <strong>Crear cuenta de servicio</strong>. Usa un nombre identificable, por ejemplo «agenda-meet». No le asignes roles del proyecto salvo que la política de tu organización lo exija.</li>
   <li>Verás la cuenta en la lista. Copia su <strong>correo</strong> (termina en <code>.iam.gserviceaccount.com</code>); lo pegarás en el primer campo de esta pantalla.</li>
   <li>Pulsa el correo de la cuenta para abrirla. En la pestaña <strong>Detalles</strong> busca el <strong>ID único</strong> (un número largo, de unas 21 cifras) y cópialo: es el «ID de cliente» que pide la Parte B.</li>
-  <li>Abre la pestaña <strong>Claves</strong> → <strong>Agregar clave</strong> → <strong>Crear clave nueva</strong> → tipo <strong>JSON</strong> → <strong>Crear</strong>. Se descarga un archivo <code>.json</code>. Es la única copia: guárdalo en un lugar seguro y no lo envíes por chat ni correo. Si Google dice que la creación de claves está bloqueada, un administrador de la organización debe quitar esa restricción («Restringir la creación de claves de cuentas de servicio»).</li>
+  <li>Abre la pestaña <strong>Claves</strong> → <strong>Agregar clave</strong> → <strong>Crear clave nueva</strong> → tipo <strong>JSON</strong> → <strong>Crear</strong>, solo si la política de tu organización lo permite. Guarda el archivo localmente. No lo envíes por chat, correo ni repositorios. Si la creación de claves está bloqueada, detente y consulta al administrador; no debilites la política de seguridad.</li>
  </ol>
  <h4>Parte B. Autorizar a la cuenta en Google Workspace (delegación en todo el dominio)</h4>
  <ol>
@@ -159,7 +159,7 @@ function guiaGoogleMeet() {
  <ol>
   <li>Arriba, en «Proveedor», deja <strong>Google Meet</strong>.</li>
   <li><strong>Correo de la cuenta de servicio</strong>: el campo <code>client_email</code> del archivo JSON (o el correo copiado en la Parte A).</li>
-  <li><strong>Clave privada</strong>: abre el archivo JSON con el Bloc de notas, copia todo lo que está entre las comillas de <code>private_key</code>, desde <code>-----BEGIN PRIVATE KEY-----</code> hasta <code>-----END PRIVATE KEY-----</code>, y pégalo. Si ves símbolos <code>\n</code>, déjalos tal cual.</li>
+  <li><strong>Clave privada</strong>: abre el archivo JSON localmente y copia solo el valor de <code>private_key</code>, desde <code>-----BEGIN PRIVATE KEY-----</code> hasta <code>-----END PRIVATE KEY-----</code>. Si ves símbolos <code>\n</code>, déjalos tal cual. No pegues el JSON completo.</li>
   <li><strong>Correo de Workspace que organiza</strong>: el usuario de la Parte C.</li>
   <li>Pulsa <strong>Guardar</strong>. La clave queda cifrada y no se vuelve a mostrar.</li>
  </ol>
@@ -168,7 +168,7 @@ function guiaGoogleMeet() {
   <li>Pulsa <strong>Crear una reunión de prueba</strong>. Si todo está bien, verás ✅ y un enlace de ejemplo que se cancela solo.</li>
   <li>Si aparece un error de «unauthorized_client» o «delegación», revisa que el ID de cliente y el ámbito de la Parte B estén exactos y espera unos minutos. Si dice que no encuentra al usuario, revisa el correo de la Parte C. Si dice que la API no está habilitada, repite el paso 3 de la Parte A en el mismo proyecto de la cuenta de servicio.</li>
  </ol>
- <p class="ad-note">Si ya tienes una cuenta de servicio para leer correos, puedes reutilizarla: solo agrégale el ámbito de arriba en la delegación (separando los ámbitos con coma) y habilita Google Calendar API en su proyecto.</p>
+ <p class="ad-note">Si ya tienes una cuenta de servicio autorizada para otra integración, puedes reutilizarla únicamente si controlas su clave y agregas este ámbito en la delegación, separado por comas. En ese caso, habilita Google Calendar API en el mismo proyecto de esa cuenta.</p>
 </details>`;
 }
 
@@ -180,7 +180,7 @@ export async function reunionesTab(ctx) {
   if (error) { el.innerHTML = '<p class="error">No se pudo leer el estado de las reuniones virtuales. Aplica primero el SQL 030.</p>'; return; }
   const prov = PROVEEDORES_REUNION[estado.proveedor] ? estado.proveedor : 'manual';
   el.innerHTML = `<h2>Reuniones virtuales</h2>
- <p>Permite agendar citas por videollamada (por ejemplo captaciones, asesorías o, a futuro, consultas). Si configuras Google Meet, Microsoft Teams o Zoom, el enlace se crea automáticamente al guardar la cita.</p>
+ <p>Permite agendar citas por videollamada (por ejemplo captaciones, asesorías o, a futuro, consultas). Con Google Meet, el enlace se crea mediante Google Calendar cuando guardas una cita virtual.</p>
  <div class="ad-correo-estado ${prov !== 'manual' && estado.tiene_credenciales ? 'ad-correo-estado-ok' : 'ad-correo-estado-pendiente'}">${prov === 'manual' ? 'Modo enlace manual: el asesor pega el enlace en cada cita.' : estado.tiene_credenciales ? '✅ Configurado: ' + esc(PROVEEDORES_REUNION[prov].nombre) : '⚠️ Faltan las credenciales.'}</div>
  <form id="ad-reunion-form">
   <div class="ad-grid"><label>Proveedor<select name="proveedor">${Object.entries(PROVEEDORES_REUNION).map(([k, v]) => `<option value="${k}" ${k === prov ? 'selected' : ''}>${v.nombre}</option>`).join('')}</select></label></div>
@@ -197,13 +197,22 @@ export async function reunionesTab(ctx) {
   const pintar = () => {
     const p = PROVEEDORES_REUNION[sel.value];
     el.querySelector('[data-campos]').innerHTML = p.campos.length
-      ? `<div class="ad-grid">${p.campos.map((c) => `<label>${c.t}${estado.tiene_credenciales && sel.value === prov ? ' <small class="ad-muted">(guardado; vacío = conservar)</small>' : ''}${c.area ? `<textarea name="${c.k}" rows="4" placeholder="${esc(c.ph)}" autocomplete="off"></textarea>` : `<input name="${c.k}" type="${c.secreto ? 'password' : 'text'}" placeholder="${esc(c.ph)}" autocomplete="off">`}</label>`).join('')}</div>`
+      ? `<div class="ad-grid">${p.campos.map((c) => `<label>${c.t}${estado.tiene_credenciales && sel.value === prov ? ' <small class="ad-muted">(guardado; vacío = conservar)</small>' : ''}${c.area ? `<span class="ad-secreto-row"><textarea name="${c.k}" rows="4" placeholder="${esc(c.ph)}" autocomplete="new-password"></textarea><button type="button" class="ad-link-btn" data-reveal-secret>Mostrar</button></span>` : `<input name="${c.k}" type="${c.secreto ? 'password' : 'text'}" placeholder="${esc(c.ph)}" autocomplete="off">`}</label>`).join('')}</div>`
       : '';
     el.querySelector('[data-ayuda]').textContent = p.ayuda;
     el.querySelector('[data-guia]').innerHTML = p.guia ? guiaGoogleMeet() : '';
   };
   sel.onchange = pintar;
   pintar();
+  el.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-reveal-secret]');
+    if (!b) return;
+    const i = b.parentNode.querySelector('textarea');
+    const visible = i.dataset.visible === '1';
+    i.style.webkitTextSecurity = visible ? 'disc' : 'none';
+    i.dataset.visible = visible ? '0' : '1';
+    b.textContent = visible ? 'Mostrar' : 'Ocultar';
+  });
   el.addEventListener('click', async (ev) => {
     const b = ev.target.closest('[data-copiar]');
     if (!b) return;

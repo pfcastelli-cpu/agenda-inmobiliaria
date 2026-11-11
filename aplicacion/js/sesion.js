@@ -2,7 +2,7 @@ import { hayConfiguracionSupabase, supabase } from './cliente-supabase.js';
 import { cargarPermisos, limpiarPermisos } from './permisos.js';
 
 const MENSAJE_CONFIG =
-  'Falta la configuración de Supabase. Copia el archivo .env.example a .env (junto a package.json) y vuelve a iniciar el servidor con npm run dev.';
+  'Falta la configuración de conexión. Copia el archivo .env.example a .env (junto a package.json) y vuelve a iniciar el servidor con npm run dev.';
 
 export function obtenerMensajeConfiguracion() {
   return hayConfiguracionSupabase() ? null : MENSAJE_CONFIG;

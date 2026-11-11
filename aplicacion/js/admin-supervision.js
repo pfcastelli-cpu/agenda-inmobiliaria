@@ -23,11 +23,18 @@ export async function supervisionTab(ctx) {
    <label class="ad-check"><input type="checkbox" name="alerta_baja_incluye_asesor" ${config.alerta_baja_incluye_asesor ? 'checked' : ''}> Enviar también la alerta al asesor evaluado</label>
   </div>
   <h3>Llegada a la visita</h3>
-  <p class="ad-note">El asesor toca «Llegué a la visita» en su cita del día y se guarda su ubicación <strong>solo en ese instante</strong> (sin rastreo), comparada con el inmueble. Avisa a tu equipo por escrito antes de activarlo y revisa con tu abogado la política de datos personales (Ley 1581 de 2012).</p>
+  <p class="ad-note">El asesor toca «Llegué a la visita» en su cita del día y se guarda su ubicación <strong>solo en ese instante</strong> (sin rastreo), comparada con el inmueble.</p>
   <div class="ad-grid">
+   ${'mostrar_boton_llegada' in config ? `<label class="ad-check"><input type="checkbox" name="mostrar_boton_llegada" ${config.mostrar_boton_llegada ? 'checked' : ''}> Mostrar el botón «Llegué a la visita» a los asesores (apagado: el botón no aparece)</label>` : '<p class="ad-note">Para poder apagar o encender el botón falta aplicar el SQL 063.</p>'}
    <label class="ad-check"><input type="checkbox" name="exigir_llegada" ${config.exigir_llegada ? 'checked' : ''}> Marcar como señal las visitas que pasaron sin registrar llegada</label>
    <label>Distancia máxima al inmueble (metros)<input name="llegada_radio_metros" type="number" min="50" max="2000" step="50" value="${esc(config.llegada_radio_metros ?? 300)}"></label>
   </div>
+  <h3>Resumen automático por correo</h3>
+  ${'informe_auto_frecuencia' in config ? `<p class="ad-note">Un correo corto con cifras (visitas, confirmaciones de clientes, cancelaciones, solicitudes de propietarios y tickets abiertos), sin datos de clientes. Mi recomendación: empieza con el semanal los lunes y apágalo si nadie lo lee. Respeta el modo de pruebas de correo.</p>
+  <div class="ad-grid">
+   <label>Frecuencia<select name="informe_auto_frecuencia"><option value="apagado" ${config.informe_auto_frecuencia === 'apagado' ? 'selected' : ''}>Apagado</option><option value="semanal" ${config.informe_auto_frecuencia === 'semanal' ? 'selected' : ''}>Cada semana (lunes)</option><option value="mensual" ${config.informe_auto_frecuencia === 'mensual' ? 'selected' : ''}>Cada mes (día 1)</option></select></label>
+   <label>Destinatarios (separados por ;)<input name="informe_auto_destinatarios" type="text" value="${esc(config.informe_auto_destinatarios || '')}" placeholder="gerencia@empresa.com; operaciones@empresa.com"></label>
+  </div>` : '<p class="ad-note">Para activar el resumen automático falta aplicar el SQL 067.</p>'}
   <button type="submit" style="margin-top:12px">Guardar</button>
  </form>
  <h3 style="margin-top:28px">Tablero de citas con visita de cliente</h3>
@@ -47,6 +54,13 @@ export async function supervisionTab(ctx) {
       exigir_llegada: f.exigir_llegada.checked,
       llegada_radio_metros: Math.max(50, Math.min(2000, Number(f.llegada_radio_metros.value) || 300)),
     };
+    if (f.informe_auto_frecuencia) {
+      const lista = f.informe_auto_destinatarios.value.split(/[;,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+      if (lista.some((x) => !/^\S+@\S+\.\S+$/.test(x))) { aviso('Revisa los destinatarios del resumen: hay un correo con formato inválido.', true); return; }
+      valores.informe_auto_frecuencia = f.informe_auto_frecuencia.value;
+      valores.informe_auto_destinatarios = lista.join('; ') || null;
+    }
+    if (f.mostrar_boton_llegada) valores.mostrar_boton_llegada = f.mostrar_boton_llegada.checked;
     const { error } = await supabase.from('agenda_configuracion').update(valores).eq('empresa_id', empresaId);
     if (error) { aviso('No se pudo guardar. ¿Ya se aplicó el SQL 031?', true); return; }
     Object.assign(config, valores);

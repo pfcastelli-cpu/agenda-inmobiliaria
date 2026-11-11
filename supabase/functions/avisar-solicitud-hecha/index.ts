@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
   const { data: sol } = await admin
     .from('agenda_solicitudes_propietario')
-    .select('id, empresa_id, inmueble_id, tipo, estado, propietario_nombre, propietario_email, nota_cierre, propietario_avisado_en')
+    .select('id, empresa_id, inmueble_id, tipo, estado, propietario_nombre, propietario_email, nota_cierre, propietario_avisado_en, valor_propuesto, detalle, creado_en')
     .eq('id', solicitudId)
     .maybeSingle();
   if (!sol) return json({ ok: false, error: 'Esa solicitud no existe.' }, 404);
@@ -96,6 +96,10 @@ Deno.serve(async (req) => {
   const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
   const queSeHizo = QUE_SE_HIZO[sol.tipo] || 'atendimos tu solicitud';
   const ref = inmueble ? `Inmueble Nº ${inmueble.numero_inmueble}${inmueble.direccion ? ` · ${inmueble.direccion}` : ''}` : 'Tu inmueble';
+  const NOMBRE_TIPO: Record<string, string> = { cambio_precio: 'Cambio de precio', cambio_fotos: 'Cambio de fotos', asesoria: 'Asesoría' };
+  const dinero = (n: number | null) => (n == null ? '' : '$ ' + Number(n).toLocaleString('es-CO'));
+  const pedido = [NOMBRE_TIPO[sol.tipo] || sol.tipo, sol.valor_propuesto != null ? `valor propuesto ${dinero(sol.valor_propuesto)}` : '', sol.detalle || ''].filter(Boolean).join(' · ');
+  const fechaPedido = sol.creado_en ? new Date(sol.creado_en).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Bogota' }) : '';
   const asunto = `Ya atendimos tu solicitud · ${inmueble ? `Inmueble ${inmueble.numero_inmueble}` : 'tu inmueble'}`;
 
   const html = correoBase(marca, {
@@ -104,7 +108,7 @@ Deno.serve(async (req) => {
     preheader: `Ya ${queSeHizo}.`,
     cuerpo:
       `<p style="margin:0">Hola${sol.propietario_nombre ? ' ' + esc(sol.propietario_nombre) : ''}, ya ${esc(queSeHizo)}.</p>` +
-      `<table style="width:100%;border-collapse:collapse;margin-top:18px">${filaCorreo(marca, 'Inmueble', esc(ref))}${
+      `<table style="width:100%;border-collapse:collapse;margin-top:18px">${filaCorreo(marca, 'Inmueble', esc(ref))}${filaCorreo(marca, 'Lo que pediste', esc(pedido) + (fechaPedido ? ` (${esc(fechaPedido)})` : ''))}${filaCorreo(marca, 'Resultado', esc(queSeHizo.charAt(0).toUpperCase() + queSeHizo.slice(1)))}${
         sol.nota_cierre ? filaCorreo(marca, 'Detalle', esc(sol.nota_cierre)) : ''
       }</table>` +
       `<p style="margin:16px 0 0;font-size:13px;color:#63707a">Si algo no quedó como esperabas, responde este correo y lo revisamos contigo.</p>`,

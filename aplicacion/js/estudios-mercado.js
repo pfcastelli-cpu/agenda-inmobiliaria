@@ -46,9 +46,24 @@ export async function renderEstudios(ctx) {
   const recargar = (mensaje = '', err = '') => { ui.mensaje = mensaje; ui.error = err; return renderEstudios(ctx); };
   el.querySelector('#est-filtro').onchange = (e) => { ui.filtro = e.target.value; ui.mensaje = ui.error = ''; renderEstudios(ctx); };
   el.querySelector('[data-accion=nuevo]').onclick = async () => {
-    const numero = Number(window.prompt('Número del inmueble (opcional):', '')) || null;
-    const { error: e } = await supabase.from('agenda_estudios_mercado').insert({ empresa_id: empresaId, numero_inmueble: numero, origen: 'manual' });
-    recargar(e ? '' : 'Estudio creado. Completa el correo del propietario y carga el PDF.', e ? e.message : '');
+    // Lista precargada de inmuebles disponibles: se elige uno (se puede escribir número o dirección para filtrar).
+    const { data: inm } = await supabase.from('agenda_inmuebles').select('numero_inmueble, direccion, ciudad, tipo_oferta').eq('empresa_id', empresaId).eq('disponible', true).eq('no_disponible_manual', false).order('numero_inmueble').limit(1500);
+    const yaAbiertos = new Set(filas.filter((f) => ['pendiente', 'listo'].includes(f.estado)).map((f) => String(f.numero_inmueble)));
+    const opciones = (inm || []).filter((i) => !yaAbiertos.has(String(i.numero_inmueble)));
+    el.querySelector('#est-nuevo')?.remove();
+    el.querySelector('.v-top').insertAdjacentHTML('afterend', `<form id="est-nuevo" class="v-card" style="padding:16px;margin-top:12px"><strong>Nuevo estudio de mercado</strong>
+      <p class="v-muted" style="font-size:13px;margin:4px 0 10px">Elige un inmueble disponible (${opciones.length}). Escribe el número o parte de la dirección para filtrar. Los que ya tienen un estudio por hacer no aparecen.</p>
+      <label class="v-field">Inmueble<input class="v-input" id="est-inm" list="est-lista" autocomplete="off" placeholder="Ej. 245 o Calle 80" required></label>
+      <datalist id="est-lista">${opciones.map((i) => `<option value="#${escape(i.numero_inmueble)} · ${escape(i.direccion || '')}${i.ciudad ? ', ' + escape(i.ciudad) : ''}"></option>`).join('')}</datalist>
+      <div style="margin-top:10px;display:flex;gap:8px"><button type="submit" class="v-btn v-primary">Crear estudio</button><button type="button" class="v-btn v-quiet" id="est-cancelar">Cancelar</button></div></form>`);
+    el.querySelector('#est-cancelar').onclick = () => el.querySelector('#est-nuevo').remove();
+    el.querySelector('#est-nuevo').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const m = /#?\s*(\d+)/.exec(el.querySelector('#est-inm').value);
+      if (!m) return recargar('', 'Elige un inmueble de la lista.');
+      const { error: e } = await supabase.from('agenda_estudios_mercado').insert({ empresa_id: empresaId, numero_inmueble: Number(m[1]), origen: 'manual' });
+      recargar(e ? '' : 'Estudio creado. Completa el correo del propietario y carga el PDF.', e ? e.message : '');
+    };
   };
   el.querySelectorAll('article[data-id]').forEach((card) => {
     const id = card.dataset.id; const f = filas.find((x) => x.id === id);

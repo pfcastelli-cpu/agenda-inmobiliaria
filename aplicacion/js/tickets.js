@@ -13,7 +13,7 @@ const ESTADOS_ADMIN = { en_espera: 'Esperando respuesta de quien escribió', en_
 const nuevoBorrador = () => ({ tipo: 'error', titulo: '', descripcion: '' });
 const estadoInicial = () => ({
   filtro: 'abiertos', mensaje: '', error: '', enviando: false, borrador: nuevoBorrador(), abierto: null, detalle: null, uid: null,
-  respuestas: {}, estadoAdmin: {}, puntos: {}, comentario: {}, reabriendo: {},
+  exito: null, respuestas: {}, estadoAdmin: {}, puntos: {}, comentario: {}, reabriendo: {},
 });
 const ui = estadoInicial();
 
@@ -76,7 +76,7 @@ export async function renderTickets(ctx) {
       <label class="v-field">Detalles (qué hacías, qué esperabas, qué pasó)
         <textarea id="tk-desc" class="v-input" rows="5" maxlength="4000" placeholder="Si es posible, indica el número de inmueble o la fecha de la cita. No escribas contraseñas ni datos bancarios.">${esc(b.descripcion)}</textarea></label>
       ${ui.error ? `<div class="v-error" role="alert">${esc(ui.error)}</div>` : ''}
-      ${ui.mensaje ? `<p class="v-note" role="status">${esc(ui.mensaje)}</p>` : ''}
+      ${ui.mensaje && !ui.exito ? `<p class="v-note" role="status">${esc(ui.mensaje)}</p>` : ''}
       <div><button type="submit" class="v-btn v-primary" ${ui.enviando ? 'disabled' : ''}>${ui.enviando ? 'Enviando…' : 'Enviar ticket'}</button>
         <span class="v-muted" style="margin-left:8px;font-size:13px">Respondemos en un máximo de ${SLA_HORAS.normal} horas. Una vez enviado no se edita; podrás agregar comentarios.</span></div>
     </form>
@@ -90,6 +90,13 @@ export async function renderTickets(ctx) {
     <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">${tickets.length ? tickets.map((t) => tarjeta(t, esAdmin)).join('') : '<p class="v-muted">No hay tickets con este filtro.</p>'}</div>`;
 
   // ---- formulario de ticket nuevo
+  if (ui.exito) {
+    // Ticket recién enviado: el formulario se esconde, se confirma con claridad y queda listo para crear otro.
+    const form = el.querySelector('#tk-form');
+    form.hidden = true;
+    form.insertAdjacentHTML('beforebegin', `<div class="v-card" id="tk-exito" role="status" style="max-width:640px;margin-top:14px;padding:16px;border:2px solid var(--empresa-accion,#00a9a5);border-radius:12px"><h3 style="margin:0 0 6px">✅ Ticket #${esc(ui.exito)} guardado</h3><p style="margin:0 0 12px">${esc(ui.mensaje)}</p><button type="button" class="v-btn v-primary" id="tk-otro">Crear otro ticket</button> <span class="v-muted">Tu ticket aparece en la lista de abajo.</span></div>`);
+    el.querySelector('#tk-otro').onclick = () => { ui.exito = null; ui.mensaje = ''; repintar(); };
+  }
   el.querySelector('#tk-tipo').onchange = (e) => { ui.borrador.tipo = e.target.value; };
   el.querySelector('#tk-titulo').oninput = (e) => { ui.borrador.titulo = e.target.value; };
   el.querySelector('#tk-desc').oninput = (e) => { ui.borrador.descripcion = e.target.value; };
@@ -104,6 +111,7 @@ export async function renderTickets(ctx) {
     else {
       ui.mensaje = `Listo: recibimos tu ticket #${r.data.numero}. Te respondemos en un máximo de ${SLA_HORAS.normal} horas y te avisamos por la campana y por correo.`;
       ui.borrador = nuevoBorrador();
+      ui.exito = r.data.numero;
       api.avisar(r.data.id, 'creado');
     }
     repintar();
