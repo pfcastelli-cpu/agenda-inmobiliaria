@@ -104,3 +104,11 @@ Reemplazar lo superado (no acumular bitácora); máximo ~3 KB. Mover lo cerrado 
 - ORDEN: aplicar 074 y 075 ANTES de desplegar/subir (la pantalla de tickets y la de preferencias llaman funciones nuevas; si faltan, quedan tolerantes pero sin la función nueva). Luego push.
 - Sin probar en navegador ni con red real; solo `npm run build`.
 - ACTUALIZACIÓN 11-nov-2026: SQL 074 y 075 aplicados; desplegadas portal-visita, enviar-correo-cita, enviar-correo-propietario (públicas), notificar-cambio-cita y avisar-ticket (con JWT). Falta solo lo visible del front (push → Netlify).
+
+## Aplicado y desplegado (inspecciones con código de llegada y salida, 11-nov-2026)
+SQL 076 aplicado y `avisar-inspeccion` desplegada el 11-nov-2026; NO probado con red real:
+- `sql/076-inspeccion-codigos.sql`: códigos de 4 dígitos (distintos) por inspección, ilegibles desde la agenda; `agenda_inspeccion_registrar_codigo` (5 intentos → bloqueo 15 min, solo el día de la cita) y `agenda_inspeccion_publica`.
+- Página pública `/inspeccion/<token>` (`aplicacion/inspeccion.html`, `js/inspeccion.js`, rutas en `netlify.toml` y `vite.config.js`): el arrendatario ve el código de llegada el día de la cita y, ya registrada la llegada, el de salida.
+- Agenda (`agenda-real.js`, `cargarInspecciones`): quien inspecciona escribe los códigos; se guarda hora de llegada, salida y duración. Si el SQL no está aplicado, el bloque no aparece.
+- Edge Function nueva `avisar-inspeccion` (correo al arrendatario con enlace y datos del asesor; JWT, SIN `--no-verify-jwt`).
+Orden: aplicar 076 → desplegar `avisar-inspeccion` → commit/push. Con modo pruebas de correo activo.

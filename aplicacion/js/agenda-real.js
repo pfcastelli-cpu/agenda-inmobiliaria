@@ -621,6 +621,35 @@ async function cargarConfirmacionesCliente() {
   marcas.forEach((m) => { m.textContent = confirmadas.has(m.dataset.confirmacionCliente) ? '✅ Confirmada por el cliente' : '⏳ Sin confirmar por el cliente'; });
 }
 
+// Verificación de las inspecciones con código de llegada y de salida (sql/076). Los códigos nunca llegan al navegador de quien inspecciona:
+// solo se pueden probar con la función agenda_inspeccion_registrar_codigo. Si el SQL aún no está aplicado, el bloque desaparece.
+async function cargarInspecciones() {
+  const huecos = [...(root()?.querySelectorAll('[data-inspeccion]') || [])];
+  if (!huecos.length) return;
+  const { data, error } = await supabase.from('agenda_citas').select('id, entrada_verificada_en, salida_verificada_en').in('id', huecos.map((h) => h.dataset.inspeccion));
+  if (error) { huecos.forEach((h) => h.remove()); return; }
+  const hoy = hoyISO();
+  const hora = (iso) => new Date(iso).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Bogota' });
+  huecos.forEach((h) => {
+    const fila = (data || []).find((x) => x.id === h.dataset.inspeccion) || {};
+    const id = h.dataset.inspeccion;
+    const avisar = h.dataset.conInmueble ? `<div class="v-actions" style="margin-top:6px"><button type="button" data-insp-avisar="${id}" title="Le llega un correo con la fecha y el enlace donde verá sus códigos de seguridad">${icon('mail')}Avisar al arrendatario</button></div>` : '';
+    const entrada = (momento, texto) => `<label class="v-field" style="margin-top:6px">${texto}<input type="text" inputmode="numeric" maxlength="4" pattern="[0-9]*" class="v-input" data-insp-codigo="${id}" placeholder="0000" style="max-width:120px;letter-spacing:6px;font-size:20px;text-align:center"></label><div class="v-actions"><button type="button" class="v-primary" data-insp-registrar="${id}" data-momento="${momento}">${momento === 'entrada' ? 'Registrar llegada' : 'Registrar salida'}</button></div>`;
+    let cuerpo;
+    if (fila.salida_verificada_en) {
+      const min = Math.max(0, Math.round((new Date(fila.salida_verificada_en) - new Date(fila.entrada_verificada_en)) / 60000));
+      cuerpo = `<p class="v-note" style="margin:6px 0 0">✅ Inspección verificada: llegada ${hora(fila.entrada_verificada_en)}, salida ${hora(fila.salida_verificada_en)} · duró ${min} min.</p>`;
+    } else if (fila.entrada_verificada_en) {
+      cuerpo = `<p class="v-note" style="margin:6px 0 0">✅ Llegada registrada a las ${hora(fila.entrada_verificada_en)}.</p>${entrada('salida', 'Al terminar, escribe el código de SALIDA que te dicta el arrendatario')}`;
+    } else if (h.dataset.fecha === hoy) {
+      cuerpo = `<p class="v-note" style="margin:6px 0 0">🔐 Al llegar, el arrendatario te dicta un código de 4 números.</p>${entrada('entrada', 'Código de LLEGADA')}`;
+    } else {
+      cuerpo = `<p class="v-note" style="margin:6px 0 0">🔐 El día de la inspección, el arrendatario te dictará un código de llegada y otro de salida, y tú los registras aquí.</p>`;
+    }
+    h.innerHTML = cuerpo + (fila.salida_verificada_en ? '' : avisar);
+  });
+}
+
 async function cargarParticipantes() {
   const huecos = [...(root()?.querySelectorAll('[data-participantes]') || [])];
   if (!huecos.length) return;
@@ -719,7 +748,7 @@ async function render() {
     else if (state.view === 'soporte') await renderTickets({ el: main(), supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, vistaAnterior: NOMBRES_VISTA[vistaAnteriorSoporte] || '' });
     else if (state.view === 'reserva') await renderReserva();
     else if (state.view === 'exito') renderExito();
-    if (mi === renderSeq) { cargarParticipantes(); cargarConfirmacionesCliente(); agregarBuscadorSelect(document.getElementById('v-interna-inmueble')); }
+    if (mi === renderSeq) { cargarParticipantes(); cargarConfirmacionesCliente(); cargarInspecciones(); agregarBuscadorSelect(document.getElementById('v-interna-inmueble')); }
   } catch (error) {
     if (mi !== renderSeq) return;
     main().innerHTML = `<div class="v-empty">${icon('calendar-days')}<h3>No se pudo cargar</h3><p style="margin-top:8px">${escape(error.message)}</p></div>`;
@@ -745,6 +774,7 @@ function citaCard(c) {
     ${c.estado !== 'cancelada' && c.id ? `<div class="v-participantes" data-participantes="${c.id}"></div>${contexto.rol === 'administrador' || contexto.rol === 'coordinador' ? `<div class="v-actions" style="margin-top:6px"><button type="button" data-agregar-persona="${c.id}">${icon('user-plus')}Agregar asesor o persona</button></div>` : ''}` : ''}
     ${c.tipo_cita === 'visita_cliente' && c.estado !== 'cancelada' && c.fecha >= hoyISO() ? `<p class="v-note" style="margin:6px 0 0" data-confirmacion-cliente="${c.id}"></p>` : ''}
     ${htmlLlegada(c, hoyISO(), configPublicaCache?.botonLlegada === true)}
+    ${c.tipo_cita === 'inspeccion' && c.estado !== 'cancelada' && c.id ? `<div class="v-inspeccion" data-inspeccion="${c.id}" data-fecha="${c.fecha}" data-con-inmueble="${inmueble ? '1' : ''}"></div>` : ''}
     ${htmlBotonRadicar(c)}
     ${c.cruce_autorizado ? '<span class="v-tag v-tag-neutral" style="margin-top:6px">Cruce autorizado</span>' : ''}
     ${inmueble ? `<a class="v-link" href="${linkPublico(inmueble.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver inmueble</a>` : ''}
@@ -2242,6 +2272,33 @@ function adjuntarEventos(rootEl) {
       state.restriccionId = state.restriccionId === b.dataset.restriccion ? null : b.dataset.restriccion;
       state.errorRestriccion = '';
       renderInmuebles();
+      return;
+    }
+    if (b.dataset.inspRegistrar) {
+      const id = b.dataset.inspRegistrar;
+      const campo = root().querySelector(`[data-insp-codigo="${id}"]`);
+      const codigo = (campo?.value || '').trim();
+      if (!/^\d{4}$/.test(codigo)) { toast('El código tiene 4 números.'); return; }
+      b.disabled = true;
+      const { data, error } = await supabase.rpc('agenda_inspeccion_registrar_codigo', { p_cita_id: id, p_momento: b.dataset.momento, p_codigo: codigo });
+      if (error) { b.disabled = false; toast('No se pudo registrar: ' + error.message); return; }
+      toast(data?.mensaje || (data?.ok ? 'Listo.' : 'No se pudo registrar el código.'));
+      if (data?.ok) await cargarInspecciones(); else { b.disabled = false; if (campo) { campo.value = ''; campo.focus(); } }
+      return;
+    }
+    if (b.dataset.inspAvisar) {
+      const textoOriginal = b.innerHTML;
+      b.disabled = true;
+      b.textContent = 'Enviando…';
+      try {
+        const { data, error } = await supabase.functions.invoke('avisar-inspeccion', { body: { cita_id: b.dataset.inspAvisar } });
+        if (error) throw error;
+        toast(data?.enviado ? 'Se informó al arrendatario.' : (data?.motivo || 'No se pudo informar al arrendatario.'));
+      } catch (err) {
+        toast('No se pudo informar al arrendatario: ' + (err?.message || 'error desconocido'));
+      }
+      b.disabled = false;
+      b.innerHTML = textoOriginal;
       return;
     }
     if (b.dataset.avisarArrendatario) {

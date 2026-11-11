@@ -18,6 +18,8 @@ function reescrituraInmuebles() {
           req.url = '/opinion.html';
         } else if (req.url && /^\/radicar\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/radicar.html';
+        } else if (req.url && /^\/inspeccion\/[0-9a-f-]+/i.test(req.url)) {
+          req.url = '/inspeccion.html';
         } else if (req.url && /^\/preferencias\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/preferencias.html';
         } else if (req.url && /^\/(arrendatario|visita)\/[0-9a-f-]+/i.test(req.url)) {
@@ -50,6 +52,7 @@ export default defineConfig({
         reservar: resolve(__dirname, 'aplicacion/reservar.html'),
         propietario: resolve(__dirname, 'aplicacion/propietario.html'),
         opinion: resolve(__dirname, 'aplicacion/opinion.html'),
+        inspeccion: resolve(__dirname, 'aplicacion/inspeccion.html'),
         preferencias: resolve(__dirname, 'aplicacion/preferencias.html'),
         radicar: resolve(__dirname, 'aplicacion/radicar.html'),
         arrendatario: resolve(__dirname, 'aplicacion/arrendatario.html'),
