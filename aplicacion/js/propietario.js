@@ -13,6 +13,7 @@ const state = {
   paso: 'cargando', // cargando | listo | error
   token: null,
   datos: null,
+  inmuebles: [],
   errorMsg: '',
   formAbierto: null, // null | 'cambio_precio' | 'cambio_fotos' | 'asesoria'
   enviando: false,
@@ -80,6 +81,11 @@ async function cargarInforme() {
   }
   state.datos = data;
   state.paso = 'listo';
+  // Otros inmuebles del mismo propietario (sql/070). Si la función aún no existe o falla, simplemente no se muestran.
+  try {
+    const { data: lista } = await supabase.rpc('agenda_informe_propietario_inmuebles', { p_token: state.token });
+    state.inmuebles = Array.isArray(lista) ? lista : [];
+  } catch { state.inmuebles = []; }
   // Enlaces del correo «inmueble sin movimiento»: ?accion=precio|estudio|fotos abre el formulario; seguir|esperar pide confirmar.
   const accion = new URLSearchParams(window.location.search).get('accion');
   if (accion === 'precio') state.formAbierto = 'cambio_precio';
@@ -307,9 +313,26 @@ function accionesSolicitud() {
   `;
 }
 
+function tarjetaMisInmuebles() {
+  const lista = state.inmuebles || [];
+  if (lista.length < 2) return '';
+  return `<div class="pu-card" style="margin-bottom:14px">
+    <strong>Tus inmuebles (${lista.length})</strong>
+    <p style="margin:4px 0 10px;font-size:13.5px;color:#6b6b6b">Toca uno para ver su informe.</p>
+    <div style="display:flex;flex-direction:column;gap:8px">${lista.map((i) => {
+      const nombre = `Nº ${escapeHtml(i.numero_inmueble)} · ${escapeHtml([i.direccion, i.ciudad].filter(Boolean).join(', '))}`;
+      const detalle = `${escapeHtml(i.tipo_oferta || '')}${i.visitas ? ` · ${i.visitas} visita${i.visitas === 1 ? '' : 's'}` : ''}`;
+      return i.actual
+        ? `<div style="padding:10px 12px;border-radius:10px;background:#eef8f7;border:1px solid #bfe3e0"><strong>${nombre}</strong><br><small>${detalle} · el que estás viendo</small></div>`
+        : `<a href="/propietario/${escapeHtml(i.token)}" style="display:block;padding:10px 12px;border-radius:10px;border:1px solid #d9dde1;text-decoration:none;color:inherit"><strong>${nombre}</strong><br><small>${detalle}</small></a>`;
+    }).join('')}</div>
+  </div>`;
+}
+
 function vistaListo() {
   return `
     ${tarjetaPausa()}
+    ${tarjetaMisInmuebles()}
     ${tarjetaInmueble()}
     ${tarjetaPublicacion()}
     ${tarjetaActividad()}

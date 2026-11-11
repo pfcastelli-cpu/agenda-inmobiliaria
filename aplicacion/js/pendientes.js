@@ -49,7 +49,7 @@ export async function renderPendientes(ctx) {
 
 function cabecera(ctx, gestiona) {
   const { icon } = ctx;
-  return `<div class="v-top"><div><div class="v-eyebrow">Seguimiento</div><h2>Pendientes</h2></div></div>
+  return `<div class="v-top"><div><div class="v-eyebrow">Seguimiento</div><h2>Revisión de publicidad</h2></div></div>
     ${gestiona ? `<div style="margin-top:6px;display:inline-flex;border:1px solid var(--v-line);border-radius:10px;overflow:hidden">
       <button type="button" class="v-btn ${ui.sub === 'lista' ? 'v-primary' : 'v-quiet'}" style="border-radius:0" data-pend-sub="lista">${icon('list-checks')}Lista</button>
       <button type="button" class="v-btn ${ui.sub === 'portales' ? 'v-primary' : 'v-quiet'}" style="border-radius:0" data-pend-sub="portales">${icon('upload')}Portales</button>

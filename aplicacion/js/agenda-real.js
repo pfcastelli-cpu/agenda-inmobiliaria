@@ -13,6 +13,7 @@ import { puede } from './permisos.js';
 import { mejorarTablas, subirGraficas } from './tablas-ordenables.js';
 import { renderAuditoria } from './auditoria.js';
 import { solicitudesTab, saludTab } from './admin-propietarios.js';
+import { agregarBuscadorSelect, textoBusqueda } from './buscador-inmuebles.js';
 import { crearApiSoporte } from './soporte-comun/api.js';
 import { montarCampana } from './soporte-comun/campana.js';
 import {
@@ -178,14 +179,13 @@ export function iniciarAgendaReal(acceso) {
     // Pendientes lo ve todo el equipo; la base de datos decide cuáles le salen a cada uno.
     if (b.dataset.view === 'pendientes') b.hidden = false;
     // Solicitudes de propietarios y salud de los inmuebles: administrador y coordinador.
-    if (b.dataset.view === 'propietarios' || b.dataset.view === 'salud') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
-    // Estudios de mercado: administrador y coordinador.
-    if (b.dataset.view === 'estudios') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
+    // Propietarios, Estudios y Salud ya no van en el menú: son pestañas dentro de Pendientes.
+    if (['propietarios', 'salud', 'estudios'].includes(b.dataset.view)) b.hidden = true;
     // Soporte (tickets): lo ve todo el equipo.
     if (b.dataset.view === 'soporte') b.hidden = false;
   });
 
-  { const bp = root.querySelector('button[data-view=propietarios]'); if (bp) { const m = document.createElement('span'); m.className = 'v-contador'; m.setAttribute('data-contador-propietarios', ''); m.hidden = true; bp.appendChild(m); } }
+  { const bp = root.querySelector('.v-nav button[data-view=pendientes]'); if (bp) { const m = document.createElement('span'); m.className = 'v-contador'; m.setAttribute('data-contador-propietarios', ''); m.hidden = true; bp.appendChild(m); } }
   actualizarContadorPropietarios();
   state.view = 'agenda';
   state.fecha = hoyISO();
@@ -640,12 +640,13 @@ async function cargarParticipantes() {
 
 // Alerta en el menú: cuántas solicitudes de propietarios siguen pendientes.
 async function actualizarContadorPropietarios() {
-  const marca = root()?.querySelector('[data-contador-propietarios]');
-  if (!marca || !contexto?.empresaId) return;
+  if (!contexto?.empresaId || (contexto.rol !== 'administrador' && contexto.rol !== 'coordinador')) return;
   const { count } = await supabase.from('agenda_solicitudes_propietario').select('id', { count: 'exact', head: true }).eq('empresa_id', contexto.empresaId).eq('estado', 'pendiente');
-  marca.textContent = count ? String(count) : '';
-  marca.hidden = !count;
-  marca.title = count ? `${count} solicitudes de propietarios pendientes` : '';
+  root()?.querySelectorAll('[data-contador-propietarios]').forEach((marca) => {
+    marca.textContent = count ? String(count) : '';
+    marca.hidden = !count;
+    marca.title = count ? `${count} solicitudes de propietarios pendientes` : '';
+  });
 }
 let toastTimer = null;
 function toast(texto) {
@@ -662,7 +663,9 @@ function nav() {
   root()
     .querySelectorAll('[data-view]')
     .forEach((b) => {
-      const activo = b.dataset.view === state.view || (state.view === 'reserva' && b.dataset.view === 'properties');
+      if (!b.closest('.v-nav')) return; // las pestañas de Pendientes no son del menú lateral
+      const activo = b.dataset.view === state.view || (state.view === 'reserva' && b.dataset.view === 'properties')
+        || (b.dataset.view === 'pendientes' && ['propietarios', 'estudios', 'salud'].includes(state.view));
       if (activo) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
     });
@@ -675,6 +678,10 @@ function setView(view) {
   render();
 }
 
+const GRUPO_PENDIENTES = [['pendientes', 'Publicidad'], ['propietarios', 'Propietarios'], ['estudios', 'Estudios de mercado'], ['salud', 'Salud de inmuebles']];
+function pestanasPendientes() {
+  return `<div class="v-pesta" role="tablist" aria-label="Pendientes">${GRUPO_PENDIENTES.map(([v, t]) => `<button type="button" role="tab" data-view="${v}" class="v-btn ${state.view === v ? 'v-primary' : 'v-quiet'}" aria-selected="${state.view === v}">${t}${v === 'propietarios' ? '<span class="v-contador" data-contador-propietarios hidden></span>' : ''}</button>`).join('')}</div>`;
+}
 let renderSeq = 0;
 const NOMBRES_VISTA = { auditoria: 'Registro', propietarios: 'Propietarios', salud: 'Salud', agenda: 'Agenda', interna: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes', bitacora: 'Bitácora', pendientes: 'Pendientes', reserva: 'Reservar cita', exito: 'Reservar cita' };
 let vistaAnteriorSoporte = 'agenda';
@@ -695,18 +702,24 @@ async function render() {
     else if (state.view === 'team') await renderEquipo();
     else if (state.view === 'informes') await renderInformes();
     else if (state.view === 'bitacora') await renderBitacora();
-    else if (state.view === 'pendientes') await renderPendientes({ el: main(), supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, icon, refreshIcons });
-    else if (state.view === 'propietarios' || state.view === 'salud') {
-      main().innerHTML = '<section class="ad" id="v-ad-wrap"></section>';
-      const ctxAd = { el: main().querySelector('#v-ad-wrap'), empresaId: contexto.empresaId, aviso: (t) => toast(t), vigente: () => state.view === 'propietarios' || state.view === 'salud' };
-      if (state.view === 'propietarios') await solicitudesTab(ctxAd); else await saludTab(ctxAd);
+    else if (GRUPO_PENDIENTES.some(([v]) => v === state.view)) {
+      // Pendientes agrupa Publicidad, Propietarios, Estudios y Salud en pestañas (solo administración/coordinación ven las 4).
+      const gestiona = contexto.rol === 'administrador' || contexto.rol === 'coordinador';
+      main().innerHTML = `${gestiona ? pestanasPendientes() : ''}<div id="v-pend-cont"></div>`;
+      const cont = main().querySelector('#v-pend-cont');
+      if (state.view === 'pendientes') await renderPendientes({ el: cont, supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, icon, refreshIcons });
+      else if (state.view === 'estudios') await renderEstudios({ el: cont, supabase, empresaId: contexto.empresaId, escape, icon, refreshIcons });
+      else {
+        cont.innerHTML = '<section class="ad" id="v-ad-wrap"></section>';
+        const ctxAd = { el: cont.querySelector('#v-ad-wrap'), empresaId: contexto.empresaId, aviso: (t) => toast(t), vigente: () => state.view === 'propietarios' || state.view === 'salud' };
+        if (state.view === 'propietarios') await solicitudesTab(ctxAd); else await saludTab(ctxAd);
+      }
       actualizarContadorPropietarios();
     } else if (state.view === 'auditoria') await renderAuditoria({ el: main(), supabase, empresaId: contexto.empresaId, escape });
-    else if (state.view === 'estudios') await renderEstudios({ el: main(), supabase, empresaId: contexto.empresaId, escape, icon, refreshIcons });
     else if (state.view === 'soporte') await renderTickets({ el: main(), supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, vistaAnterior: NOMBRES_VISTA[vistaAnteriorSoporte] || '' });
     else if (state.view === 'reserva') await renderReserva();
     else if (state.view === 'exito') renderExito();
-    if (mi === renderSeq) { cargarParticipantes(); cargarConfirmacionesCliente(); }
+    if (mi === renderSeq) { cargarParticipantes(); cargarConfirmacionesCliente(); agregarBuscadorSelect(document.getElementById('v-interna-inmueble')); }
   } catch (error) {
     if (mi !== renderSeq) return;
     main().innerHTML = `<div class="v-empty">${icon('calendar-days')}<h3>No se pudo cargar</h3><p style="margin-top:8px">${escape(error.message)}</p></div>`;
@@ -722,7 +735,7 @@ function citaCard(c) {
   const direccion = inmueble ? inmueble.direccion : (c.direccion_libre || 'Sin dirección');
   const etiquetaTipo = TIPOS_CITA[c.tipo_cita] || TIPOS_CITA.visita_cliente;
   return `<article class="v-appt${esCaptacion ? ' v-appt-captacion' : ''}" style="--advisor-color:${asesor?.color || '#64748b'}"><div class="v-time">${horaFmt(c.hora_inicio)}<small>${horaFmt(c.hora_fin)}</small></div><div class="v-apptbody">
-    <div class="v-between"><span class="v-muted" style="font-size:13px">${inmueble ? '#' + inmueble.numero_inmueble + ' · ' + inmueble.tipo_oferta : (esInterna ? escape(c.ciudad_libre || '') : 'Inmueble no disponible')}</span><span class="v-tag ${c.estado === 'completada' ? 'v-tag-neutral' : ''}">${c.estado === 'completada' ? 'Realizada' : 'Confirmada'}</span></div>
+    <div class="v-between"><span class="v-muted" style="font-size:13px">${inmueble ? '#' + inmueble.numero_inmueble + ' · ' + inmueble.tipo_oferta : (esInterna ? escape(c.ciudad_libre || '') : 'Inmueble no disponible')}</span><span class="v-tag ${c.estado === 'completada' ? 'v-tag-neutral' : ''}">${c.estado === 'completada' ? 'Realizada' : 'Agendada'}</span></div>
     ${esCaptacion ? `<span class="v-tag v-tag-captacion" style="margin-top:6px">${icon('key-round')}CAPTACIÓN · PRIORIDAD TOTAL</span>` : esInterna ? `<span class="v-tag v-tag-neutral" style="margin-top:6px">${escape(etiquetaTipo)}</span>` : ''}
     <h3 style="margin-top:6px">${escape(esInterna && c.titulo ? c.titulo : direccion)}</h3>
     <div class="v-apptmeta"><span>${esInterna ? escape(direccion) : escape(c.cliente_nombre)}</span>${c.es_prueba ? ' <span class="v-badge" style="background:#FEF3C7;color:#92400E;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700">PRUEBA</span>' : ''}</div>
@@ -1162,7 +1175,7 @@ async function renderInterna() {
               .map((a) => `<option value="${a.id}" ${it.asesorId === a.id ? 'selected' : ''}>${escape(a.nombre)}</option>`)
               .join('')}</select></label>
       <label class="v-field" for="v-interna-inmueble">Inmueble${TIPOS_CON_INMUEBLE.includes(it.tipo) ? '' : ' (opcional)'}<select class="v-input" id="v-interna-inmueble" ${TIPOS_CON_INMUEBLE.includes(it.tipo) ? 'required' : ''}><option value="">${TIPOS_CON_INMUEBLE.includes(it.tipo) ? 'Selecciona un inmueble' : 'Sin inmueble del catálogo'}</option>${inmuebles
-        .map((i) => `<option value="${i.id}" ${it.inmuebleId === i.id ? 'selected' : ''}>#${i.numero_inmueble} · ${escape(i.direccion)}</option>`)
+        .map((i) => `<option value="${i.id}" data-q="${escape(textoBusqueda(i))}" ${it.inmuebleId === i.id ? 'selected' : ''}>#${i.numero_inmueble} · ${escape(i.direccion)}${i.barrio ? ' · ' + escape(i.barrio) : ''}</option>`)
         .join('')}</select></label>
       ${`<label class="v-field" for="v-interna-direccion">${it.inmuebleId ? 'Dirección (precargada del inmueble, puedes editarla)' : 'Lugar o dirección'}<input class="v-input" id="v-interna-direccion" type="text" maxlength="200" value="${escape(it.direccionLibre)}" placeholder="Ej. Notaría 12, oficina, calle 80 # 10-20"></label>`}
       <label class="v-field" for="v-interna-titulo">Título corto (opcional si eliges inmueble o lugar)<input class="v-input" id="v-interna-titulo" type="text" maxlength="120" value="${escape(it.titulo)}" placeholder="Ej. Inventario de salida"></label>
@@ -2057,8 +2070,9 @@ function adjuntarEventos(rootEl) {
       return;
     }
     if (b.dataset.quitarParticipante) {
-      await supabase.from('agenda_cita_participantes').delete().eq('id', b.dataset.quitarParticipante);
-      cargarParticipantes();
+      const { error } = await supabase.rpc('agenda_quitar_participante', { p_id: b.dataset.quitarParticipante });
+      if (error) toast(error.message);
+      render();
       return;
     }
     if (b.dataset.agregarPersona) {
@@ -2079,11 +2093,14 @@ function adjuntarEventos(rootEl) {
         // Quien no es asesor (administrador, coordinador u otra persona) exige confirmación explícita.
         const noEsAsesor = valor === '__otra' || (a && a.rol && a.rol !== 'asesor');
         if (noEsAsesor && !confirm(`${valor === '__otra' ? nombreLibre : a.nombre} no es asesor. ¿Confirmas que quieres agregarle a esta visita?`)) return;
-        const fila = { empresa_id: contexto.empresaId, cita_id: citaId, es_asesor: !noEsAsesor, ...(valor === '__otra' ? { nombre_libre: nombreLibre } : { asesor_id: valor }) };
-        const { error } = await supabase.from('agenda_cita_participantes').insert(fila);
-        if (error) toast(error.code === '23505' ? 'Esa persona ya está en la visita.' : 'No se pudo agregar. Revisa que se haya aplicado el SQL 065.');
-        else toast('Persona agregada a la visita.');
+        // La función de la base crea además la cita "espejo" en la agenda del acompañante, así que su horario queda ocupado.
+        const llamar = (forzar) => supabase.rpc('agenda_agregar_participante', { p_cita_id: citaId, p_asesor_id: valor === '__otra' ? null : valor, p_nombre_libre: valor === '__otra' ? nombreLibre : null, p_forzar: forzar });
+        let { error } = await llamar(false);
+        if (error && /ya tiene otra cita/.test(error.message || '') && confirm(`${error.message}.\n\n¿Agregarlo de todos modos? Quedará con dos citas a la vez.`)) ({ error } = await llamar(true));
+        if (error) toast(/Could not find the function/.test(error.message || '') ? 'Falta aplicar el SQL 069 para poder agregar personas.' : error.message);
+        else toast('Persona agregada a la visita. Su horario queda ocupado en su agenda.');
         cargarParticipantes();
+        if (!error) render();
       };
       return;
     }
@@ -2499,10 +2516,14 @@ function adjuntarEventos(rootEl) {
           return;
         }
       }
+      if (it.fecha && it.hora && `${it.fecha}T${it.hora.slice(0, 5)}` < new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 16)) {
+        errorInterno('Esa hora ya pasó. Elige una fecha y hora posteriores a la actual.');
+        return;
+      }
       const boton = e.target.querySelector('button[type=submit]');
       boton.disabled = true;
       boton.textContent = 'Guardando…';
-      const claveActual = claveHorario({ asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion });
+      const claveActual =claveHorario({ asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion });
       if (!esCaptacion && it.cruceOk !== claveActual) {
         const cruce = await revisarCruce({ empresaId: contexto.empresaId, asesorId: it.asesorId, inmuebleId: it.inmuebleId, fecha: it.fecha, hora: it.hora, duracion: it.duracion });
         if (!cruce.libre) {

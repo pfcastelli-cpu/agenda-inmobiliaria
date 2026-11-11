@@ -300,7 +300,7 @@ Deno.serve(async (req) => {
 
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('numero_inmueble, direccion, ciudad, barrio, latitud, longitud')
+    .select('numero_inmueble, direccion, ciudad, barrio, latitud, longitud, token_informe_propietario')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
 
@@ -430,10 +430,21 @@ Deno.serve(async (req) => {
     });
   }
 
+  const dominioPublico = String(config?.dominio_publico || 'citas.patrimonios.co').replace(/[^a-zA-Z0-9.-]/g, '');
+  const linkInforme = inmueble.token_informe_propietario ? `https://${dominioPublico}/propietario/${inmueble.token_informe_propietario}` : null;
+
   function construirHtml(nombrePropietario: string, destinatarioRealCorreo: string) {
-    const cuerpo = `<p>Hola ${escaparHtml(nombrePropietario) || ''}, ${reagendada ? 'te avisamos que una visita ya agendada cambió de hora; esta es la hora actual:' : 'te informamos que un cliente interesado visitará tu inmueble:'}</p><table style="width:100%;border-collapse:collapse;margin:18px 0 8px">${filasDatos}</table>`;
+    const pref = prefs.get(destinatarioRealCorreo.toLowerCase());
+    const linkAvisos = pref ? urlPreferencias(config, pref.token) : null;
+    const cuerpo = `<p>Hola ${escaparHtml(nombrePropietario) || ''}, ${reagendada ? 'te avisamos que una visita ya agendada cambió de hora; esta es la hora actual:' : 'te informamos que un cliente interesado visitará tu inmueble:'}</p><table style="width:100%;border-collapse:collapse;margin:18px 0 8px">${filasDatos}</table>
+      <p style="margin:14px 0 0"><strong>Desde ahora nuestro sistema te avisará cada vez que se asigne una cita en tu inmueble.</strong> Puedes ver cómo van las visitas en el informe de tu inmueble, y elegir si prefieres un correo por cada cita, un resumen semanal o mensual, o no recibir ninguno.</p>`;
+    const botonesPropietario = [
+      ...botones,
+      linkInforme ? { texto: 'Ver el informe de mi inmueble', url: linkInforme, variante: 'contorno' as const } : null,
+      linkAvisos ? { texto: 'Configurar mis avisos o darme de baja', url: linkAvisos, variante: 'contorno' as const } : null,
+    ].filter(Boolean) as { texto: string; url: string; variante: 'principal' | 'contorno' | 'mapa' | 'waze' | 'llamar' | 'whatsapp' }[];
     const despues = `${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}<p>Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}`;
-    return correoBase(marca, { titulo: reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble', tema: 'visitaprop', cuerpo, botones, despues, modoPruebas: modoPruebas, destinatarioReal: destinatarioRealCorreo });
+    return correoBase(marca, { titulo: reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble', tema: 'visitaprop', cuerpo, botones: botonesPropietario, despues, modoPruebas: modoPruebas, destinatarioReal: destinatarioRealCorreo });
   }
 
   let password: string | null = null;
@@ -500,6 +511,8 @@ Deno.serve(async (req) => {
         to: destinatarioEnvio,
         subject: asunto,
         html: construirHtml(nombrePropietario, correoPropietario),
+        // Cabecera estándar de baja: el correo la ofrece como «Cancelar suscripción», lo que evita que lo marquen como spam.
+        ...(prefs.get(correoPropietario.toLowerCase()) ? { headers: { 'List-Unsubscribe': `<${urlPreferencias(config, prefs.get(correoPropietario.toLowerCase())!.token)}>` } } : {}),
         icalEvent: {
           method: 'REQUEST',
           filename: 'visita.ics',

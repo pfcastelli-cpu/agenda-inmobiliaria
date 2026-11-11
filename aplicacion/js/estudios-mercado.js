@@ -20,6 +20,7 @@ export async function renderEstudios(ctx) {
         <div class="v-muted" style="font-size:13px">${escape(ORIGEN[f.origen] || '')} · ${escape(fecha(f.creado_en))}</div></div>
       <span style="align-self:flex-start;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:600;background:var(--tema-suave,#eef2f6);color:var(--tema-principal,#1A2C45)">${escape(ETIQUETA[f.estado] || f.estado)}</span>
     </div>
+    ${f.responsable_nombre || f.fecha_limite ? `<p style="margin:8px 0 0;font-size:13px" class="${f.fecha_limite && f.estado !== 'enviado' && f.fecha_limite < new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10) ? 'v-error' : 'v-muted'}">${f.responsable_nombre ? `Responsable: ${escape(f.responsable_nombre)}` : ''}${f.responsable_nombre && f.fecha_limite ? ' · ' : ''}${f.fecha_limite ? `Fecha límite: ${escape(f.fecha_limite)}` : ''}</p>` : ''}
     ${f.nota ? `<p style="margin:10px 0 0;font-size:13.5px;white-space:pre-line">${escape(f.nota)}</p>` : ''}
     <div class="v-filters" style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
       <label class="v-field">Propietario<input class="v-input" data-campo="propietario_nombre" value="${escape(f.propietario_nombre || '')}" placeholder="Nombre"></label>
@@ -34,7 +35,7 @@ export async function renderEstudios(ctx) {
         <button type="button" class="v-btn v-quiet" data-accion="descartar">${icon('x')}Descartar</button>`}
     </div></article>`;
   el.innerHTML = `<div class="v-top"><div><div class="v-eyebrow">Propietarios</div><h2>Estudios de mercado</h2></div>
-      <button type="button" class="v-btn v-primary" data-accion="nuevo">${icon('plus')}Nuevo estudio</button></div>
+      <button type="button" class="v-btn v-primary" data-accion="nuevo">${icon('plus')}Anotar estudio pendiente</button></div>
     <p class="v-note">Cuando un propietario pide el estudio sin costo aparece aquí. Carga el PDF (generado en tu proyecto de estudios de mercado), revísalo y pulsa «Enviar al propietario». Con el modo de pruebas activo el correo llega solo al correo de pruebas.</p>
     <div class="v-filters" style="margin-top:14px"><label class="v-field">Mostrar<select id="est-filtro" class="v-input">
       ${[['abiertos', 'Por hacer'], ['enviado', 'Enviados'], ['descartado', 'Descartados'], ['todos', 'Todos']].map(([v, t]) => `<option value="${v}" ${ui.filtro === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
@@ -47,21 +48,31 @@ export async function renderEstudios(ctx) {
   el.querySelector('#est-filtro').onchange = (e) => { ui.filtro = e.target.value; ui.mensaje = ui.error = ''; renderEstudios(ctx); };
   el.querySelector('[data-accion=nuevo]').onclick = async () => {
     // Lista precargada de inmuebles disponibles: se elige uno (se puede escribir número o dirección para filtrar).
-    const { data: inm } = await supabase.from('agenda_inmuebles').select('numero_inmueble, direccion, ciudad, tipo_oferta').eq('empresa_id', empresaId).eq('disponible', true).eq('no_disponible_manual', false).order('numero_inmueble').limit(1500);
+    const { data: inm } = await supabase.from('agenda_inmuebles').select('numero_inmueble, direccion, ciudad, barrio, tipo_oferta').eq('empresa_id', empresaId).eq('disponible', true).eq('no_disponible_manual', false).order('numero_inmueble').limit(1500);
+    const { data: ases } = await supabase.from('agenda_asesores').select('nombre').eq('empresa_id', empresaId).eq('activo', true).order('nombre');
     const yaAbiertos = new Set(filas.filter((f) => ['pendiente', 'listo'].includes(f.estado)).map((f) => String(f.numero_inmueble)));
     const opciones = (inm || []).filter((i) => !yaAbiertos.has(String(i.numero_inmueble)));
     el.querySelector('#est-nuevo')?.remove();
     el.querySelector('.v-top').insertAdjacentHTML('afterend', `<form id="est-nuevo" class="v-card" style="padding:16px;margin-top:12px"><strong>Nuevo estudio de mercado</strong>
       <p class="v-muted" style="font-size:13px;margin:4px 0 10px">Elige un inmueble disponible (${opciones.length}). Escribe el número o parte de la dirección para filtrar. Los que ya tienen un estudio por hacer no aparecen.</p>
-      <label class="v-field">Inmueble<input class="v-input" id="est-inm" list="est-lista" autocomplete="off" placeholder="Ej. 245 o Calle 80" required></label>
-      <datalist id="est-lista">${opciones.map((i) => `<option value="#${escape(i.numero_inmueble)} · ${escape(i.direccion || '')}${i.ciudad ? ', ' + escape(i.ciudad) : ''}"></option>`).join('')}</datalist>
+      <label class="v-field">Inmueble<input class="v-input" id="est-inm" list="est-lista" autocomplete="off" placeholder="Número, dirección, barrio o conjunto" required></label>
+      <datalist id="est-lista">${opciones.map((i) => `<option value="#${escape(i.numero_inmueble)} · ${escape(i.direccion || '')}${i.barrio ? ' · ' + escape(i.barrio) : ''}${i.ciudad ? ', ' + escape(i.ciudad) : ''}"></option>`).join('')}</datalist>
+      <div class="v-filters" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+        <label class="v-field">Quién lo hace<select class="v-input" id="est-resp"><option value="">Sin asignar</option>${(ases || []).map((a) => `<option>${escape(a.nombre)}</option>`).join('')}</select></label>
+        <label class="v-field">Fecha límite<input class="v-input" id="est-limite" type="date"></label>
+      </div>
+      <label class="v-field">Nota (opcional)<input class="v-input" id="est-nota" maxlength="300" placeholder="Ej. el propietario lo pidió por teléfono"></label>
       <div style="margin-top:10px;display:flex;gap:8px"><button type="submit" class="v-btn v-primary">Crear estudio</button><button type="button" class="v-btn v-quiet" id="est-cancelar">Cancelar</button></div></form>`);
     el.querySelector('#est-cancelar').onclick = () => el.querySelector('#est-nuevo').remove();
     el.querySelector('#est-nuevo').onsubmit = async (ev) => {
       ev.preventDefault();
       const m = /#?\s*(\d+)/.exec(el.querySelector('#est-inm').value);
       if (!m) return recargar('', 'Elige un inmueble de la lista.');
-      const { error: e } = await supabase.from('agenda_estudios_mercado').insert({ empresa_id: empresaId, numero_inmueble: Number(m[1]), origen: 'manual' });
+      const base = { empresa_id: empresaId, numero_inmueble: Number(m[1]), origen: 'manual', nota: el.querySelector('#est-nota').value.trim() || null };
+      const extras = { responsable_nombre: el.querySelector('#est-resp').value || null, fecha_limite: el.querySelector('#est-limite').value || null };
+      let { error: e } = await supabase.from('agenda_estudios_mercado').insert({ ...base, ...extras });
+      // Si todavía no existen las columnas de responsable y fecha límite (SQL 068), se crea igual sin ellas.
+      if (e && /responsable_nombre|fecha_limite/.test(e.message || '')) ({ error: e } = await supabase.from('agenda_estudios_mercado').insert(base));
       recargar(e ? '' : 'Estudio creado. Completa el correo del propietario y carga el PDF.', e ? e.message : '');
     };
   };

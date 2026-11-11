@@ -67,6 +67,14 @@ Reemplazar lo superado (no acumular bitácora); máximo ~3 KB. Mover lo cerrado 
 - SEDI: la documentación (`tech.sedierp.com`, sección «Portal externo») muestra consultas de inmuebles/contratos, propietarios y arrendatarios, pero son por usuario del portal, no masivas. Los códigos de Metrocuadrado/Fincaraíz/Ciencuadras no vienen en `InmueblesConsultar`: preguntar a SEDI por el campo o seguir con los Excel de portales.
 - Decidido no hacer antes de salir: partir `agenda-real.js` (riesgo sin beneficio para el usuario) y entorno de pruebas (requiere crear un segundo proyecto de Supabase).
 
+## Segunda tanda (11-nov; SQL 068 y 069 YA APLICADOS; falta 070, desplegar `enviar-correo-propietario`, commit y push)
+- **SQL 070 y 071 YA APLICADOS (11-nov) y `enviar-correo-propietario` redesplegada.** 071 da lectura a `cliente_confirmado_en` (agenda_citas da SELECT por columna: al agregar columnas que el navegador lee, otorgar también su SELECT). Falta: commit y push del front (etiqueta «Agendada», varios inmuebles, pestañas de Pendientes, buscador).
+- Copia de pruebas y trabajo en paralelo con otra herramienta: guía en `docs/AMBIENTE-DE-PRUEBAS.md` (copia NO creada aún).
+- `sql/070` (informe del propietario con varios inmuebles: función `agenda_informe_propietario_inmuebles`, solo muestra inmuebles cuyos propietarios incluyen a todos los del enlace). El front de `propietario.js` ya la llama y es tolerante. Etiqueta de la tarjeta «Confirmada» renombrada a «Agendada» (no confundir con «Confirmada por el cliente»).
+- `sql/068` (estudios con responsable y fecha límite) y `sql/069` (no crear/mover citas en el pasado; acompañantes crean cita «espejo» y bloquean su agenda; altas/bajas de acompañantes por funciones `agenda_agregar_participante` / `agenda_quitar_participante`). El front de acompañantes YA llama a esas funciones: hasta aplicar 069 el botón de agregar persona avisa que falta el SQL.
+- Front: Pendientes agrupa pestañas Publicidad / Propietarios / Estudios / Salud (menú lateral solo «Pendientes»), texto blanco en botones de Salud, tabla de Salud con filtro y orden, buscador de inmuebles en la actividad interna (`buscador-inmuebles.js`), «Anotar estudio pendiente» con responsable y fecha.
+- Función `enviar-correo-propietario` (hay que redesplegarla, `--no-verify-jwt`): aviso «te avisará cada vez que se asigne una cita», botones «Ver el informe» y «Configurar mis avisos o darme de baja» (preferencias ya existían en sql/032) y cabecera List-Unsubscribe.
+
 ## Pendiente de aplicar (11-nov, sin commit ni push)
 
 - **SQL 061–067 YA APLICADOS en producción (11-nov)**, verificado (columnas, tablas, permiso `auditoria.ver`, 7 disparadores, cron de festivos). Quedan SIN programar los crons de 062 (`recordar-cliente`) y 067 (`informe-equipo`).

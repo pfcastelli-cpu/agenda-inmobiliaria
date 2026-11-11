@@ -5,6 +5,7 @@
 import { supabase } from './cliente-supabase.js';
 import { puede } from './permisos.js';
 import { listarAccesos } from './sesion.js';
+import { mejorarTablas } from './tablas-ordenables.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const TIPOS = { cambio_precio: 'Cambio de precio', cambio_fotos: 'Cambio de fotos', asesoria: 'Asesoría' };
@@ -130,6 +131,7 @@ export async function saludTab({ el, empresaId, aviso, vigente }) {
         <td>${esc(f.dias_en_sistema)}</td><td>${esc(f.visitas)}</td><td>${esc(f.personas_visitas)}</td><td>${esc(f.personas_interes)}</td>
         <td>${esc(f.ultima_visita ? fecha(f.ultima_visita) : '—')}</td><td>${NIVEL[f.nivel]?.[0] || ''} ${esc(NIVEL[f.nivel]?.[1] || f.nivel)}</td></tr>`).join('') : '<tr><td colspan="10" class="ad-muted">No hay inmuebles en esta lista.</td></tr>'}</tbody>
     </table></div>`;
+  mejorarTablas(el);
   el.querySelector('[data-alertar]')?.addEventListener('click', async (ev) => {
     const boton = ev.currentTarget;
     boton.disabled = true;

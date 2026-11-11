@@ -570,3 +570,5 @@ table.v-tabla-res td[data-label="#"]::before, table.ad-tabla td[data-label="#"]:
 /* Contador de pendientes en el menú (Propietarios) */
 .v-contador{display:inline-block;min-width:20px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#b3261e;color:#fff;font-size:12px;font-weight:700;line-height:18px;text-align:center}
 .v-contador[hidden]{display:none}
+.v-pesta{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.v-pesta .v-btn{min-height:40px}
