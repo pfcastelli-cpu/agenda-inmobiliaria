@@ -23,6 +23,11 @@
   status = 200
 
 [[redirects]]
+  from = "/responder/*"
+  to = "/responder.html"
+  status = 200
+
+[[redirects]]
   from = "/preferencias/*"
   to = "/preferencias.html"
   status = 200
@@ -45,6 +50,11 @@
 [[redirects]]
   from = "/consignar"
   to = "/consignar.html"
+  status = 200
+
+[[redirects]]
+  from = "/correos"
+  to = "/correos.html"
   status = 200
 
 [[redirects]]

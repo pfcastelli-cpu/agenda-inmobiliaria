@@ -115,7 +115,7 @@ Orden: aplicar 076 → desplegar `avisar-inspeccion` → commit/push. Con modo p
 
 ## Correos pulidos y respuesta al propietario (12-nov-2026, desplegado)
 - `correoBase` acepta `etiqueta` (de qué trata/a quién va) y `motivo` (por qué y cuándo se envía); usado en cancelaciones, aviso de visitas, confirmación al cliente y respuesta al propietario.
-- Aviso de visitas al arrendatario: una tarjeta por visita con día grande. Confirmación al cliente: botón principal «Confirmo que asistiré». `?accion=confirmar` confirma al abrir el enlace (sin segundo toque).
+- Aviso de visitas al arrendatario: una tarjeta por visita con día grande. Confirmación al cliente: botón principal «Confirmo que asistiré».  Se REVIRTIÓ la confirmación con un toque (por antivirus de correo): el portal sigue pidiendo el último toque.
 - Cancelación por el cliente: el correo pregunta el motivo (botones → `/visita/<token>?motivo=`); `portal-visita` acción `motivo` lo guarda en la cita si no había.
-- Nueva función `responder-propietario` (JWT) + botón «Responder al propietario» en Solicitudes (admin-propietarios.js).
-- Pendiente: vista previa de todos los correos para superadministradores (no iniciada).
+- Nueva función `responder-propietario` (JWT) + botón en Solicitudes (admin-propietarios.js) y página `/responder/<id de la solicitud>` (login del asesor; el botón del correo de asesoría ahora lleva ahí).
+- Vista previa de correos para soporte de plataforma: `/correos` (`correos.html`, `js/correos.js`) + función `vista-previa-correos` (JWT, solo `agenda_soporte_usuarios`). Las muestras están escritas a mano dentro de la función: si cambias un correo real, actualiza su muestra. SIN probar con sesión de soporte.

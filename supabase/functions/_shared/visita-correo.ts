@@ -12,7 +12,7 @@ export function enlaceVisita(url: string, texto: string, marca: MarcaCorreo): st
 
 export { botonCorreo, botonesCorreo };
 
-// Botón «Confirmo que estaré» (arrendatario). Lleva al portal de esa visita, que confirma de una vez al abrir el enlace
+// Botón «Confirmo que estaré» (arrendatario). Lleva al portal de esa visita, que pide un último toque para confirmar
 // (así un antivirus o la vista previa del correo no confirman por error).
 export function botonConfirmarAsistencia(url: string, marca: MarcaCorreo, texto = 'Confirmo que estaré'): string {
   if (!/^https:\/\//i.test(url)) return '';

@@ -20,10 +20,14 @@ function reescrituraInmuebles() {
           req.url = '/radicar.html';
         } else if (req.url && /^\/inspeccion\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/inspeccion.html';
+        } else if (req.url && /^\/responder\/[0-9a-f-]+/i.test(req.url)) {
+          req.url = '/responder.html';
         } else if (req.url && /^\/preferencias\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/preferencias.html';
         } else if (req.url && /^\/(arrendatario|visita)\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/arrendatario.html';
+        } else if (req.url && /^\/correos\/?(\?.*)?$/.test(req.url)) {
+          req.url = '/correos.html';
         } else if (req.url && /^\/soporte\/?(\?.*)?$/.test(req.url)) {
           req.url = '/soporte.html';
         } else if (req.url && /^\/consignar\/?(\?.*)?$/.test(req.url)) {
@@ -53,9 +57,11 @@ export default defineConfig({
         propietario: resolve(__dirname, 'aplicacion/propietario.html'),
         opinion: resolve(__dirname, 'aplicacion/opinion.html'),
         inspeccion: resolve(__dirname, 'aplicacion/inspeccion.html'),
+        responder: resolve(__dirname, 'aplicacion/responder.html'),
         preferencias: resolve(__dirname, 'aplicacion/preferencias.html'),
         radicar: resolve(__dirname, 'aplicacion/radicar.html'),
         arrendatario: resolve(__dirname, 'aplicacion/arrendatario.html'),
+        correos: resolve(__dirname, 'aplicacion/correos.html'),
         soporte: resolve(__dirname, 'aplicacion/soporte.html'),
         consignar: resolve(__dirname, 'aplicacion/consignar.html'),
       },

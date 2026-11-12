@@ -188,11 +188,6 @@ function irSegunEnlace() {
   if (motivoClave && state.rol === 'cliente' && state.vista === 'cancelada' && MOTIVOS[motivoClave] && !state.motivoEstado) { state.motivoEstado = 'enviando'; enviarMotivo(MOTIVOS[motivoClave]); return; }
   if (!accion) return;
   if (accion === 'confirmar') document.getElementById('ar-card-confirmar')?.scrollIntoView({ behavior: 'smooth' });
-  // El botón del correo confirma de una vez (sin pedir otro toque) para que más gente confirme.
-  if (accion === 'confirmar' && state.modo === 'cita' && state.cita?.vigente && !(state.rol === 'cliente' ? state.cita.cliente_confirmado_en : state.cita.confirmado_en) && !state.confirmando) {
-    confirmarAsistencia(state.token);
-    return;
-  }
   if (state.modo === 'cita') {
     if (accion === 'otra_hora' && esArrendatario() && state.cita?.vigente && !state.propuesta) irA('proponer');
     return;
