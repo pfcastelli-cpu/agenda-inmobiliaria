@@ -63,6 +63,11 @@ export async function solicitudesTab({ el, empresaId, aviso, vigente }) {
       <div class="ad-acceso-botones">
         ${!hecha && s.estado === 'pendiente' && gestiona ? `<input type="text" data-nota maxlength="500" placeholder="Nota para el propietario (opcional)" aria-label="Nota para el propietario"><button type="button" class="ad-primary" data-hecha="${esc(s.id)}">✓ Marcar como hecha y avisar</button>` : ''}
         ${hecha && !s.propietario_avisado_en && gestiona && s.propietario_email ? `<button type="button" data-reavisar="${esc(s.id)}">Avisar al propietario</button>` : ''}
+        ${gestiona && s.propietario_email ? `<button type="button" data-responder="${esc(s.id)}">✉️ Responder al propietario</button>` : ''}
+      </div>
+      <div class="ad-responder" data-caja-responder="${esc(s.id)}" hidden>
+        <textarea rows="4" maxlength="2000" data-texto-responder placeholder="Escribe tu mensaje. Le llegará con el diseño de la empresa y, si responde, te llegará a tu correo." style="width:100%"></textarea>
+        <button type="button" class="ad-primary" data-enviar-respuesta="${esc(s.id)}">Enviar</button>
       </div>
     </li>`;
   };
@@ -92,6 +97,24 @@ export async function solicitudesTab({ el, empresaId, aviso, vigente }) {
       aviso('Quedó marcada como hecha, pero ' + e.message[0].toLowerCase() + e.message.slice(1) + ' Puedes reintentar con «Avisar al propietario».', true);
     }
     await solicitudesTab({ el, empresaId, aviso, vigente });
+  }));
+  el.querySelectorAll('[data-responder]').forEach((b) => b.addEventListener('click', () => {
+    const caja = el.querySelector(`[data-caja-responder="${b.dataset.responder}"]`);
+    if (caja) { caja.hidden = !caja.hidden; caja.querySelector('textarea')?.focus(); }
+  }));
+  el.querySelectorAll('[data-enviar-respuesta]').forEach((b) => b.addEventListener('click', async () => {
+    const caja = el.querySelector(`[data-caja-responder="${b.dataset.enviarRespuesta}"]`);
+    const mensaje = (caja?.querySelector('[data-texto-responder]')?.value || '').trim();
+    if (mensaje.length < 3) { aviso('Escribe el mensaje primero.', true); return; }
+    b.disabled = true;
+    try {
+      const { data, error } = await supabase.functions.invoke('responder-propietario', { body: { solicitud_id: b.dataset.enviarRespuesta, mensaje } });
+      if (error || !data?.ok) throw new Error(data?.error || 'No se pudo enviar el mensaje.');
+      aviso('Mensaje enviado al propietario.');
+      caja.hidden = true;
+      caja.querySelector('textarea').value = '';
+    } catch (e) { aviso(e.message, true); }
+    b.disabled = false;
   }));
   el.querySelectorAll('[data-reavisar]').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true;

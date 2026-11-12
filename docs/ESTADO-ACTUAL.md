@@ -112,3 +112,10 @@ SQL 076 aplicado y `avisar-inspeccion` desplegada el 11-nov-2026; NO probado con
 - Agenda (`agenda-real.js`, `cargarInspecciones`): quien inspecciona escribe los códigos; se guarda hora de llegada, salida y duración. Si el SQL no está aplicado, el bloque no aparece.
 - Edge Function nueva `avisar-inspeccion` (correo al arrendatario con enlace y datos del asesor; JWT, SIN `--no-verify-jwt`).
 Orden: aplicar 076 → desplegar `avisar-inspeccion` → commit/push. Con modo pruebas de correo activo.
+
+## Correos pulidos y respuesta al propietario (12-nov-2026, desplegado)
+- `correoBase` acepta `etiqueta` (de qué trata/a quién va) y `motivo` (por qué y cuándo se envía); usado en cancelaciones, aviso de visitas, confirmación al cliente y respuesta al propietario.
+- Aviso de visitas al arrendatario: una tarjeta por visita con día grande. Confirmación al cliente: botón principal «Confirmo que asistiré». `?accion=confirmar` confirma al abrir el enlace (sin segundo toque).
+- Cancelación por el cliente: el correo pregunta el motivo (botones → `/visita/<token>?motivo=`); `portal-visita` acción `motivo` lo guarda en la cita si no había.
+- Nueva función `responder-propietario` (JWT) + botón «Responder al propietario» en Solicitudes (admin-propietarios.js).
+- Pendiente: vista previa de todos los correos para superadministradores (no iniciada).

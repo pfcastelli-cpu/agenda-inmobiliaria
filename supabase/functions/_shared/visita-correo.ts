@@ -12,7 +12,7 @@ export function enlaceVisita(url: string, texto: string, marca: MarcaCorreo): st
 
 export { botonCorreo, botonesCorreo };
 
-// Botón «Confirmo que estaré» (arrendatario). Lleva al portal de esa visita, que pide un último toque para confirmar
+// Botón «Confirmo que estaré» (arrendatario). Lleva al portal de esa visita, que confirma de una vez al abrir el enlace
 // (así un antivirus o la vista previa del correo no confirman por error).
 export function botonConfirmarAsistencia(url: string, marca: MarcaCorreo, texto = 'Confirmo que estaré'): string {
   if (!/^https:\/\//i.test(url)) return '';
@@ -34,7 +34,7 @@ export function bloquePuntualidad(marca: MarcaCorreo): string {
 // puntualidad: añade el recuadro «Tu asesor no puede esperar» después del cuerpo (correos al cliente de una visita).
 export function correoVisita(marca: MarcaCorreo, o: {
   titulo: string; preheader?: string; cuerpo: string; despues?: string; puntualidad?: boolean; tema?: TemaFoto;
-  boton?: { texto: string; url: string }; modoPruebas: boolean; destinatarioReal: string;
+  boton?: { texto: string; url: string }; modoPruebas: boolean; destinatarioReal: string; etiqueta?: string; motivo?: string;
 }): string {
   return correoBase(marca, { ...o, tema: o.tema ?? 'visita', botones: o.boton ? [{ ...o.boton, variante: 'principal' }] : undefined, cuerpo: `${o.cuerpo}${o.puntualidad ? bloquePuntualidad(marca) : ''}` });
 }

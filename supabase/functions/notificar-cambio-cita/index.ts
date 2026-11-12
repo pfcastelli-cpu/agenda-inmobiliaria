@@ -14,7 +14,7 @@ import { preferenciasDe, urlPreferencias } from '../_shared/preferencias-propiet
 import type { BotonCorreo } from '../_shared/plantilla-correo.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { encabezadoImagen, enlaceInmueble, marcaCorreo, type MarcaCorreo, emojiTitulo, pieContacto } from '../_shared/marca-correo.ts';
-import { correoBase } from '../_shared/plantilla-correo.ts';
+import { botonCorreo, correoBase } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -163,8 +163,10 @@ function plantilla(o: {
   destinatarioReal: string;
   remitente: string;
   marca: MarcaCorreo;
+  etiqueta?: string;
+  motivo?: string;
 }) {
-  return correoBase(o.marca, { titulo: o.titulo, cuerpo: o.cuerpo, tema: 'cambio', modoPruebas: o.modoPruebas, destinatarioReal: o.destinatarioReal, botones: o.botones ?? (o.boton ? [{ ...o.boton, variante: 'principal' }] : undefined) });
+  return correoBase(o.marca, { etiqueta: o.etiqueta, motivo: o.motivo, titulo: o.titulo, cuerpo: o.cuerpo, tema: 'cambio', modoPruebas: o.modoPruebas, destinatarioReal: o.destinatarioReal, botones: o.botones ?? (o.boton ? [{ ...o.boton, variante: 'principal' }] : undefined) });
 }
 
 Deno.serve(async (req) => {
@@ -194,7 +196,7 @@ Deno.serve(async (req) => {
 
   const { data: cita } = await admin
     .from('agenda_citas')
-    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario')
+    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente, motivo_cancelacion')
     .eq('id', citaId)
     .maybeSingle();
   if (!cita) return json({ ok: false, error: 'Cita no encontrada.' }, 404);
@@ -301,7 +303,9 @@ Deno.serve(async (req) => {
           from: `${remitente} <${config!.correo_remitente_email}>`,
           to: destino,
           subject: o.asunto,
-          html: plantilla({ titulo: o.titulo, cuerpo: o.cuerpo, boton: o.boton, botones: o.botones, modoPruebas, destinatarioReal: correo, remitente, marca }),
+          html: plantilla({ titulo: o.titulo, cuerpo: o.cuerpo, boton: o.boton, botones: o.botones, modoPruebas, destinatarioReal: correo, remitente, marca,
+            etiqueta: `${accion === 'cancelada' ? 'Cancelación de visita' : 'Cambio de hora de visita'} · ${o.tipo === 'cliente' ? 'Aviso a quien iba a visitar' : o.tipo === 'propietario' ? 'Aviso al propietario' : 'Aviso a quien vive en el inmueble'}${inmueble?.numero_inmueble ? ` · Inmueble Nº ${inmueble.numero_inmueble}` : ''}`,
+            motivo: `Te escribimos ahora porque ${accion === 'cancelada' ? 'se canceló' : 'se cambió la hora de'} una visita ${o.tipo === 'cliente' ? 'que habías agendado' : 'a este inmueble'}. Este aviso sale automáticamente en el momento del cambio.` }),
           ...(o.conIcsCancelacion
             ? {
                 icalEvent: {
@@ -390,7 +394,7 @@ Deno.serve(async (req) => {
         ? `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(cita.cliente_nombre)}, cancelamos tu visita del ${lineaVisita} ${esc(sust.el.startsWith('el ') ? 'al ' + sust.el.slice(3) : 'a ' + sust.el)}${lugar ? ` en ${esc(lugar)}` : ''}: quien vive allí no podía recibirte a esa hora y no recibimos una nueva hora a tiempo. Lamentamos el inconveniente.</p>
 <p style="margin:0;text-align:justify">Ya se quitó del calendario de tu teléfono. Si sigues interesado, elige una nueva hora cuando quieras${asesor?.nombre ? ` o escríbele a tu asesor, ${esc(asesor.nombre)}` : ''}.</p>`
         : `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(cita.cliente_nombre)}, ${porCliente ? 'cancelamos' : 'te avisamos que se canceló'} tu visita del ${lineaVisita} ${esc(sust.el.startsWith('el ') ? 'al ' + sust.el.slice(3) : 'a ' + sust.el)}${lugar ? ` en ${esc(lugar)}` : ''}${porCliente ? '' : '. Lamentamos el inconveniente'}.</p>
-<p style="margin:0;text-align:justify">Ya se quitó del calendario de tu teléfono. ${porCliente ? 'Cuando quieras, puedes elegir otro horario' : 'Puedes elegir otro horario'}${!porCliente && asesor?.nombre ? ` o escribirle a tu asesor, ${esc(asesor.nombre)}` : ''}.</p>`,
+<p style="margin:0;text-align:justify">Ya se quitó del calendario de tu teléfono. ${porCliente ? 'Cuando quieras, puedes elegir otro horario' : 'Puedes elegir otro horario'}${!porCliente && asesor?.nombre ? ` o escribirle a tu asesor, ${esc(asesor.nombre)}` : ''}.</p>${porCliente && origen === 'cliente' && cita.token_cliente && String(cita.motivo_cancelacion || '') === 'Cancelada por el cliente' ? `<div style="margin:18px 0 0;padding:14px 16px;border-radius:12px;background:#f4f6f8"><p style="margin:0 0 4px;font-weight:700">¿Nos cuentas por qué cancelaste?</p><p style="margin:0 0 6px;font-size:14px">Nos ayuda a mejorar. Toca la opción que más se parezca:</p>${[['Ya encontré otro inmueble', 'otro'], ['Cambié de planes', 'planes'], ['El precio no me convenció', 'precio'], ['No pude en ese horario', 'horario'], ['Otra razón (escribirla)', 'otra']].map(([t, k]) => botonCorreo(marca, { texto: t, url: `${SITIO_URL}/visita/${cita.token_cliente}?motivo=${k}`, variante: 'contorno' })).join('')}</div>` : ''}`,
       boton: { texto: 'Agendar otro horario', url: `${SITIO_URL}/inmuebles/${inmueble.numero_inmueble}` },
       conIcsCancelacion: true,
       asistenteNombre: cita.cliente_nombre || undefined,
@@ -433,6 +437,7 @@ Deno.serve(async (req) => {
       titulo: 'Se canceló una visita en tu inmueble',
       cuerpo: `<p style="margin:0 0 10px;text-align:justify">Hola ${esc(nombres.join(' y '))}, te avisamos que la visita del ${lineaVisita} a tu inmueble Nº ${esc(String(inmueble.numero_inmueble))}${lugar ? ` (${esc(lugar)})` : ''} fue cancelada.</p>
 <p style="margin:0 0 10px;text-align:justify"><b>¿Qué pasó?</b> ${esc(motivoPropietario)}</p>
+<p style="margin:0 0 10px;text-align:justify"><b>Estado del inmueble:</b> ${rentando ? 'arrendado y ocupado; las visitas se coordinan con quien vive allí.' : 'disponible.'}</p>
 <p style="margin:0 0 10px;text-align:justify"><b>¿Tienes que hacer algo?</b> ${esc(accionPropietario)}</p>${asesor?.nombre ? `<p style="margin:0 0 10px;text-align:justify"><b>Tu asesor a cargo:</b> ${esc(asesor.nombre)}${asesor.celular ? ` · ${esc(asesor.celular)}` : ''}. Puedes escribirle o llamarle con los botones de abajo.</p>` : ''}${prefProp ? `<p style="margin:12px 0 0;font-size:13px">¿Prefieres otros avisos? <a href="${esc(urlPreferencias(config, prefProp.token))}">Elige qué correos quieres recibir</a>.</p>` : ''}`,
       botones: [
         inmueble.token_informe_propietario ? { texto: 'Ver el informe de mi inmueble', url: `${SITIO_URL}/propietario/${inmueble.token_informe_propietario}`, variante: 'principal' } : { texto: 'Ver el inmueble en nuestro sitio', url: enlaceInmueble(config, inmueble.numero_inmueble), variante: 'principal' },

@@ -184,8 +184,15 @@ function irSegunEnlace() {
   if (state.paso !== 'principal') return;
   const params = new URLSearchParams(window.location.search);
   const accion = params.get('accion');
+  const motivoClave = params.get('motivo');
+  if (motivoClave && state.rol === 'cliente' && state.vista === 'cancelada' && MOTIVOS[motivoClave] && !state.motivoEstado) { state.motivoEstado = 'enviando'; enviarMotivo(MOTIVOS[motivoClave]); return; }
   if (!accion) return;
   if (accion === 'confirmar') document.getElementById('ar-card-confirmar')?.scrollIntoView({ behavior: 'smooth' });
+  // El botón del correo confirma de una vez (sin pedir otro toque) para que más gente confirme.
+  if (accion === 'confirmar' && state.modo === 'cita' && state.cita?.vigente && !(state.rol === 'cliente' ? state.cita.cliente_confirmado_en : state.cita.confirmado_en) && !state.confirmando) {
+    confirmarAsistencia(state.token);
+    return;
+  }
   if (state.modo === 'cita') {
     if (accion === 'otra_hora' && esArrendatario() && state.cita?.vigente && !state.propuesta) irA('proponer');
     return;
@@ -662,6 +669,27 @@ function vistaCancelar() {
     </div>`;
 }
 
+// Motivo de la cancelación (solo el cliente): opciones rápidas y un espacio para escribir. El servidor lo guarda solo si aún no había motivo.
+const MOTIVOS = { otro: 'Ya encontré otro inmueble', planes: 'Cambié de planes', precio: 'El precio no me convenció', horario: 'No pude en ese horario' };
+function bloqueMotivo() {
+  if (esArrendatario() || state.vista !== 'cancelada') return '';
+  if (state.motivoEstado === 'enviando') return '<p>Guardando…</p>';
+  if (state.motivoEstado === 'enviado') return '<p><strong>¡Gracias por contarnos!</strong> Nos ayuda a mejorar.</p>';
+  if (state.recienCancelada && state.motivo) return '';
+  return `<div class="pu-card" style="text-align:left"><h3 style="margin-top:0">¿Nos cuentas por qué cancelaste?</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">${Object.entries(MOTIVOS).map(([k, t]) => `<button type="button" class="pu-link" data-motivo-opcion="${k}" style="border:1px solid #c9d2d8;border-radius:999px;padding:8px 14px;text-decoration:none">${esc(t)}</button>`).join('')}</div>
+    <label>Otra razón (opcional)<textarea id="ar-motivo-texto" rows="3" maxlength="300" style="width:100%;margin-top:4px"></textarea></label>
+    ${state.errorForm ? `<div class="pu-error">${esc(state.errorForm)}</div>` : ''}
+    <button class="pu-main" type="button" id="ar-motivo-enviar" ${state.ocupado ? 'disabled' : ''}>Enviar</button></div>`;
+}
+async function enviarMotivo(texto) {
+  if (!texto) { state.errorForm = 'Elige una opción o escribe qué pasó.'; render(); return; }
+  state.ocupado = true; state.errorForm = ''; render();
+  try { await llamar('motivo', { motivo: texto }); state.motivoEstado = 'enviado'; } catch (e) { state.motivoEstado = ''; state.errorForm = e.message; }
+  state.ocupado = false;
+  render();
+}
+
 function vistaCancelada() {
   return `
     <div class="pu-confirmacion">
@@ -672,6 +700,7 @@ function vistaCancelada() {
           ? esArrendatario() ? 'Ya avisamos a la persona interesada.' : 'Te enviamos un correo de constancia. Cuando quieras, puedes agendar otra visita.'
           : 'Ya no hay nada que hacer con este enlace para esta visita.'
       }</p>
+      ${bloqueMotivo()}
       ${!esArrendatario() && state.inmueble?.numero ? `<p><a class="pu-main" href="/inmuebles/${esc(state.inmueble.numero)}" style="display:block;text-align:center;text-decoration:none">Agendar otro horario</a></p>` : ''}
     </div>
     ${exito()}${bloqueHorarioPermitido()}`;
@@ -975,6 +1004,8 @@ function cablear() {
   por('ar-confirmar-proponer')?.addEventListener('click', confirmarProponer);
   por('ar-confirmar-cancelar')?.addEventListener('click', confirmarCancelar);
   por('ar-aceptar')?.addEventListener('click', () => responder(true));
+  document.querySelectorAll('[data-motivo-opcion]').forEach((b) => b.addEventListener('click', () => enviarMotivo(MOTIVOS[b.dataset.motivoOpcion])));
+  document.getElementById('ar-motivo-enviar')?.addEventListener('click', () => enviarMotivo((document.getElementById('ar-motivo-texto')?.value || '').trim()));
   document.querySelectorAll('[data-confirmar]').forEach((b) => b.addEventListener('click', () => confirmarAsistencia(b.dataset.confirmar)));
   por('ar-rechazar')?.addEventListener('click', () => responder(false));
   por('ar-guardar-horario')?.addEventListener('click', guardarHorario);

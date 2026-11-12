@@ -383,8 +383,10 @@ Deno.serve(async (req) => {
     preheader: `${numeroInmueble ? `Inmueble ${numeroInmueble}: ` : ''}${fechaTexto}, ${horaTexto}. Consulta o cambia tu visita.`,
     modoPruebas, destinatarioReal, puntualidad: true,
     cuerpo: `<p style="margin:0 0 12px">${cita.cliente_nombre ? `Hola ${escaparHtml(cita.cliente_nombre)}. ` : ''}${reagendada ? 'Este horario reemplaza al anterior.' : 'Estos son los datos de tu visita.'}</p><table role="presentation" width="100%" style="border-collapse:collapse">${filasDatos}</table>`,
-    boton: cita.token_cliente ? { texto: 'Ver, cambiar o cancelar mi visita', url: `https://citas.patrimonios.co/visita/${cita.token_cliente}` } : undefined,
-    despues: `${inmuebleOcupado ? '<p style="margin:0 0 12px"><b>Inmueble ocupado:</b> tu visita sigue confirmada. Si recibes un aviso para elegir otra hora, no vayas a la hora anterior. Revisa tu correo antes de salir.</p>' : ''}${enlaces}<p style="font-size:13px;margin:12px 0 0">Puedes añadir el archivo adjunto a tu calendario.</p>`,
+    etiqueta: `Confirmación de visita${numeroInmueble ? ` · Inmueble ${numeroInmueble}` : ''}`,
+    motivo: 'Te escribimos porque acabas de agendar una visita. Este correo sale automáticamente al agendar.',
+    boton: cita.token_cliente ? { texto: 'Confirmo que asistiré', url: `https://citas.patrimonios.co/visita/${cita.token_cliente}?accion=confirmar` } : undefined,
+    despues: `${cita.token_cliente ? '<p style="margin:0 0 12px">Toca <b>«Confirmo que asistiré»</b> para avisarnos que irás: así tu asesor sabe que cuenta contigo.</p>' : ''}${inmuebleOcupado ? '<p style="margin:0 0 12px"><b>Inmueble ocupado:</b> tu visita sigue confirmada. Si recibes un aviso para elegir otra hora, no vayas a la hora anterior. Revisa tu correo antes de salir.</p>' : ''}${enlaces}${cita.token_cliente ? `<p style="font-size:14px;margin:12px 0 0">¿Necesitas cambiarla o cancelarla? <a href="https://citas.patrimonios.co/visita/${cita.token_cliente}">Ver, cambiar o cancelar mi visita</a>.</p>` : ''}<p style="font-size:13px;margin:12px 0 0">Puedes añadir el archivo adjunto a tu calendario.</p>`,
   });
 
   let password: string | null = null;

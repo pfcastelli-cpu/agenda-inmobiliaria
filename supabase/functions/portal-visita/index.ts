@@ -125,7 +125,7 @@ async function cargarContexto(admin: Admin, token: string) {
   const { data: cita } = await admin
     .from('agenda_citas')
     .select(
-      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente, reubicacion_pendiente_desde, reubicacion_vence_en, reubicacion_motivo, es_prueba, arrendatario_confirmado_en',
+      'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, estado, tipo_cita, cliente_nombre, cliente_email, token_arrendatario, token_cliente, reubicacion_pendiente_desde, reubicacion_vence_en, reubicacion_motivo, es_prueba, arrendatario_confirmado_en, motivo_cancelacion',
     )
     .or(`token_arrendatario.eq.${token},token_cliente.eq.${token}`)
     .maybeSingle();
@@ -753,7 +753,7 @@ Deno.serve(async (req) => {
   const nombreInm = sustantivo(inmueble.tipo_inmueble);
   // El cliente puede ver, cancelar y (si no hay arrendatario adentro) reagendar su visita en cualquier inmueble;
   // todo lo demás (acuerdo de horario, horario permitido) solo existe mientras el inmueble está Rentando.
-  if (!rentando && !(rol === 'cliente' && ['obtener', 'horarios', 'primera_fecha', 'cancelar', 'reagendar'].includes(accion))) {
+  if (!rentando && !(rol === 'cliente' && ['obtener', 'horarios', 'primera_fecha', 'cancelar', 'reagendar', 'motivo'].includes(accion))) {
     return falla('Este inmueble ya no figura como arrendado. Comunícate con tu asesor.', 409);
   }
 
@@ -993,6 +993,19 @@ Deno.serve(async (req) => {
         resultado: 'aceptada',
         cita: { fecha: p.fecha, hora_inicio: p.hora_inicio.slice(0, 5), hora_fin: elegido.hora_fin.slice(0, 5), estado: 'confirmada', vigente: true },
       });
+    }
+
+    // --------------------------------------------------------------- motivo (después de cancelar)
+    // El cliente cuenta por qué canceló (botones del correo o recuadro de la página). Solo si la cancelación fue suya y aún no dejó motivo.
+    if (accion === 'motivo') {
+      if (rol !== 'cliente') return falla('Acción no disponible.', 403);
+      const texto = String(body.motivo || '').trim().slice(0, 300);
+      if (!texto) return falla('Cuéntanos brevemente qué pasó.', 400);
+      if (cita.estado !== 'cancelada' || String(cita.motivo_cancelacion || '') !== 'Cancelada por el cliente') {
+        return json({ ok: true, ya_tenia: true });
+      }
+      await admin.from('agenda_citas').update({ motivo_cancelacion: `Cancelada por el cliente: ${texto}`, actualizado_en: new Date().toISOString() }).eq('id', cita.id);
+      return json({ ok: true });
     }
 
     // --------------------------------------------------------------- cancelar
