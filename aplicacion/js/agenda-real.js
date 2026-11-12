@@ -7,6 +7,7 @@ import { claveHorario, revisarCruce, htmlAvisoCruce, puedeCruzar, estadoReunion,
 import { ORIGENES_CAPTACION, cargarCiudadesYZonas, buscarHorariosCaptacion, seleccionarHorario, htmlCiudadYZona, htmlHorariosCaptacion } from './captacion-horarios.js';
 import { renderPendientes, reiniciarPendientes } from './pendientes.js';
 import { renderEstudios } from './estudios-mercado.js';
+import { renderAsambleas } from './asambleas.js';
 import { renderTickets, reiniciarTickets, abrirTicket } from './tickets.js';
 import { montarInformeDemanda } from './informe-demanda.js';
 import { puede } from './permisos.js';
@@ -160,7 +161,7 @@ export function iniciarAgendaReal(acceso) {
   if (insignia) insignia.textContent = 'Datos reales';
   const pie = root.querySelector('.v-footnote');
   if (pie) pie.textContent = 'Datos reales · las citas y cancelaciones quedan guardadas';
-  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', estudios: 'Estudios', soporte: 'Ayuda', propietarios: 'Propietarios', salud: 'Salud', auditoria: 'Seguridad' };
+  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', estudios: 'Estudios', soporte: 'Ayuda', propietarios: 'Propietarios', salud: 'Salud', auditoria: 'Seguridad' };
   root.querySelectorAll('[data-view]').forEach((b) => {
     const textoIcono = b.querySelector('i');
     const etiqueta = ETIQUETAS_NAV[b.dataset.view] || '';
@@ -181,6 +182,8 @@ export function iniciarAgendaReal(acceso) {
     // Solicitudes de propietarios y salud de los inmuebles: administrador y coordinador.
     // Propietarios, Estudios y Salud ya no van en el menú: son pestañas dentro de Pendientes.
     if (['propietarios', 'salud', 'estudios'].includes(b.dataset.view)) b.hidden = true;
+    // Asambleas (citaciones de copropiedades, datos sensibles): solo administración y coordinación.
+    if (b.dataset.view === 'asambleas') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
     // Soporte (tickets): lo ve todo el equipo.
     if (b.dataset.view === 'soporte') b.hidden = false;
   });
@@ -732,7 +735,7 @@ function pestanasPendientes() {
   return `<div class="v-pesta" role="tablist" aria-label="Pendientes">${GRUPO_PENDIENTES.map(([v, t]) => `<button type="button" role="tab" data-view="${v}" class="v-btn ${state.view === v ? 'v-primary' : 'v-quiet'}" aria-selected="${state.view === v}">${t}${v === 'propietarios' ? '<span class="v-contador" data-contador-propietarios hidden></span>' : ''}</button>`).join('')}</div>`;
 }
 let renderSeq = 0;
-const NOMBRES_VISTA = { auditoria: 'Seguridad', propietarios: 'Solicitudes de propietarios', salud: 'Estado de inmuebles', agenda: 'Agenda', interna: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', reserva: 'Reservar cita', exito: 'Reservar cita' };
+const NOMBRES_VISTA = { auditoria: 'Seguridad', propietarios: 'Solicitudes de propietarios', salud: 'Estado de inmuebles', agenda: 'Agenda', interna: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', reserva: 'Reservar cita', exito: 'Reservar cita' };
 let vistaAnteriorSoporte = 'agenda';
 
 async function render() {
@@ -752,6 +755,7 @@ async function render() {
     else if (state.view === 'team') await renderEquipo();
     else if (state.view === 'informes') await renderInformes();
     else if (state.view === 'bitacora') await renderBitacora();
+    else if (state.view === 'asambleas') renderAsambleas({ el: main() });
     else if (GRUPO_PENDIENTES.some(([v]) => v === state.view)) {
       // Pendientes agrupa Publicidad, Propietarios, Estudios y Salud en pestañas (solo administración/coordinación ven las 4).
       const gestiona = contexto.rol === 'administrador' || contexto.rol === 'coordinador';

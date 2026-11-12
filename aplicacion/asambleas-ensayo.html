@@ -3,34 +3,12 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Ensayo de asambleas</title>
+    <title>Asambleas · Patrimonios Inmobiliarios</title>
+    <meta name="robots" content="noindex">
     <link rel="stylesheet" href="./estilos/visor-asambleas-ensayo.css">
   </head>
-  <body>
-    <main id="asambleas-ensayo" class="ae-shell">
-      <header class="ae-header">
-        <div><p class="ae-eyebrow">Revisión interna</p><h1>Ensayo de asambleas</h1><p class="ae-lead">Carga una exportación de la hoja de ensayo para revisar lo que encontró Gemini.</p></div>
-        <div class="ae-badge" role="status">Solo lectura · Sin Supabase · Sin envíos</div>
-      </header>
-      <section class="ae-import ae-card" aria-labelledby="ae-import-title">
-        <div><h2 id="ae-import-title">Cargar resultados</h2><p>Usa JSON recomendado o CSV exportado desde «Asambleas ensayo». Los datos se quedan en la memoria de esta pestaña.</p></div>
-        <label class="ae-file"><span>Elegir JSON o CSV</span><input id="ae-file" type="file" accept=".json,.csv,application/json,text/csv"></label>
-        <button id="ae-limpiar" class="ae-btn ae-btn-quiet" type="button" disabled>Limpiar datos</button>
-        <p id="ae-file-status" class="ae-status" role="status">Aún no has cargado resultados.</p>
-      </section>
-      <section id="ae-dashboard" hidden>
-        <div class="ae-metrics" id="ae-metrics" aria-label="Resumen de resultados"></div>
-        <section class="ae-toolbar ae-card" aria-label="Filtros">
-          <label>Ver<select id="ae-filtro"><option value="todas">Todas</option><option value="citaciones">Citaciones</option><option value="no-citaciones">No citaciones</option><option value="indeterminadas">No determinadas</option><option value="sin-asociar">Sin inmueble asociado</option><option value="adjuntos">Con adjuntos</option><option value="pdf">Con PDF en Drive</option></select></label>
-          <label class="ae-search">Buscar<input id="ae-busqueda" type="search" placeholder="Conjunto, inmueble, asunto o remitente"></label>
-          <label>Desde<input id="ae-desde" type="date"></label><label>Hasta<input id="ae-hasta" type="date"></label>
-          <button id="ae-restablecer" class="ae-btn ae-btn-quiet" type="button">Restablecer filtros</button>
-        </section>
-        <p id="ae-resultados" class="ae-resultados" role="status"></p><div id="ae-lista" class="ae-lista"></div>
-      </section>
-      <section id="ae-vacio" class="ae-empty ae-card"><h2>Sin resultados cargados</h2><p>La hoja actual todavía no contiene PDFs ni enlaces de Drive. Cuando existan, aparecerán aquí sin subir nada a este sitio.</p></section>
-    </main>
-    <dialog id="ae-detalle" class="ae-dialog" aria-labelledby="ae-detalle-titulo"><div class="ae-dialog-head"><h2 id="ae-detalle-titulo">Detalle de la conversación</h2><button id="ae-cerrar" class="ae-close" type="button" aria-label="Cerrar detalle">×</button></div><div id="ae-detalle-contenido"></div></dialog>
+  <body class="ae-pagina">
+    <main id="asambleas-ensayo"></main>
     <script type="module" src="./js/visor-asambleas-ensayo.js"></script>
   </body>
 </html>
