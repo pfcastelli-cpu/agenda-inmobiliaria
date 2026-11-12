@@ -8,6 +8,7 @@ import { ORIGENES_CAPTACION, cargarCiudadesYZonas, buscarHorariosCaptacion, sele
 import { renderPendientes, reiniciarPendientes } from './pendientes.js';
 import { renderEstudios } from './estudios-mercado.js';
 import { renderAsambleas } from './asambleas.js';
+import { renderPropuestasCompra } from './propuestas-compra.js';
 import { renderTickets, reiniciarTickets, abrirTicket } from './tickets.js';
 import { montarInformeDemanda } from './informe-demanda.js';
 import { puede } from './permisos.js';
@@ -181,7 +182,7 @@ export function iniciarAgendaReal(acceso) {
     if (b.dataset.view === 'pendientes') b.hidden = false;
     // Solicitudes de propietarios y salud de los inmuebles: administrador y coordinador.
     // Propietarios, Estudios y Salud ya no van en el menú: son pestañas dentro de Pendientes.
-    if (['propietarios', 'salud', 'estudios'].includes(b.dataset.view)) b.hidden = true;
+    if (['propietarios', 'salud', 'estudios', 'negociaciones'].includes(b.dataset.view)) b.hidden = true;
     // Asambleas (citaciones de copropiedades, datos sensibles): solo administración y coordinación.
     if (b.dataset.view === 'asambleas') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
     // Soporte (tickets): lo ve todo el equipo.
@@ -697,7 +698,7 @@ function nav() {
     .forEach((b) => {
       if (!b.closest('.v-nav')) return; // las pestañas de Pendientes no son del menú lateral
       const activo = b.dataset.view === state.view || (state.view === 'reserva' && b.dataset.view === 'properties')
-        || (b.dataset.view === 'pendientes' && ['propietarios', 'estudios', 'salud'].includes(state.view))
+        || (b.dataset.view === 'pendientes' && ['propietarios', 'estudios', 'salud', 'negociaciones'].includes(state.view))
         || (b.dataset.view === 'informes' && ['bitacora', 'auditoria'].includes(state.view));
       if (activo) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
@@ -711,7 +712,7 @@ function setView(view) {
   render();
 }
 
-const GRUPO_PENDIENTES = [['pendientes', 'Revisión de publicidad'], ['propietarios', 'Solicitudes de propietarios'], ['estudios', 'Estudios de mercado'], ['salud', 'Estado de inmuebles']];
+const GRUPO_PENDIENTES = [['pendientes', 'Revisión de publicidad'], ['propietarios', 'Solicitudes de propietarios'], ['estudios', 'Estudios de mercado'], ['negociaciones', 'Propuestas de compra'], ['salud', 'Estado de inmuebles']];
 // Pestañas del grupo «Informes»: cada una se muestra solo a quien tiene su permiso (misma regla que antes tenía cada botón del menú).
 const GRUPO_INFORMES = ['informes', 'bitacora', 'auditoria'];
 function pestanasInformes() {
@@ -735,7 +736,7 @@ function pestanasPendientes() {
   return `<div class="v-pesta" role="tablist" aria-label="Pendientes">${GRUPO_PENDIENTES.map(([v, t]) => `<button type="button" role="tab" data-view="${v}" class="v-btn ${state.view === v ? 'v-primary' : 'v-quiet'}" aria-selected="${state.view === v}">${t}${v === 'propietarios' ? '<span class="v-contador" data-contador-propietarios hidden></span>' : ''}</button>`).join('')}</div>`;
 }
 let renderSeq = 0;
-const NOMBRES_VISTA = { auditoria: 'Seguridad', propietarios: 'Solicitudes de propietarios', salud: 'Estado de inmuebles', agenda: 'Agenda', interna: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', reserva: 'Reservar cita', exito: 'Reservar cita' };
+const NOMBRES_VISTA = { negociaciones: 'Propuestas de compra', auditoria: 'Seguridad', propietarios: 'Solicitudes de propietarios', salud: 'Estado de inmuebles', agenda: 'Agenda', interna: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', reserva: 'Reservar cita', exito: 'Reservar cita' };
 let vistaAnteriorSoporte = 'agenda';
 
 async function render() {
@@ -763,6 +764,7 @@ async function render() {
       const cont = main().querySelector('#v-pend-cont');
       if (state.view === 'pendientes') await renderPendientes({ el: cont, supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, icon, refreshIcons });
       else if (state.view === 'estudios') await renderEstudios({ el: cont, supabase, empresaId: contexto.empresaId, escape, icon, refreshIcons });
+      else if (state.view === 'negociaciones') await renderPropuestasCompra({ el: cont, supabase, empresaId: contexto.empresaId, escape, icon, refreshIcons });
       else {
         cont.innerHTML = '<section class="ad" id="v-ad-wrap"></section>';
         const ctxAd = { el: cont.querySelector('#v-ad-wrap'), empresaId: contexto.empresaId, aviso: (t) => toast(t), vigente: () => state.view === 'propietarios' || state.view === 'salud' };

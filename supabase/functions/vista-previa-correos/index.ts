@@ -7,6 +7,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { bloqueCaptacion, marcaCorreo } from '../_shared/marca-correo.ts';
 import { botonCorreo, botonesCorreo, correoBase, type BotonCorreo } from '../_shared/plantilla-correo.ts';
 import { botonConfirmarAsistencia, correoVisita, enlaceVisita } from '../_shared/visita-correo.ts';
+import { correoNegociacion, type TipoCorreoNegociacion } from '../_shared/negociacion-correo.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -119,5 +120,23 @@ Deno.serve(async (req) => {
     { grupo: 'Asesor', nombre: 'Aviso de solicitud del propietario', cuando: 'Cuando el propietario pide asesoría o cambio de precio desde su informe.', para: 'Asesor', asunto: 'Un propietario pidió una asesoría · Inmueble Nº 1234',
       html: correoBase(marca, { ...base, tema: 'sala', titulo: 'Un propietario pidió una asesoría', cuerpo: `<p>El propietario del inmueble Nº 1234 te escribió desde su informe:</p>${datos([['Inmueble', 'Nº 1234'], ['Mensaje del propietario', 'Quiero revisar el canon.'], ['Quién escribió', 'Mario Vélez · mario@example.com']])}`, botones: [{ texto: 'Responder al propietario', url: L.responder, variante: 'principal' }] }) },
   ];
+  // Proceso de compra (inmuebles en venta): muestras armadas con el MISMO código que usa portal-negociacion.
+  const hist = [{ de: 'comprador', accion: 'propuesta', valor: 430000000 }, { de: 'propietario', accion: 'contrapropuesta', valor: 465000000 }, { de: 'comprador', accion: 'propuesta', valor: 450000000 }];
+  const ctxVenta = { marca, numero: '1234', direccion: dir, valorPublicado: 480000000, valor: 450000000, url: SITIO, urlAgenda: SITIO, correoDocumentos: 'info@patrimonios.co', historial: hist, ...base };
+  const venta = (grupo: string, nombre: string, cuando: string, para: string, tipo: TipoCorreoNegociacion, extra: Record<string, unknown> = {}) => {
+    const r = correoNegociacion(tipo, { ...ctxVenta, ...extra });
+    return { grupo, nombre, cuando, para, asunto: r.asunto, html: r.html };
+  };
+  const correosVenta = [
+    venta('Venta', 'Invitación a proponer un valor', 'Cuando el cliente marca «Quiero avanzar» en un inmueble en venta (reemplaza el correo de estudio de arrendatario).', 'Comprador', 'comprador_inicio', { historial: [], valor: 480000000 }),
+    venta('Venta', 'Propuesta recibida', 'Cuando el comprador propone un valor. No incluye datos personales del comprador.', 'Propietario', 'propietario_propuesta', { historial: hist.slice(0, 1), valor: 430000000 }),
+    venta('Venta', 'El propietario propuso otro valor', 'Cuando el propietario responde con otro valor. Se repite hasta que haya acuerdo o alguien se retire.', 'Comprador', 'comprador_contrapropuesta', { historial: hist.slice(0, 2), valor: 465000000 }),
+    venta('Venta', 'Acordaron el valor', 'Cuando una de las partes acepta el valor de la otra. Lleva al formulario de datos para la promesa y dice qué documentos enviar por correo.', 'Comprador', 'comprador_acuerdo'),
+    venta('Venta', 'Acordaron el valor', 'Cuando se acuerda el valor. Avisa que el asesor lo contactará.', 'Propietario', 'propietario_acuerdo'),
+    venta('Venta', 'Conversación cerrada sin acuerdo', 'Cuando una de las partes da por terminada la conversación, o pasan 7 días sin respuesta.', 'Comprador / propietario', 'comprador_cierre', { evento: 'El propietario decidió no continuar.' }),
+    venta('Venta', 'Novedad en una propuesta', 'Cada movimiento (propuesta, contrapropuesta, acuerdo o cierre). Llega SIEMPRE al asesor de la visita y a sus supervisores.', 'Asesor y supervisor', 'interno_movimiento', { evento: 'El propietario propuso otro valor: $ 465.000.000. El comprador ya recibió el aviso.' }),
+    venta('Venta', 'Datos para la promesa recibidos', 'Cuando el comprador completa el formulario. El correo no lleva datos personales: se ven en la agenda.', 'Asesor y supervisor', 'interno_promesa'),
+  ];
+  correos.push(...correosVenta);
   return json({ ok: true, empresas: lista, empresa_usada: config?.empresa_id || null, correos });
 });

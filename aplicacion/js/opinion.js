@@ -190,8 +190,11 @@ function vistaYaRespondida() {
 }
 
 // Si el cliente dijo que quiere otra visita, su opinión ya quedó guardada: se le lleva directo a agendarla (misma página pública de reserva).
+const esVenta = () => /^venta/i.test(String(state.datos?.tipo_oferta || ''));
 function botonRadicar(intencion) {
   if (intencion !== 'avanzar' || !state.token) return '';
+  // En venta no se radica estudio de arrendatario: se propone el valor de compra (página /negociacion, sql/082).
+  if (esVenta()) return `<p style="margin-top:16px"><button class="pu-main" type="button" id="op-negociar">Hacer mi propuesta</button></p><p class="pu-nota" id="op-negociar-error" style="color:#b3261e"></p>`;
   return `<p style="margin-top:16px"><a class="pu-main" style="display:inline-block;text-decoration:none" href="${window.location.origin}/radicar/${encodeURIComponent(state.token)}">Ver cómo radicar mi estudio</a></p>`;
 }
 
@@ -207,7 +210,7 @@ function vistaEnviado() {
       <div class="pu-icono">✓</div>
       <h2>¡Gracias por tu opinión!</h2>
       <p>Tu opinión nos ayuda a mejorar nuestro servicio.</p>
-      ${state.intencionSel === 'avanzar' ? '<p>Dijiste que quieres avanzar. Te mostramos cómo radicar tu estudio:</p>' : ''}
+      ${state.intencionSel === 'avanzar' ? (esVenta() ? '<p>Dijiste que quieres avanzar. Puedes proponer el valor que te interesa; también te lo enviamos por correo:</p>' : '<p>Dijiste que quieres avanzar. Te mostramos cómo radicar tu estudio:</p>') : ''}
       ${state.intencionSel === 'segunda_visita' ? '<p>Dijiste que quieres volver a ver el inmueble. Escoge el día y la hora que mejor te quede:</p>' : ''}
       ${botonAgendarOtraVisita(state.intencionSel)}
       ${botonRadicar(state.intencionSel)}
@@ -270,6 +273,12 @@ async function enviarOpinion() {
 }
 
 function cablear() {
+  document.getElementById('op-negociar')?.addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    const { data, error } = await supabase.functions.invoke('portal-negociacion', { body: { accion: 'iniciar', encuesta_token: state.token } });
+    if (error || !data?.ok || !data.token) { e.target.disabled = false; const m = document.getElementById('op-negociar-error'); if (m) m.textContent = 'No pudimos abrir la propuesta. Revisa tu correo: te enviamos el enlace.'; return; }
+    window.location.href = `/negociacion/${encodeURIComponent(data.token)}`;
+  });
   raiz.querySelectorAll('.pu-options').forEach((grupo) => {
     grupo.querySelectorAll('.pu-option').forEach((boton) => {
       boton.addEventListener('click', () => {

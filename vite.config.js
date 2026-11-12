@@ -22,6 +22,8 @@ function reescrituraInmuebles() {
           req.url = '/inspeccion.html';
         } else if (req.url && /^\/responder\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/responder.html';
+        } else if (req.url && /^\/negociacion\/[0-9a-f-]+/i.test(req.url)) {
+          req.url = '/negociacion.html';
         } else if (req.url && /^\/avisos\/[0-9a-f-]+/i.test(req.url)) {
           req.url = '/avisos.html';
         } else if (req.url && /^\/preferencias\/[0-9a-f-]+/i.test(req.url)) {
@@ -62,6 +64,7 @@ export default defineConfig({
         responder: resolve(__dirname, 'aplicacion/responder.html'),
         preferencias: resolve(__dirname, 'aplicacion/preferencias.html'),
         avisos: resolve(__dirname, 'aplicacion/avisos.html'),
+        negociacion: resolve(__dirname, 'aplicacion/negociacion.html'),
         asambleasEnsayo: resolve(__dirname, 'aplicacion/asambleas-ensayo.html'),
         radicar: resolve(__dirname, 'aplicacion/radicar.html'),
         arrendatario: resolve(__dirname, 'aplicacion/arrendatario.html'),

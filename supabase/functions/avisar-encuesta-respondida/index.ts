@@ -184,14 +184,14 @@ async function destinatariosSupervision(admin: Admin, empresaId: string, config:
 
 // ---- Una encuesta contestada ---------------------------------------------------------------
 async function procesarEncuesta(admin: Admin, filtro: { token?: string; id?: string }) {
-  let q = admin.from('agenda_encuestas_cliente').select('id, cita_id, inmueble_id, empresa_id, calificacion, comentario, respondido_en, impresion, intencion, motivo, aviso_admin_en, aviso_asesor_en, aviso_calidad_en');
+  let q = admin.from('agenda_encuestas_cliente').select('id, token, cita_id, inmueble_id, empresa_id, calificacion, comentario, respondido_en, impresion, intencion, motivo, aviso_admin_en, aviso_asesor_en, aviso_calidad_en');
   q = filtro.token ? q.eq('token', filtro.token) : q.eq('id', filtro.id as string);
   const { data: enc } = await q.maybeSingle();
   if (!enc || !enc.respondido_en) return { asesor: 0, admin: 0 };
 
   const [{ data: cita }, { data: inmueble }] = await Promise.all([
     admin.from('agenda_citas').select('fecha, hora_inicio, cliente_nombre, cliente_email, cliente_telefono, asesor_id').eq('id', enc.cita_id).maybeSingle(),
-    admin.from('agenda_inmuebles').select('numero_inmueble, direccion').eq('id', enc.inmueble_id).maybeSingle(),
+    admin.from('agenda_inmuebles').select('numero_inmueble, direccion, tipo_oferta').eq('id', enc.inmueble_id).maybeSingle(),
   ]);
   if (!cita) return { asesor: 0, admin: 0 };
   const ctx = await contextoCorreo(admin, enc.empresa_id);
@@ -211,7 +211,22 @@ async function procesarEncuesta(admin: Admin, filtro: { token?: string; id?: str
   // 0) Quiere avanzar: se le manda al cliente el correo para radicar el estudio de arrendatario (si la empresa lo activó, sql/033).
   //    El aviso al asesor de abajo incluye que ya se envió, para que esté pendiente.
   let radicacionEnviada = false;
-  if (enc.intencion === 'avanzar') {
+  let propuestaEnviada = false;
+  const esVenta = /^venta/i.test(String(inmueble?.tipo_oferta || ''));
+  if (enc.intencion === 'avanzar' && esVenta) {
+    // Inmueble en venta: no se radica estudio de arrendatario; se abre la negociación del valor (portal-negociacion, sql/082), que avisa al comprador, al asesor y a su supervisor.
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/portal-negociacion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY },
+        body: JSON.stringify({ accion: 'iniciar', encuesta_token: enc.token }),
+        signal: AbortSignal.timeout(25000),
+      });
+      propuestaEnviada = (await r.json().catch(() => ({})))?.ok === true;
+    } catch (e) {
+      console.error('avisar-encuesta-respondida negociación:', e instanceof Error ? e.message : e);
+    }
+  } else if (enc.intencion === 'avanzar') {
     try {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/enviar-radicacion-cliente`, {
         method: 'POST',
@@ -235,7 +250,7 @@ async function procesarEncuesta(admin: Admin, filtro: { token?: string; id?: str
         admin, enc.empresa_id, enc.cita_id, correos,
         `${intn ? intn[0] : '✅'} ${cita.cliente_nombre} quiere dar el siguiente paso · Inmueble ${num}`,
         'Un cliente quiere dar el siguiente paso',
-        `<p style="margin:0 0 12px;text-align:justify">Hola ${esc(asesor.nombre)}, <b>${esc(cita.cliente_nombre)}</b> respondió la encuesta de su visita al inmueble Nº ${esc(String(num))}${inmueble?.direccion ? ` (${esc(inmueble.direccion)})` : ''}. Conviene contactarlo pronto.${radicacionEnviada ? ' <b>Ya le enviamos el correo para radicar su estudio de arrendatario: está pendiente de que lo complete</b>, así que acompáñalo y resuélvele las dudas.' : ''}</p>
+        `<p style="margin:0 0 12px;text-align:justify">Hola ${esc(asesor.nombre)}, <b>${esc(cita.cliente_nombre)}</b> respondió la encuesta de su visita al inmueble Nº ${esc(String(num))}${inmueble?.direccion ? ` (${esc(inmueble.direccion)})` : ''}. Conviene contactarlo pronto.${propuestaEnviada ? ' <b>Es un inmueble en venta: le enviamos el enlace para que proponga un valor de compra</b>. Recibirás aviso de cada movimiento.' : ''}${radicacionEnviada ? ' <b>Ya le enviamos el correo para radicar su estudio de arrendatario: está pendiente de que lo complete</b>, así que acompáñalo y resuélvele las dudas.' : ''}</p>
 <table style="width:100%;border-collapse:collapse">
 ${intn ? filaDato('Siguiente paso', `${intn[0]} ${esc(intn[1])}`) : ''}
 ${imp ? filaDato('Impresión', `${imp[0]} ${esc(imp[1])}`) : ''}
