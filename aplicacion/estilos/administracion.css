@@ -265,3 +265,8 @@
 .ad-celular-fila select{flex:0 0 auto;max-width:170px}
 .ad-celular-fila input{flex:1;min-width:0}
 .ad-cob-todo{margin:4px 0}
+
+/* Configuración: pestañas agrupadas con un título pequeño por grupo */
+.ad-subnav { row-gap: 6px; }
+.ad-subnav .ad-nav-grupo { flex-basis: 100%; margin: 8px 0 0; font-size: 12px; font-weight: 700; color: var(--v-muted, #5a6a7d); }
+.ad-subnav .ad-nav-grupo:first-child { margin-top: 0; }

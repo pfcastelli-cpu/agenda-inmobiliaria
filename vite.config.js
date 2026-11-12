@@ -62,6 +62,7 @@ export default defineConfig({
         responder: resolve(__dirname, 'aplicacion/responder.html'),
         preferencias: resolve(__dirname, 'aplicacion/preferencias.html'),
         avisos: resolve(__dirname, 'aplicacion/avisos.html'),
+        asambleasEnsayo: resolve(__dirname, 'aplicacion/asambleas-ensayo.html'),
         radicar: resolve(__dirname, 'aplicacion/radicar.html'),
         arrendatario: resolve(__dirname, 'aplicacion/arrendatario.html'),
         correos: resolve(__dirname, 'aplicacion/correos.html'),

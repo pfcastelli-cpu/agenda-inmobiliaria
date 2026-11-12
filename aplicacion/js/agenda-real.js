@@ -160,7 +160,7 @@ export function iniciarAgendaReal(acceso) {
   if (insignia) insignia.textContent = 'Datos reales';
   const pie = root.querySelector('.v-footnote');
   if (pie) pie.textContent = 'Datos reales · las citas y cancelaciones quedan guardadas';
-  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes', bitacora: 'Bitácora', pendientes: 'Pendientes', estudios: 'Estudios', soporte: 'Soporte', propietarios: 'Propietarios', salud: 'Salud', auditoria: 'Registro' };
+  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', estudios: 'Estudios', soporte: 'Ayuda', propietarios: 'Propietarios', salud: 'Salud', auditoria: 'Seguridad' };
   root.querySelectorAll('[data-view]').forEach((b) => {
     const textoIcono = b.querySelector('i');
     const etiqueta = ETIQUETAS_NAV[b.dataset.view] || '';
@@ -173,9 +173,9 @@ export function iniciarAgendaReal(acceso) {
     // "No disponible" de la ficha del inmueble (administrador/coordinador).
     // El rol base manda para los datos; el permiso del rol solo afina qué pestañas se muestran.
     if (b.dataset.view === 'team') b.hidden = contexto.rol !== 'administrador' || !puede('equipo.ver');
-    if (b.dataset.view === 'informes') b.hidden = (contexto.rol !== 'administrador' && contexto.rol !== 'coordinador') || !puede('informes.ver');
-    if (b.dataset.view === 'bitacora') b.hidden = (contexto.rol !== 'administrador' && contexto.rol !== 'coordinador') || !puede('bitacora.ver');
-    if (b.dataset.view === 'auditoria') b.hidden = !puede('auditoria.ver');
+    // Informes, Historial de cambios (bitácora) y Seguridad (registro) comparten un solo botón del menú; los otros dos son pestañas.
+    if (b.dataset.view === 'informes') b.hidden = pestanasInformes().length === 0;
+    if (b.dataset.view === 'bitacora' || b.dataset.view === 'auditoria') b.hidden = true;
     // Pendientes lo ve todo el equipo; la base de datos decide cuáles le salen a cada uno.
     if (b.dataset.view === 'pendientes') b.hidden = false;
     // Solicitudes de propietarios y salud de los inmuebles: administrador y coordinador.
@@ -694,7 +694,8 @@ function nav() {
     .forEach((b) => {
       if (!b.closest('.v-nav')) return; // las pestañas de Pendientes no son del menú lateral
       const activo = b.dataset.view === state.view || (state.view === 'reserva' && b.dataset.view === 'properties')
-        || (b.dataset.view === 'pendientes' && ['propietarios', 'estudios', 'salud'].includes(state.view));
+        || (b.dataset.view === 'pendientes' && ['propietarios', 'estudios', 'salud'].includes(state.view))
+        || (b.dataset.view === 'informes' && ['bitacora', 'auditoria'].includes(state.view));
       if (activo) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
     });
@@ -707,17 +708,37 @@ function setView(view) {
   render();
 }
 
-const GRUPO_PENDIENTES = [['pendientes', 'Publicidad'], ['propietarios', 'Propietarios'], ['estudios', 'Estudios de mercado'], ['salud', 'Salud de inmuebles']];
+const GRUPO_PENDIENTES = [['pendientes', 'Revisión de publicidad'], ['propietarios', 'Solicitudes de propietarios'], ['estudios', 'Estudios de mercado'], ['salud', 'Estado de inmuebles']];
+// Pestañas del grupo «Informes»: cada una se muestra solo a quien tiene su permiso (misma regla que antes tenía cada botón del menú).
+const GRUPO_INFORMES = ['informes', 'bitacora', 'auditoria'];
+function pestanasInformes() {
+  const gestiona = contexto.rol === 'administrador' || contexto.rol === 'coordinador';
+  const lista = [];
+  if (gestiona && puede('informes.ver')) lista.push(['informes', 'Informes']);
+  if (gestiona && puede('bitacora.ver')) lista.push(['bitacora', 'Historial de cambios']);
+  if (puede('auditoria.ver')) lista.push(['auditoria', 'Seguridad']);
+  return lista;
+}
+// Barra de pestañas fuera del contenido (no se borra cuando la pantalla se vuelve a pintar).
+function barraGrupoInformes() {
+  const m = main();
+  if (!m) return;
+  let barra = root().querySelector('#v-subnav-informes');
+  if (!barra) { barra = document.createElement('div'); barra.id = 'v-subnav-informes'; m.parentNode.insertBefore(barra, m); }
+  const lista = GRUPO_INFORMES.includes(state.view) ? pestanasInformes() : [];
+  barra.innerHTML = lista.length > 1 ? `<div class="v-pesta" role="tablist" aria-label="Informes y seguimiento">${lista.map(([v, t]) => `<button type="button" role="tab" data-view="${v}" class="v-btn ${state.view === v ? 'v-primary' : 'v-quiet'}" aria-selected="${state.view === v}">${t}</button>`).join('')}</div>` : '';
+}
 function pestanasPendientes() {
   return `<div class="v-pesta" role="tablist" aria-label="Pendientes">${GRUPO_PENDIENTES.map(([v, t]) => `<button type="button" role="tab" data-view="${v}" class="v-btn ${state.view === v ? 'v-primary' : 'v-quiet'}" aria-selected="${state.view === v}">${t}${v === 'propietarios' ? '<span class="v-contador" data-contador-propietarios hidden></span>' : ''}</button>`).join('')}</div>`;
 }
 let renderSeq = 0;
-const NOMBRES_VISTA = { auditoria: 'Registro', propietarios: 'Propietarios', salud: 'Salud', agenda: 'Agenda', interna: 'Agenda', properties: 'Inmuebles', team: 'Equipo', informes: 'Informes', bitacora: 'Bitácora', pendientes: 'Pendientes', reserva: 'Reservar cita', exito: 'Reservar cita' };
+const NOMBRES_VISTA = { auditoria: 'Seguridad', propietarios: 'Solicitudes de propietarios', salud: 'Estado de inmuebles', agenda: 'Agenda', interna: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', reserva: 'Reservar cita', exito: 'Reservar cita' };
 let vistaAnteriorSoporte = 'agenda';
 
 async function render() {
   if (state.view !== 'soporte') vistaAnteriorSoporte = state.view;
   nav();
+  barraGrupoInformes();
   const mi = ++renderSeq;
   // Cada pintado trabaja sobre un contenedor nuevo: si el usuario cambia de pestaña mientras otra todavía carga
   // (p. ej. Pendientes → Inmuebles), la que llega tarde escribe en el contenedor viejo, que ya no se ve,
