@@ -73,7 +73,7 @@ async function contexto(admin: Admin, negId: string) {
   const { data: n } = await admin.from('agenda_negociaciones').select('id, empresa_id, cita_id, inmueble_id, numero_inmueble, cliente_email, valor_publicado, valor_vigente, valor_acordado, token_comprador, token_propietario').eq('id', negId).maybeSingle();
   if (!n) return null;
   const [{ data: cita }, { data: inm }, { data: movs }, config] = await Promise.all([
-    admin.from('agenda_citas').select('asesor_id').eq('id', n.cita_id).maybeSingle(),
+    admin.from('agenda_citas').select('asesor_id, agenda_asesores(nombre, celular)').eq('id', n.cita_id).maybeSingle(),
     admin.from('agenda_inmuebles').select('direccion, barrio').eq('id', n.inmueble_id).maybeSingle(),
     admin.from('agenda_negociacion_movimientos').select('de, accion, valor').eq('negociacion_id', n.id).order('creado_en'),
     configuracion(admin, n.empresa_id),
@@ -81,10 +81,11 @@ async function contexto(admin: Admin, negId: string) {
   const { data: props } = await admin.from('agenda_propietarios').select('email').eq('empresa_id', n.empresa_id).eq('numero_inmueble', n.numero_inmueble);
   const dominio = config?.dominio_publico || 'citas.patrimonios.co';
   const sitio = `https://${String(dominio).replace(/^https?:\/\//, '')}`;
+  const ase = (Array.isArray(cita?.agenda_asesores) ? cita?.agenda_asesores[0] : cita?.agenda_asesores) as { nombre?: string; celular?: string } | null | undefined;
   return {
     n, config, asesorId: cita?.asesor_id ?? null, sitio,
     propietarios: [...new Set((props || []).flatMap((p) => correosDe(p.email)))],
-    base: { numero: String(n.numero_inmueble || ''), direccion: [inm?.direccion, inm?.barrio].filter(Boolean).join(', '), valorPublicado: Number(n.valor_publicado), historial: movs || [], correoDocumentos: config?.correo_contacto || undefined },
+    base: { numero: String(n.numero_inmueble || ''), direccion: [inm?.direccion, inm?.barrio].filter(Boolean).join(', '), valorPublicado: Number(n.valor_publicado), historial: movs || [], correoDocumentos: config?.correo_contacto || undefined, asesor: ase?.nombre ? { nombre: ase.nombre, celular: ase.celular || null } : undefined, telEmpresa: config?.telefono || undefined, urlGuia: `${sitio}/como-comprar` },
   };
 }
 
@@ -164,12 +165,30 @@ Deno.serve(async (req) => {
       const { data } = await admin.rpc('agenda_negociacion_ver', { p_token: token });
       if (!data || data.error) return json({ ok: false, error: 'Este enlace no funciona o ya venció.' }, 404);
       const salida = { ...data }; delete salida.empresa_id;
+      try {
+        const { data: neg } = await admin.from('agenda_negociaciones').select('id, cita_id').or(`token_comprador.eq.${token},token_propietario.eq.${token}`).maybeSingle();
+        const { data: ct } = neg ? await admin.from('agenda_citas').select('agenda_asesores(nombre, celular)').eq('id', neg.cita_id).maybeSingle() : { data: null };
+        const a = (Array.isArray(ct?.agenda_asesores) ? ct?.agenda_asesores[0] : ct?.agenda_asesores) as { nombre?: string; celular?: string } | null | undefined;
+        const cfgC = await configuracion(admin, data.empresa_id);
+        salida.asesor_nombre = a?.nombre || null;
+        salida.asesor_celular = a?.celular || cfgC?.telefono || null;
+        salida.empresa_telefono = cfgC?.telefono || null;
+      } catch { /* sin contacto no se rompe la página */ }
       if (data.rol === 'comprador' && data.estado === 'acordada') {
         const config = await configuracion(admin, data.empresa_id);
         salida.texto_autorizacion = TEXTO_AUTORIZACION(config?.nombre_comercial || 'la inmobiliaria', config?.correo_contacto || '');
         salida.correo_documentos = config?.correo_contacto || null;
       }
       return json({ ok: true, ...salida });
+    }
+
+    if (accion === 'contacto') {
+      const canal = ['whatsapp', 'llamada', 'pagina'].includes(String(body.canal)) ? String(body.canal) : 'pagina';
+      try {
+        const { data: neg } = await admin.from('agenda_negociaciones').select('id, empresa_id, token_comprador').or(`token_comprador.eq.${token},token_propietario.eq.${token}`).maybeSingle();
+        if (neg) await admin.from('agenda_negociacion_contactos').insert({ negociacion_id: neg.id, empresa_id: neg.empresa_id, rol: neg.token_comprador === token ? 'comprador' : 'propietario', canal });
+      } catch { /* el registro es de apoyo */ }
+      return json({ ok: true });
     }
 
     if (accion === 'responder') {

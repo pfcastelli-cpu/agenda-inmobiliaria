@@ -2,10 +2,10 @@
 // Muestra, por inmueble, quién propuso qué valor, de quién es el turno y, cuando se acuerda el valor, los datos que dejó el comprador para la promesa.
 // Los datos llegan por la función agenda_negociaciones_listar (administración/coordinación, el asesor de la visita y sus supervisores).
 const ui = { filtro: 'abiertas', abierto: null };
-const ESTADO = { abierta: 'En conversación', acordada: 'Valor acordado', sin_acuerdo: 'Sin acuerdo', vencida: 'Vencida' };
+const ESTADO = { abierta: 'En conversación', acordada: 'Valor acordado', sin_acuerdo: 'Sin acuerdo', vencida: 'En pausa', pausa: 'En pausa' };
 const PAGO = { contado: 'Recursos propios', credito_hipotecario: 'Crédito hipotecario', subsidio: 'Subsidio', mixto: 'Mixta', otro: 'Otra' };
 const CIVIL = { soltero: 'Soltero(a)', casado: 'Casado(a)', union_libre: 'Unión marital de hecho', divorciado: 'Divorciado(a)', viudo: 'Viudo(a)' };
-const ROT = { propuesta: 'Propuesta del comprador', contrapropuesta: 'Contrapropuesta del propietario', acepta: 'Aceptó', rechaza: 'No continuó' };
+const ROT = { publicado: 'Estaba publicado en', propuesta: 'El comprador ofreció', contrapropuesta: 'El propietario propuso', acepta: 'Se aceptó el valor', rechaza: 'Una de las partes no continuó' };
 const pesos = (n) => (n == null ? '—' : `$ ${Math.round(Number(n)).toLocaleString('es-CO')}`);
 
 export async function contarPropuestasPendientes(supabase, empresaId) {
@@ -29,18 +29,18 @@ export async function renderPropuestasCompra(ctx) {
       <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div><strong>Inmueble Nº ${escape(n.numero_inmueble || '')}</strong><div class="v-muted" style="font-size:13px">${escape(n.direccion || '')}</div>
           <div class="v-muted" style="font-size:13px">Comprador: ${escape(n.cliente_nombre || '—')} · Asesor: ${escape(n.asesor || '—')} · Desde ${escape(fecha(n.creado_en))}</div></div>
-        ${chip(n.estado)}
+        ${chip(n.en_pausa ? 'pausa' : n.estado)}
       </div>
       <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:12px">
         <div><div class="v-muted" style="font-size:12.5px">Valor publicado</div><strong>${escape(pesos(n.valor_publicado))}</strong></div>
         <div><div class="v-muted" style="font-size:12.5px">${n.estado === 'acordada' ? 'Valor acordado' : 'Último valor'}</div><strong style="font-size:18px">${escape(pesos(n.estado === 'acordada' ? n.valor_acordado : n.valor_vigente))}</strong></div>
-        ${quien(n) ? `<div style="align-self:flex-end" class="v-muted">${escape(quien(n))}${n.vence_en ? ` · vence ${escape(fecha(n.vence_en))}` : ''}</div>` : ''}
+        ${quien(n) ? `<div style="align-self:flex-end" class="v-muted">${escape(quien(n))}${n.en_pausa ? ' · en pausa: conviene llamar a las partes' : ''}</div>` : ''}
       </div>
       ${n.estado === 'acordada' ? `<p class="${p ? 'v-muted' : 'v-error'}" style="margin:10px 0 0;font-size:13.5px">${p ? 'El comprador ya dejó los datos para la promesa.' : 'Falta que el comprador deje los datos para la promesa.'}</p>` : ''}
       <div style="margin-top:10px"><button type="button" class="v-btn v-quiet" data-ver="${escape(n.id)}">${ui.abierto === n.id ? 'Ocultar detalle' : 'Ver historial y datos'}</button></div>
       ${ui.abierto === n.id ? `<div style="margin-top:12px">
         <strong style="font-size:13px">Historial de valores</strong>
-        ${(n.movimientos || []).map((m) => dato(`${ROT[m.accion] || m.accion} · ${fecha(m.en)}`, m.valor ? pesos(m.valor) : '—')).join('') || '<p class="v-muted" style="font-size:13px">Aún no hay valores propuestos.</p>'}
+        ${[{ accion: 'publicado', valor: n.valor_publicado, en: n.creado_en }, ...(n.movimientos || [])].map((m) => dato(`${ROT[m.accion] || m.accion} · ${fecha(m.en)}`, m.valor ? pesos(m.valor) : '—')).join('')}
         ${p ? `<strong style="font-size:13px;display:block;margin-top:14px">Datos para la promesa (confidenciales)</strong>
           ${dato('Tipo de persona', p.tipo_persona === 'juridica' ? 'Empresa' : 'Persona natural')}${dato('Nombre o razón social', p.nombre_completo)}${dato('Documento', `${p.tipo_documento} ${p.numero_documento}`)}
           ${dato('Representante legal', p.representante_legal)}${dato('Estado civil', CIVIL[p.estado_civil])}${dato('Correo', p.email)}${dato('Celular', p.celular)}${dato('Dirección', p.direccion)}

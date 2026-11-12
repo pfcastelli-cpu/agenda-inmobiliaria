@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
   ];
   // Proceso de compra (inmuebles en venta): muestras armadas con el MISMO código que usa portal-negociacion.
   const hist = [{ de: 'comprador', accion: 'propuesta', valor: 430000000 }, { de: 'propietario', accion: 'contrapropuesta', valor: 465000000 }, { de: 'comprador', accion: 'propuesta', valor: 450000000 }];
-  const ctxVenta = { marca, numero: '1234', direccion: dir, valorPublicado: 480000000, valor: 450000000, url: SITIO, urlAgenda: SITIO, correoDocumentos: 'info@patrimonios.co', historial: hist, ...base };
+  const ctxVenta = { marca, numero: '1234', direccion: dir, valorPublicado: 480000000, valor: 450000000, url: SITIO, urlAgenda: SITIO, correoDocumentos: 'info@patrimonios.co', asesor: { nombre: 'Mario Ruiz', celular: '3001112233' }, urlGuia: `${SITIO}/como-comprar`, historial: hist, ...base };
   const venta = (grupo: string, nombre: string, cuando: string, para: string, tipo: TipoCorreoNegociacion, extra: Record<string, unknown> = {}) => {
     const r = correoNegociacion(tipo, { ...ctxVenta, ...extra });
     return { grupo, nombre, cuando, para, asunto: r.asunto, html: r.html };

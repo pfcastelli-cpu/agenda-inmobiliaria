@@ -27,10 +27,10 @@ async function llamar(cuerpo) {
 }
 
 function historial(d) {
-  const rot = { propuesta: 'Propuesta del comprador', contrapropuesta: 'Contrapropuesta del propietario', acepta: 'Aceptó', rechaza: 'No continuó' };
-  const mov = (d.movimientos || []).slice().reverse();
-  if (!mov.length) return '';
-  return `<h3 class="pu-seccion">Historial de valores</h3>${mov.map((m) => `<div class="pu-eleccion" style="cursor:default"><span><strong>${esc(m.valor ? pesos(m.valor) : '—')}</strong><small>${esc(rot[m.accion] || m.accion)} · ${esc(new Date(m.en).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }))}</small></span></div>`).join('')}`;
+  const rot = { propuesta: 'El comprador ofreció', contrapropuesta: 'El propietario propuso', acepta: 'Se aceptó el valor', rechaza: 'Una de las partes no continuó' };
+  rot.publicado = 'El inmueble estaba publicado en';
+  const mov = [{ accion: 'publicado', valor: d.valor_publicado, en: null }, ...(d.movimientos || [])];
+  return `<h3 class="pu-seccion">Cómo va la conversación</h3>${mov.map((m) => `<div class="pu-eleccion" style="cursor:default"><span><strong>${esc(m.valor ? pesos(m.valor) : '—')}</strong><small>${esc(rot[m.accion] || m.accion)}${m.en ? ` · ${esc(new Date(m.en).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }))}` : ''}</small></span></div>`).join('')}`;
 }
 
 function resumen(d) {
@@ -50,10 +50,9 @@ function campoValor(etiqueta, boton) {
 function vistaAbierta(d) {
   const esComprador = d.rol === 'comprador';
   const miTurno = d.turno === d.rol;
-  const vence = new Date(d.vence_en).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
   let acciones = '';
   if (!miTurno) {
-    acciones = `<div class="pu-card"><h2>Esperando respuesta</h2><p style="margin:0">Le avisamos a la otra parte. Cuando responda te escribimos por correo. La conversación sigue abierta hasta el ${esc(vence)}.</p></div>`;
+    acciones = `<div class="pu-card"><h2>Esperando respuesta</h2><p style="margin:0">Le avisamos a la otra parte. Cuando responda te escribimos por correo. La conversación sigue abierta; si pasa un tiempo sin respuesta queda en pausa y se puede retomar.</p></div>`;
   } else if (esComprador) {
     acciones = `<div class="pu-card"><h2>${d.valor_vigente ? 'El propietario propuso otro valor' : 'Propón un valor'}</h2>
       <p>${d.valor_vigente ? `Puedes aceptar ${esc(pesos(d.valor_vigente))} o proponer otro valor.` : 'Escribe el valor que te interesa. Solo se necesita la cifra.'}</p>
@@ -104,15 +103,33 @@ function vistaAcordada(d) {
     </form><p class="pu-nota" style="margin-top:14px">${AVISO}</p></div>`;
 }
 
+function digitosWa(t) {
+  const x = String(t || '').replace(/\D/g, '');
+  if (x.length === 10 && x.startsWith('3')) return `57${x}`;
+  return x.length >= 11 && x.length <= 15 ? x : '';
+}
+
+// Contacto del asesor: siempre a la vista, sin presionar. El clic al WhatsApp queda registrado (acción «contacto»).
+function contacto(d) {
+  const wa = digitosWa(d.asesor_celular);
+  const quien = d.asesor_nombre ? esc(d.asesor_nombre) : 'tu asesor';
+  const msg = encodeURIComponent(`Hola, escribo por el inmueble Nº ${d.numero_inmueble}.`);
+  return `<div class="pu-card"><h2>¿Prefieres hablarlo?</h2>
+    <p style="margin:0 0 10px">Si tienes dudas, ${quien} te acompaña en todo el proceso y puede explicarte cada paso.</p>
+    ${wa ? `<p style="margin:0 0 10px"><a class="pu-main" id="ng-wa" style="display:inline-block;text-decoration:none;text-align:center" href="https://wa.me/${wa}?text=${msg}" target="_blank" rel="noopener">Escribirle por WhatsApp</a></p>` : ''}
+    <p style="margin:0 0 10px"><a href="/como-comprar" target="_blank" rel="noopener">¿Cómo es comprar con nosotros? Conoce el proceso</a></p>
+    <p class="pu-nota" style="margin:0"><b>Importante:</b> nunca consignes arras ni dinero por WhatsApp o por correo. Los pagos se hacen solo en la notaría o a la cuenta verificada de la empresa.</p></div>`;
+}
+
 function vista() {
   if (state.paso === 'cargando') return '<div class="pu-confirmacion"><p>Cargando…</p></div>';
   if (state.paso === 'error') return `<div class="pu-error">${esc(state.error)}</div>`;
   const d = state.d;
   const aviso = state.exito ? `<div class="pu-card" role="status"><strong>${esc(state.exito)}</strong></div>` : '';
   const errorTop = state.error && d.estado === 'abierta' ? `<div class="pu-error" role="alert">${esc(state.error)}</div>` : '';
-  if (d.estado === 'abierta') return `${aviso}${errorTop}${vistaAbierta(d)}`;
-  if (d.estado === 'acordada') return `${aviso}${vistaAcordada(d)}`;
-  const txt = d.estado === 'vencida' ? 'Pasaron 7 días sin respuesta y la conversación se cerró.' : 'La conversación se cerró sin acuerdo.';
+  if (d.estado === 'abierta') return `${aviso}${errorTop}${d.en_pausa ? '<div class="pu-card"><strong>Esta conversación estaba en pausa.</strong><p style="margin:6px 0 0">Tu última cifra quedó guardada. Puedes retomarla cuando quieras.</p></div>' : ''}${vistaAbierta(d)}${contacto(d)}`;
+  if (d.estado === 'acordada') return `${aviso}${vistaAcordada(d)}${contacto(d)}`;
+  const txt = 'La conversación se cerró sin acuerdo.';
   return `${aviso}${resumen(d)}<div class="pu-card"><h2>Conversación cerrada</h2><p style="margin:0">${txt} No se compartió ningún dato personal entre las partes. Si quieres retomarla, escríbele a tu asesor.</p></div>${historial(d)}`;
 }
 
@@ -120,6 +137,7 @@ function render() {
   raiz.innerHTML = vista();
   const vi = raiz.querySelector('#ng-valor');
   vi?.addEventListener('input', () => { state.valor = soloDigitos(vi.value); vi.value = state.valor; const p = raiz.querySelector('#ng-vista'); if (p) p.textContent = state.valor ? pesos(state.valor) : ''; });
+  raiz.querySelector('#ng-wa')?.addEventListener('click', () => { llamar({ accion: 'contacto', canal: 'whatsapp' }); });
   raiz.querySelector('#ng-proponer')?.addEventListener('click', () => decidir('proponer'));
   raiz.querySelector('#ng-aceptar')?.addEventListener('click', () => { if (window.confirm(`¿Aceptar ${pesos(state.d.valor_vigente)}?`)) decidir('aceptar'); });
   raiz.querySelector('#ng-rechazar')?.addEventListener('click', () => { if (window.confirm('¿Seguro que no quieres continuar? La conversación se cerrará.')) decidir('rechazar'); });

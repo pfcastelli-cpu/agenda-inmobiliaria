@@ -25,6 +25,9 @@ export interface ContextoNegociacion {
   evento?: string;              // para el aviso interno: texto corto de lo ocurrido
   historial?: { de: string; accion: string; valor: number | null }[];
   vigenciaDias?: number;
+  asesor?: { nombre: string; celular?: string | null };  // contacto del asesor de la visita
+  telEmpresa?: string;          // respaldo si el asesor no tiene celular
+  urlGuia?: string;             // página «¿Cómo es comprar con nosotros?»
   modoPruebas?: boolean;
   destinatarioReal?: string;
 }
@@ -40,17 +43,36 @@ function cajaValor(c: ContextoNegociacion, rotulo: string, valor: number | null 
     ${detalle ? `<div style="margin-top:8px;font-size:13px;color:#63707a">${esc(detalle)}</div>` : ''}</td></tr></table>`;
 }
 
+// Historial en orden cronológico y SIEMPRE empezando por el valor publicado: «estaba en esto → ofrecieron esto → respondieron esto…».
 function historialTxt(c: ContextoNegociacion) {
-  const h = c.historial || [];
-  if (!h.length) return '';
-  const rot: Record<string, string> = { propuesta: 'Propuesta del comprador', contrapropuesta: 'Contrapropuesta del propietario', acepta: 'Aceptó', rechaza: 'No continuó' };
-  return `<p style="margin:14px 0 6px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#63707a;font-weight:700">Historial de valores</p><table role="presentation" width="100%" style="border-collapse:collapse">${h.map((m) => `<tr><td style="padding:7px 0;border-bottom:1px solid #e7ebee;font-size:13px;color:#63707a">${esc(rot[m.accion] || m.accion)}</td><td style="padding:7px 0;border-bottom:1px solid #e7ebee;font-size:14px;font-weight:700;text-align:right;color:${c.marca.principal}">${m.valor ? esc(pesos(m.valor)) : '—'}</td></tr>`).join('')}</table>`;
+  const rot: Record<string, string> = { propuesta: 'El comprador ofreció', contrapropuesta: 'El propietario propuso', acepta: 'Se aceptó el valor', rechaza: 'Una de las partes no continuó' };
+  const h = [{ de: '', accion: 'publicado', valor: c.valorPublicado as number | null }, ...(c.historial || [])];
+  rot.publicado = 'El inmueble estaba publicado en';
+  return `<p style="margin:14px 0 6px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#63707a;font-weight:700">Cómo va la conversación</p><table role="presentation" width="100%" style="border-collapse:collapse">${h.map((m) => `<tr><td style="padding:7px 0;border-bottom:1px solid #e7ebee;font-size:13px;color:#63707a">${esc(rot[m.accion] || m.accion)}</td><td style="padding:7px 0;border-bottom:1px solid #e7ebee;font-size:14px;font-weight:700;text-align:right;color:${c.marca.principal}">${m.valor ? esc(pesos(m.valor)) : '—'}</td></tr>`).join('')}</table>`;
 }
 
 const boton = (texto: string, url?: string, variante: BotonCorreo['variante'] = 'principal'): BotonCorreo[] => (url ? [{ texto, url, variante }] : []);
 
+
+function digitosWa(t?: string | null) {
+  const d = String(t ?? '').replace(/\D/g, '');
+  if (d.length === 10 && d.startsWith('3')) return `57${d}`;
+  return d.length >= 11 && d.length <= 15 ? d : '';
+}
+
+// Contacto del asesor + aviso contra fraudes + enlace a la guía del proceso. Solo para comprador y propietario.
+function bloqueContacto(c: ContextoNegociacion) {
+  const wa = digitosWa(c.asesor?.celular) || digitosWa(c.telEmpresa);
+  const quien = c.asesor?.nombre ? esc(c.asesor.nombre) : 'tu asesor';
+  const msg = encodeURIComponent(`Hola, escribo por el inmueble Nº ${c.numero}.`);
+  const link = wa ? ` <a href="https://wa.me/${wa}?text=${msg}" style="color:#0b7d74;font-weight:700">Escríbele por WhatsApp</a>.` : '';
+  const guia = c.urlGuia ? ` <a href="${esc(c.urlGuia)}" style="color:#0b7d74;font-weight:700">Conoce cómo es el proceso de compra</a>.` : '';
+  return `<p style="margin:0 0 10px;font-size:13.5px;line-height:1.6;color:#33414b"><b>¿Prefieres hablarlo?</b> Si tienes dudas, ${quien} te acompaña en todo el proceso.${link}${guia}</p>`
+    + `<p style="margin:0 0 10px;font-size:12.5px;line-height:1.55;color:#63707a"><b>Importante:</b> nunca consignes arras ni dinero por WhatsApp o por este correo. Los pagos se hacen solo en la notaría o a la cuenta verificada de la empresa.</p>`;
+}
+
 export function correoNegociacion(tipo: TipoCorreoNegociacion, c: ContextoNegociacion): { asunto: string; html: string } {
-  const vig = c.vigenciaDias ?? 7;
+  const vig = c.vigenciaDias ?? 21;
   const base = { modoPruebas: c.modoPruebas, destinatarioReal: c.destinatarioReal };
   let asunto = '', etiqueta = '', motivo = '', titulo = '', cuerpo = '', botones: BotonCorreo[] = [], despues = '';
   let tema: 'llaves' | 'cambio' | 'informe' | 'visitaprop' = 'llaves';
@@ -59,13 +81,13 @@ export function correoNegociacion(tipo: TipoCorreoNegociacion, c: ContextoNegoci
     asunto = `Haz tu propuesta por el inmueble ${c.numero}`; etiqueta = `Propuesta de compra · ${inmuebleTxt(c)}`;
     motivo = 'Te escribimos porque en la encuesta de tu visita dijiste que quieres avanzar con este inmueble.';
     titulo = 'Cuéntanos qué valor te interesa';
-    cuerpo = `<p style="${P}">Gracias por visitar el inmueble. Si quieres dar el siguiente paso, <b>propón el valor</b> que te interesa. Nosotros se lo hacemos llegar al propietario y te avisamos su respuesta por este mismo medio.</p>${cajaValor(c, 'Valor publicado', c.valorPublicado)}<p style="${P}">Solo escribes un valor; no hace falta redactar nada más. Tu propuesta tiene una vigencia de ${vig} días desde que la envíes.</p>`;
+    cuerpo = `<p style="${P}">Gracias por visitar el inmueble. Si quieres dar el siguiente paso, <b>propón el valor</b> que te interesa. Nosotros se lo hacemos llegar al propietario y te avisamos su respuesta por este mismo medio.</p>${cajaValor(c, 'Valor publicado', c.valorPublicado)}<p style="${P}">Solo escribes un valor; no hace falta redactar nada más. Tu propuesta sigue abierta ${vig} días desde que la envíes; después queda en pausa y puedes retomarla.</p>`;
     botones = boton('Hacer mi propuesta', c.url); despues = `<p style="margin:0;font-size:12.5px;line-height:1.55;color:#63707a">${AVISO_NO_VINCULANTE}</p>`;
   } else if (tipo === 'propietario_propuesta') {
     asunto = `Recibiste una propuesta por tu inmueble ${c.numero}`; etiqueta = `Aviso al propietario · ${inmuebleTxt(c)}`;
     motivo = 'Te escribimos porque una persona que visitó tu inmueble propuso un valor de compra.'; tema = 'visitaprop';
     titulo = 'Una persona quiere comprar tu inmueble';
-    cuerpo = `<p style="${P}">Una persona que visitó tu inmueble propone el siguiente valor. Puedes <b>aceptarlo</b> o <b>proponer otro valor</b>; también puedes dejarlo pasar. Si decides no continuar, no pasa nada.</p>${cajaValor(c, 'Valor propuesto', c.valor, `Valor publicado: ${pesos(c.valorPublicado)}`)}${historialTxt(c)}<p style="${P};margin-top:14px">Por seguridad, aquí solo se habla de valores: no se comparten datos personales de las partes hasta que se acuerde el valor. Tienes ${vig} días para responder.</p>`;
+    cuerpo = `<p style="${P}">Una persona que visitó tu inmueble propone el siguiente valor. Puedes <b>aceptarlo</b> o <b>proponer otro valor</b>; tómate el tiempo que necesites para decidir.</p>${cajaValor(c, 'Valor propuesto', c.valor, `Valor publicado: ${pesos(c.valorPublicado)}`)}${historialTxt(c)}<p style="${P};margin-top:14px">Por seguridad, aquí solo se habla de valores: no se comparten datos personales de las partes hasta que se acuerde el valor. La propuesta sigue abierta ${vig} días; si pasa ese tiempo queda en pausa y se puede retomar cuando quieras.</p>`;
     botones = boton('Responder la propuesta', c.url); despues = `<p style="margin:0;font-size:12.5px;line-height:1.55;color:#63707a">${AVISO_NO_VINCULANTE}</p>`;
   } else if (tipo === 'comprador_contrapropuesta') {
     asunto = `El propietario propuso otro valor · Inmueble ${c.numero}`; etiqueta = `Propuesta de compra · ${inmuebleTxt(c)}`;
@@ -108,6 +130,7 @@ export function correoNegociacion(tipo: TipoCorreoNegociacion, c: ContextoNegoci
     cuerpo = `<p style="${P}">El valor acordado es <b>${esc(pesos(c.valor))}</b>. El comprador completó el formulario con los datos para preparar la promesa de compraventa. Por privacidad, los datos no van en este correo: revísalos en la agenda.</p><p style="${P}">Antes de enviar el borrador: confirma por escrito con el propietario, revisa el certificado de tradición y libertad, verifica quién firma (cónyuge, representante legal) y pide que un abogado revise el borrador. Los documentos del comprador deben llegar al correo de la empresa.</p>`;
     botones = boton('Abrir propuestas de compra', c.urlAgenda, 'contorno');
   }
+  if (!tipo.startsWith('interno_')) despues = bloqueContacto(c) + despues;
   const html = correoBase(c.marca, { titulo, cuerpo, tema, etiqueta, motivo, botones, despues: despues || undefined, ...base });
   return { asunto, html };
 }
