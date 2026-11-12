@@ -185,7 +185,7 @@ function irSegunEnlace() {
   const params = new URLSearchParams(window.location.search);
   const accion = params.get('accion');
   const motivoClave = params.get('motivo');
-  if (motivoClave && state.rol === 'cliente' && state.vista === 'cancelada' && MOTIVOS[motivoClave] && !state.motivoEstado) { state.motivoEstado = 'enviando'; enviarMotivo(MOTIVOS[motivoClave]); return; }
+  if (motivoClave && state.rol === 'cliente' && state.vista === 'cancelada' && MOTIVOS[motivoClave] && !state.motivoEstado) { state.motivoEstado = 'enviando'; state.motivoClave = motivoClave; enviarMotivo(MOTIVOS[motivoClave]); return; }
   if (!accion) return;
   if (accion === 'confirmar') document.getElementById('ar-card-confirmar')?.scrollIntoView({ behavior: 'smooth' });
   if (state.modo === 'cita') {
@@ -665,15 +665,15 @@ function vistaCancelar() {
 }
 
 // Motivo de la cancelación (solo el cliente): opciones rápidas y un espacio para escribir. El servidor lo guarda solo si aún no había motivo.
-const MOTIVOS = { otro: 'Ya encontré otro inmueble', planes: 'Cambié de planes', precio: 'El precio no me convenció', horario: 'No pude en ese horario' };
+const MOTIVOS = { planes: 'Cambió mi horario o mis planes', horario: 'No alcancé a llegar en esa hora', otro: 'Encontré otro inmueble', precio: 'El precio o las condiciones no me convencieron' };
 function bloqueMotivo() {
   if (esArrendatario() || state.vista !== 'cancelada') return '';
   if (state.motivoEstado === 'enviando') return '<p>Guardando…</p>';
-  if (state.motivoEstado === 'enviado') return '<p><strong>¡Gracias por contarnos!</strong> Nos ayuda a mejorar.</p>';
+  if (state.motivoEstado === 'enviado') return `<p><strong>${state.motivoClave === 'otro' ? '¡Qué bueno! Te deseamos mucho éxito.' : 'Gracias. Lo leemos de verdad: con esto ajustamos horarios e inmuebles.'}</strong></p>${state.motivoClave === 'planes' || state.motivoClave === 'horario' ? `<p>Entonces buscamos otro horario que sí te acomode.</p>` : ''}`;
   if (state.recienCancelada && state.motivo) return '';
-  return `<div class="pu-card" style="text-align:left"><h3 style="margin-top:0">¿Nos cuentas por qué cancelaste?</h3>
+  return `<div class="pu-card" style="text-align:left"><h3 style="margin-top:0">Un toque y nos ayudas a mejorar</h3><p style="margin:0 0 10px">¿Qué fue lo que más pesó? Solo toca una opción.</p>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">${Object.entries(MOTIVOS).map(([k, t]) => `<button type="button" class="pu-link" data-motivo-opcion="${k}" style="border:1px solid #c9d2d8;border-radius:999px;padding:8px 14px;text-decoration:none">${esc(t)}</button>`).join('')}</div>
-    <label>Otra razón (opcional)<textarea id="ar-motivo-texto" rows="3" maxlength="300" style="width:100%;margin-top:4px"></textarea></label>
+    <label>O prefiero contarlo con mis palabras<textarea id="ar-motivo-texto" rows="3" maxlength="300" style="width:100%;margin-top:4px"></textarea></label>
     ${state.errorForm ? `<div class="pu-error">${esc(state.errorForm)}</div>` : ''}
     <button class="pu-main" type="button" id="ar-motivo-enviar" ${state.ocupado ? 'disabled' : ''}>Enviar</button></div>`;
 }
@@ -681,6 +681,37 @@ async function enviarMotivo(texto) {
   if (!texto) { state.errorForm = 'Elige una opción o escribe qué pasó.'; render(); return; }
   state.ocupado = true; state.errorForm = ''; render();
   try { await llamar('motivo', { motivo: texto }); state.motivoEstado = 'enviado'; } catch (e) { state.motivoEstado = ''; state.errorForm = e.message; }
+  state.ocupado = false;
+  render();
+}
+
+// Volver a activar una visita cancelada (solo el cliente): se intenta el mismo horario; si ya no está libre se ofrecen otros.
+function bloqueReactivar() {
+  if (esArrendatario() || state.recienCancelada) return '';
+  const ops = state.opcionesReactivar;
+  const lista = ops && ops.length
+    ? `<p style="margin:10px 0 6px"><strong>Ese horario ya no está libre.</strong> Estos otros sí, elige el que prefieras:</p>
+       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">${ops.map((o) => `<button type="button" class="pu-link" data-reactivar-fecha="${esc(o.fecha)}" data-reactivar-hora="${esc(o.hora_inicio)}" style="border:1px solid #c9d2d8;border-radius:12px;padding:8px 12px;text-decoration:none;text-align:left" ${state.ocupado ? 'disabled' : ''}>${esc(fechaLarga(o.fecha))}<br><strong>${esc(hora12(o.hora_inicio))}</strong></button>`).join('')}</div>`
+    : ops ? '<p style="margin:10px 0"><strong>Por ahora no hay horarios libres en los próximos días.</strong> Escríbele a tu asesor y te ayuda a encontrar uno.</p>' : '';
+  return `<div class="pu-card" style="text-align:left"><h3 style="margin-top:0">¿Cambiaste de opinión?</h3>
+    <p style="margin:0 0 10px">Podemos volver a activar tu visita. Revisamos si el asesor sigue libre a esa hora y, si no, te mostramos otras opciones.</p>
+    ${state.errorForm ? `<div class="pu-error">${esc(state.errorForm)}</div>` : ''}
+    ${lista}
+    <button class="pu-main" type="button" id="ar-reactivar" ${state.ocupado ? 'disabled' : ''}>${state.ocupado ? 'Revisando…' : 'Volver a activar mi visita'}</button></div>`;
+}
+async function reactivarVisita(fecha, hora) {
+  state.ocupado = true; state.errorForm = ''; render();
+  try {
+    const d = await llamar('reactivar', fecha ? { fecha, hora } : {});
+    if (d.reactivada) {
+      state.opcionesReactivar = null;
+      await recargar();
+      state.mensaje = `¡Listo! Tu visita quedó activa para el ${fechaLarga(state.cita.fecha)} a las ${hora12(state.cita.hora_inicio).replace(/\.$/, '')}. Te enviamos la confirmación por correo.`;
+      state.ocupado = false; render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    state.opcionesReactivar = d.opciones || [];
+  } catch (e) { state.errorForm = e.message; }
   state.ocupado = false;
   render();
 }
@@ -696,6 +727,7 @@ function vistaCancelada() {
           : 'Ya no hay nada que hacer con este enlace para esta visita.'
       }</p>
       ${bloqueMotivo()}
+      ${bloqueReactivar()}
       ${!esArrendatario() && state.inmueble?.numero ? `<p><a class="pu-main" href="/inmuebles/${esc(state.inmueble.numero)}" style="display:block;text-align:center;text-decoration:none">Agendar otro horario</a></p>` : ''}
     </div>
     ${exito()}${bloqueHorarioPermitido()}`;
@@ -999,7 +1031,9 @@ function cablear() {
   por('ar-confirmar-proponer')?.addEventListener('click', confirmarProponer);
   por('ar-confirmar-cancelar')?.addEventListener('click', confirmarCancelar);
   por('ar-aceptar')?.addEventListener('click', () => responder(true));
-  document.querySelectorAll('[data-motivo-opcion]').forEach((b) => b.addEventListener('click', () => enviarMotivo(MOTIVOS[b.dataset.motivoOpcion])));
+  document.querySelectorAll('[data-motivo-opcion]').forEach((b) => b.addEventListener('click', () => { state.motivoClave = b.dataset.motivoOpcion; enviarMotivo(MOTIVOS[b.dataset.motivoOpcion]); }));
+  por('ar-reactivar')?.addEventListener('click', () => reactivarVisita());
+  document.querySelectorAll('[data-reactivar-fecha]').forEach((b) => b.addEventListener('click', () => reactivarVisita(b.dataset.reactivarFecha, b.dataset.reactivarHora)));
   document.getElementById('ar-motivo-enviar')?.addEventListener('click', () => enviarMotivo((document.getElementById('ar-motivo-texto')?.value || '').trim()));
   document.querySelectorAll('[data-confirmar]').forEach((b) => b.addEventListener('click', () => confirmarAsistencia(b.dataset.confirmar)));
   por('ar-rechazar')?.addEventListener('click', () => responder(false));

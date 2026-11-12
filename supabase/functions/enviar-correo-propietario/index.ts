@@ -7,7 +7,7 @@
 // destinatario arbitrario que venga en la solicitud.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { enlaceInmueble, marcaCorreo, bloqueCaptacion, pieLegal } from '../_shared/marca-correo.ts';
-import { correoBase, filaCorreo } from '../_shared/plantilla-correo.ts';
+import { correoBase, filaCorreo, botonCorreo } from '../_shared/plantilla-correo.ts';
 import nodemailer from 'npm:nodemailer@6.9.16';
 import { preferenciasDe, urlPreferencias } from '../_shared/preferencias-propietario.ts';
 
@@ -300,7 +300,7 @@ Deno.serve(async (req) => {
 
   const { data: inmueble } = await admin
     .from('agenda_inmuebles')
-    .select('numero_inmueble, direccion, ciudad, barrio, latitud, longitud, token_informe_propietario')
+    .select('numero_inmueble, direccion, ciudad, barrio, latitud, longitud, token_informe_propietario, tipo_oferta')
     .eq('id', cita.inmueble_id)
     .maybeSingle();
 
@@ -362,9 +362,11 @@ Deno.serve(async (req) => {
   const fechaTexto = formatearFecha(cita.fecha);
   const horaTexto = formatearHora(cita.hora_inicio.slice(0, 5));
   const reagendada = body.reagendada === true;
+  // Tipo de gestión de esta cita (un inmueble publicado para arriendo y venta tiene una ficha por cada una).
+  const gestion = /venta/i.test(String(inmueble.tipo_oferta || '')) ? 'venta' : /arriendo/i.test(String(inmueble.tipo_oferta || '')) ? 'arriendo' : '';
   const asunto = reagendada
-    ? `Cambió la hora de una visita en tu inmueble Nº ${inmueble.numero_inmueble}`
-    : `Nueva visita agendada en tu inmueble Nº ${inmueble.numero_inmueble}`;
+    ? `Cambió la hora de una visita${gestion ? ` (${gestion})` : ''} en tu inmueble Nº ${inmueble.numero_inmueble}`
+    : `Nueva visita${gestion ? ` (${gestion})` : ''} en tu inmueble Nº ${inmueble.numero_inmueble}`;
 
   const tieneCoordenadas =
     inmueble.latitud !== null && inmueble.latitud !== undefined && inmueble.longitud !== null && inmueble.longitud !== undefined;
@@ -392,6 +394,7 @@ Deno.serve(async (req) => {
   ].filter(Boolean) as { texto: string; url: string; variante: 'principal' | 'mapa' | 'waze' | 'llamar' | 'whatsapp' }[];
 
   let filasDatos = filaCorreo(marca, 'Inmueble', `Nº ${inmueble.numero_inmueble}`);
+  if (gestion) filasDatos += filaCorreo(marca, 'Tipo de gestión', gestion === 'venta' ? 'Venta' : 'Arriendo');
   filasDatos += filaCorreo(marca, 'Fecha de la visita', fechaTexto);
   filasDatos += filaCorreo(marca, 'Hora', horaTexto);
   if (direccion) {
@@ -437,14 +440,13 @@ Deno.serve(async (req) => {
     const pref = prefs.get(destinatarioRealCorreo.toLowerCase());
     const linkAvisos = pref ? urlPreferencias(config, pref.token) : null;
     const cuerpo = `<p>Hola ${escaparHtml(nombrePropietario) || ''}, ${reagendada ? 'te avisamos que una visita ya agendada cambió de hora; esta es la hora actual:' : 'te informamos que un cliente interesado visitará tu inmueble:'}</p><table style="width:100%;border-collapse:collapse;margin:18px 0 8px">${filasDatos}</table>
-      <p style="margin:14px 0 0"><strong>Desde ahora nuestro sistema te avisará cada vez que se asigne una cita en tu inmueble.</strong> Puedes ver cómo van las visitas en el informe de tu inmueble, y elegir si prefieres un correo por cada cita, un resumen semanal o mensual, o no recibir ninguno.</p>`;
+      ${linkAvisos ? `<div style="margin:22px 0 4px;padding:18px 18px 8px;background:#f4f4f4;border-radius:18px;text-align:center"><div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:17px;color:${marca.principal};margin-bottom:6px">Tú decides cuándo te avisamos</div><div style="font-size:14.5px;line-height:1.6;color:#4d4d4d;margin-bottom:6px">Elige cómo prefieres enterarte de las visitas y de las cancelaciones de tu inmueble: un aviso por cada una, un resumen semanal o un resumen mensual.</div>${botonCorreo(marca, { texto: 'Elegir cómo recibir mis avisos', url: linkAvisos, variante: 'principal' })}</div>` : ''}`;
     const botonesPropietario = [
       ...botones,
       linkInforme ? { texto: 'Ver el informe de mi inmueble', url: linkInforme, variante: 'contorno' as const } : null,
-      linkAvisos ? { texto: 'Configurar mis avisos o darme de baja', url: linkAvisos, variante: 'contorno' as const } : null,
     ].filter(Boolean) as { texto: string; url: string; variante: 'principal' | 'contorno' | 'mapa' | 'waze' | 'llamar' | 'whatsapp' }[];
-    const despues = `${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === false ? '' : bloqueCaptacion(marca)}<p>Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}`;
-    return correoBase(marca, { titulo: reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble', tema: 'visitaprop', cuerpo, botones: botonesPropietario, despues, modoPruebas: modoPruebas, destinatarioReal: destinatarioRealCorreo });
+    const despues = `${prefs.get(destinatarioRealCorreo.toLowerCase())?.publicidad === true ? bloqueCaptacion(marca, linkAvisos || undefined) : ''}<p>Si tienes alguna pregunta sobre esta visita, comunícate directamente con el asesor a cargo usando los botones de arriba.</p>${pieLegal(marca, prefs.get(destinatarioRealCorreo.toLowerCase()) ? urlPreferencias(config, prefs.get(destinatarioRealCorreo.toLowerCase())!.token) : undefined)}`;
+    return correoBase(marca, { etiqueta: `${reagendada ? 'Cambio de hora' : 'Nueva visita'}${gestion ? ` · Gestión de ${gestion}` : ''} · Inmueble Nº ${inmueble.numero_inmueble}`, motivo: reagendada ? 'Te escribimos porque una visita a tu inmueble cambió de hora. Por ahora te avisamos de cada novedad; puedes cambiarlo cuando quieras con el botón de abajo.' : 'Te escribimos porque alguien agendó una visita a tu inmueble. Por ahora te avisamos de cada visita; puedes cambiarlo cuando quieras con el botón de abajo.', titulo: reagendada ? 'Cambió la hora de una visita en tu inmueble' : 'Se agendó una visita en tu inmueble', tema: 'visitaprop', cuerpo, botones: botonesPropietario, despues, modoPruebas: modoPruebas, destinatarioReal: destinatarioRealCorreo });
   }
 
   let password: string | null = null;

@@ -80,9 +80,11 @@ export async function solicitudesTab({ el, empresaId, aviso, vigente }) {
       <button type="button" data-filtro="todas" aria-pressed="${filtroSolicitudes === 'todas'}">Todas</button>
     </div>
     ${gestion.html}
+    ${puede('pendientes.gestionar') ? PANEL_PREFERENCIAS : ''}
     <ul class="ad-accesos">${visibles.length ? visibles.map(fila).join('') : '<p class="ad-muted">No hay solicitudes en esta lista.</p>'}</ul>`;
 
   gestion.montar(el, aviso);
+  montarPreferencias(el, empresaId, aviso);
   el.querySelectorAll('[data-filtro]').forEach((b) => b.addEventListener('click', () => { filtroSolicitudes = b.dataset.filtro; solicitudesTab({ el, empresaId, aviso, vigente }); }));
   el.querySelectorAll('[data-hecha]').forEach((b) => b.addEventListener('click', async () => {
     const li = b.closest('li');
@@ -179,6 +181,50 @@ const textoDuracion = (h) => (h < 1 ? 'menos de 1 hora' : h < 48 ? `${Math.round
 
 // Solo para quien administra accesos: a quién le llega el correo de las solicitudes y qué ha hecho cada persona.
 // Si la lista de accesos no se puede leer (sin permiso), el panel simplemente no aparece.
+// Preferencias de correo de un propietario (por si llama pidiendo que le vuelvan a avisar, o que no le escribamos más).
+// Las RPC agenda_preferencias_admin_* (sql/081) exigen el permiso «pendientes.gestionar».
+const PANEL_PREFERENCIAS = `<details class="ad-card" id="ad-pref" style="margin:14px 0">
+  <summary><strong>Preferencias de correo de un propietario</strong></summary>
+  <p class="ad-muted">Escribe el correo del propietario para ver cómo recibe los avisos y cambiarlo (por ejemplo, si pide por teléfono que le vuelvan a avisar de las citas).</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="email" id="ad-pref-correo" placeholder="correo@propietario.com" style="flex:1;min-width:220px"><button type="button" id="ad-pref-buscar">Buscar</button></div>
+  <div id="ad-pref-caja" style="margin-top:12px"></div>
+</details>`;
+
+function montarPreferencias(el, empresaId, aviso) {
+  const caja = el.querySelector('#ad-pref-caja');
+  if (!caja) return;
+  const correoEl = el.querySelector('#ad-pref-correo');
+  const pintar = (d, correo) => {
+    const v = d.existe ? d : { frecuencia: 'cada_cita', frecuencia_cancelacion: null, publicidad: false };
+    caja.innerHTML = `${d.existe ? '' : '<p class="ad-muted">Este correo aún no tiene preferencias guardadas. Al guardar se crean.</p>'}
+      <label>Visitas nuevas y cambios de hora<select id="ad-pref-frec">
+        ${[['cada_cita', 'Un correo con cada visita'], ['semanal', 'Resumen semanal'], ['mensual', 'Resumen mensual'], ['ninguna', 'No recibir correos de visitas']].map(([k, t]) => `<option value="${k}" ${v.frecuencia === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label>Cancelaciones<select id="ad-pref-canc">
+        ${[['', 'Igual que las visitas'], ['cada_cita', 'Un correo por cada cancelación'], ['ninguna', 'No avisar por correo']].map(([k, t]) => `<option value="${k}" ${(v.frecuencia_cancelacion || '') === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label class="pu-marca" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="ad-pref-pub" ${v.publicidad ? 'checked' : ''} style="width:auto;min-height:0"> Autorizó recibir propuestas comerciales («Te puede interesar»)</label>
+      <button type="button" class="ad-primary" id="ad-pref-guardar" style="margin-top:10px">Guardar preferencias</button>`;
+    caja.querySelector('#ad-pref-guardar').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      const { error } = await supabase.rpc('agenda_preferencias_admin_guardar', {
+        p_empresa_id: empresaId, p_email: correo,
+        p_frecuencia: caja.querySelector('#ad-pref-frec').value,
+        p_frecuencia_cancelacion: caja.querySelector('#ad-pref-canc').value || null,
+        p_publicidad: caja.querySelector('#ad-pref-pub').checked,
+      });
+      e.target.disabled = false;
+      aviso(error ? (error.message || 'No se pudo guardar.') : 'Preferencias guardadas.', !!error);
+    });
+  };
+  el.querySelector('#ad-pref-buscar')?.addEventListener('click', async () => {
+    const correo = (correoEl.value || '').trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(correo)) { aviso('Escribe un correo válido.', true); return; }
+    caja.innerHTML = '<p class="ad-muted">Buscando…</p>';
+    const { data, error } = await supabase.rpc('agenda_preferencias_admin_obtener', { p_empresa_id: empresaId, p_email: correo });
+    if (error) { caja.innerHTML = ''; aviso(error.message || 'No se pudo consultar.', true); return; }
+    pintar(data || { existe: false }, correo);
+  });
+}
+
 async function panelGestion(empresaId, solicitudes) {
   let miembros;
   try { miembros = (await listarAccesos(empresaId)).miembros || []; } catch { return { html: '', montar() {} }; }

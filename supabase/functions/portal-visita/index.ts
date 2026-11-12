@@ -753,7 +753,7 @@ Deno.serve(async (req) => {
   const nombreInm = sustantivo(inmueble.tipo_inmueble);
   // El cliente puede ver, cancelar y (si no hay arrendatario adentro) reagendar su visita en cualquier inmueble;
   // todo lo demás (acuerdo de horario, horario permitido) solo existe mientras el inmueble está Rentando.
-  if (!rentando && !(rol === 'cliente' && ['obtener', 'horarios', 'primera_fecha', 'cancelar', 'reagendar', 'motivo'].includes(accion))) {
+  if (!rentando && !(rol === 'cliente' && ['obtener', 'horarios', 'primera_fecha', 'cancelar', 'reagendar', 'motivo', 'reactivar'].includes(accion))) {
     return falla('Este inmueble ya no figura como arrendado. Comunícate con tu asesor.', 409);
   }
 
@@ -1006,6 +1006,61 @@ Deno.serve(async (req) => {
       }
       await admin.from('agenda_citas').update({ motivo_cancelacion: `Cancelada por el cliente: ${texto}`, actualizado_en: new Date().toISOString() }).eq('id', cita.id);
       return json({ ok: true });
+    }
+
+    // --------------------------------------------------------------- reactivar (volver a activar una visita cancelada)
+    // Solo el cliente, y solo si la cancelaron él mismo o el sistema por falta de respuesta (no si el inmueble dejó de estar disponible).
+    // Sin fecha/hora: se intenta el mismo horario; si ya no está libre se devuelven otras opciones. Con fecha/hora: se reactiva en ese horario.
+    if (accion === 'reactivar') {
+      if (rol !== 'cliente') return falla('Esta acción no está disponible desde este enlace.', 403);
+      const motivoActual = String(cita.motivo_cancelacion || '');
+      if (cita.estado !== 'cancelada' || !(motivoActual.startsWith('Cancelada por el cliente') || motivoActual.startsWith('Cancelada automáticamente'))) {
+        return falla('Esta visita no se puede volver a activar desde aquí. Escríbele a tu asesor.', 409);
+      }
+      const pasada = cita.fecha < ahora.fecha || (cita.fecha === ahora.fecha && horaCita <= ahora.hora);
+      const fechaPedida = String(body.fecha || '');
+      const horaPedida = String(body.hora || '').slice(0, 5);
+      const eligio = /^\d{4}-\d{2}-\d{2}$/.test(fechaPedida) && /^\d{2}:\d{2}$/.test(horaPedida);
+      const fecha = eligio ? fechaPedida : cita.fecha;
+      const hora = eligio ? horaPedida : horaCita;
+      if (fecha < ahora.fecha || fecha > sumarDias(ahora.fecha, 60) || (fecha === ahora.fecha && hora <= ahora.hora)) {
+        if (!eligio && pasada) return falla('Esa visita ya pasó. Puedes agendar otro horario.', 409);
+        return falla('Elige una fecha dentro de los próximos 60 días.');
+      }
+      const elegido = await slotValido(admin, cita, fecha, hora);
+      if (!elegido) {
+        // El horario ya no está libre: se ofrecen los próximos disponibles (hasta 10 días, máximo 12 opciones).
+        const opciones: Array<{ fecha: string; hora_inicio: string; hora_fin: string }> = [];
+        for (let d = 0; d <= 10 && opciones.length < 12; d++) {
+          const f = sumarDias(ahora.fecha, d);
+          if (f < ahora.fecha) continue;
+          const slots = await slotsDelDia(admin, cita, f);
+          for (const sl of slots) {
+            const h = sl.hora_inicio.slice(0, 5);
+            if (f === ahora.fecha && h <= ahora.hora) continue;
+            opciones.push({ fecha: f, hora_inicio: h, hora_fin: sl.hora_fin.slice(0, 5) });
+            if (opciones.length >= 12) break;
+          }
+        }
+        return json({ ok: true, reactivada: false, opciones });
+      }
+      const { data: activa, error: errActivar } = await admin
+        .from('agenda_citas')
+        .update({ estado: 'confirmada', fecha, hora_inicio: elegido.hora_inicio, hora_fin: elegido.hora_fin, asesor_id: elegido.asesor_id, motivo_cancelacion: null, cancelado_por: null, ...LIMPIAR_REUBICACION, actualizado_en: new Date().toISOString() })
+        .eq('id', cita.id)
+        .eq('estado', 'cancelada')
+        .select('id')
+        .maybeSingle();
+      if (errActivar && /ya no está disponible|ya tiene una cita/i.test(errActivar.message)) return falla('Ese horario acaba de ser tomado por otra persona. Elige otro.', 409);
+      if (errActivar || !activa) return falla('No se pudo volver a activar la visita. Actualiza la página e inténtalo de nuevo.', 409);
+      for (const fn of ['enviar-correo-cita', 'enviar-correo-propietario']) {
+        await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY },
+          body: JSON.stringify({ cita_id: cita.id }),
+        }).catch(() => {});
+      }
+      return json({ ok: true, reactivada: true, cita: { fecha, hora_inicio: elegido.hora_inicio.slice(0, 5), hora_fin: elegido.hora_fin.slice(0, 5), estado: 'confirmada', vigente: true } });
     }
 
     // --------------------------------------------------------------- cancelar

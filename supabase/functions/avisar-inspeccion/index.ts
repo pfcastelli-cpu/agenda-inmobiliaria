@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   if (!interno && !usuario) return json({ ok: false, error: 'Sesión no válida.' }, 401);
 
   const { data: cita } = await admin.from('agenda_citas')
-    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, titulo, tipo_cita, estado, token_arrendatario')
+    .select('id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, titulo, tipo_cita, estado, token_arrendatario, codigo_asesor')
     .eq('id', citaId).maybeSingle();
   if (!cita) return json({ ok: false, error: 'Cita no encontrada.' }, 404);
   if (!interno && usuario) {
@@ -73,22 +73,74 @@ Deno.serve(async (req) => {
   }
   const celWa = celular.length === 10 && celular.startsWith('3') ? '57' + celular : celular;
   const lugar = [inmueble.direccion, inmueble.barrio, inmueble.ciudad].filter(Boolean).join(', ');
-  const enlace = `${SITIO_URL}/inspeccion/${cita.token_arrendatario}`;
-  const asunto = `Inspección programada · Inmueble ${inmueble.numero_inmueble} · ${fechaTexto(cita.fecha)}`;
+  const enlaceEncuesta = `${SITIO_URL}/inspeccion/${cita.token_arrendatario}?encuesta=1`;
   const remitente = config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas';
-  const botones: BotonCorreo[] = [
-    { texto: 'Ver mis códigos de seguridad', url: enlace, variante: 'principal' },
-    ...(celWa.length >= 11 && quien ? [{ texto: `Escribir a ${quien} por WhatsApp`, url: `https://wa.me/${celWa}`, variante: 'whatsapp' as const }, { texto: `Llamar a ${quien}`, url: `tel:+${celWa}`, variante: 'llamar' as const }] : []),
-  ];
+  const botonesAsesor: BotonCorreo[] = celWa.length >= 11 && quien ? [{ texto: `Escribir a ${quien} por WhatsApp`, url: `https://wa.me/${celWa}`, variante: 'whatsapp' as const }, { texto: `Llamar a ${quien}`, url: `tel:+${celWa}`, variante: 'llamar' as const }] : [];
+  const nombreSaludo = arr?.nombre ? ' ' + esc(arr.nombre) : '';
+  const cajaCodigo = (codigo: string) => `<div style="margin:10px 0 14px;padding:16px;border-radius:14px;background:#f4f6f8;text-align:center;font-size:44px;font-weight:700;letter-spacing:14px;padding-left:28px;color:${marca.principal}">${esc(codigo)}</div>`;
+  // Tema de la inspección: la encuesta final cambia un poco según el motivo escrito al programarla.
+  const tema = /fotograf|foto/i.test(cita.titulo || '') ? 'fotografía' : /mantenim|repar|arreglo/i.test(cita.titulo || '') ? 'mantenimiento' : /inventar|entrega/i.test(cita.titulo || '') ? 'inventario' : 'inspección';
+
+  let asunto = `Inspección programada · Inmueble ${inmueble.numero_inmueble} · ${fechaTexto(cita.fecha)}`;
+  let titulo = 'Tienes una inspección programada';
+  let preheader = `Inmueble ${inmueble.numero_inmueble}: ${fechaTexto(cita.fecha)}, ${horaTexto(cita.hora_inicio.slice(0, 5))}. El día de la visita te llegarán tus códigos por correo.`;
+  let etiqueta = `Inspección programada · Inmueble ${inmueble.numero_inmueble}`;
+  let motivo = 'Te escribimos porque se programó una inspección en tu inmueble. Este aviso sale automáticamente al programarla.';
+  let cuerpo = `<p style="margin:0 0 12px">Hola${nombreSaludo}, vamos a hacer una inspección en tu inmueble${cita.titulo ? ` para: <b>${esc(cita.titulo)}</b>` : ''}. Aquí están los datos.</p>
+      <p style="margin:0 0 12px"><b>${esc(fechaTexto(cita.fecha))}, ${esc(horaTexto(cita.hora_inicio.slice(0, 5)))}</b><br>${esc(lugar)}${quien ? `<br>Asesor que asistirá: <b>${esc(quien)}</b>` : ''}</p>
+      <div style="margin:0 0 12px;padding:14px 16px;border-left:4px solid ${marca.accion};background:#f4f6f8;border-radius:4px"><p style="margin:0 0 6px;font-weight:700">Para tu tranquilidad: cómo reconocer a quien llega</p>
+        <p style="margin:0 0 8px;font-size:14px;line-height:1.55">Quien llegue se identificará contigo diciéndote este código, que solo tú y nosotros conocemos:</p>
+        ${cita.codigo_asesor ? `<div style="margin:0 0 8px;padding:12px;border-radius:12px;background:#ffffff;text-align:center;font-size:36px;font-weight:700;letter-spacing:12px;padding-left:24px;color:${marca.principal}">${esc(cita.codigo_asesor)}</div>` : ''}
+        <p style="margin:0;font-size:14px;line-height:1.55">Si el código coincide, sabes que es quien debe ser. Si no lo dice o no coincide, escríbenos o llámanos antes de abrir.</p></div>
+      <div style="margin:0 0 12px;padding:14px 16px;background:#f4f6f8;border-radius:4px"><p style="margin:0 0 6px;font-weight:700">Qué más te va a llegar ese día</p>
+        <p style="margin:0;font-size:14px;line-height:1.55">No tienes que abrir ningún enlace ni entrar a ningún sistema: todo te llega a este correo. <b>Poco antes de la hora</b> te enviaremos un código de llegada que le dices al asesor cuando esté contigo. <b>Cuando termine la inspección</b>, te llegará un código de salida para que se lo digas al asesor al despedirse, y enseguida te haremos <b>unas preguntas rápidas</b> sobre cómo te fue.</p></div>`;
+  let botones: BotonCorreo[] = botonesAsesor;
+  let tipoEnvio: 'programada' | 'llegada' | 'salida' | 'encuesta' = 'programada';
+  const momento = String(body.momento || 'programada');
+  if (momento === 'llegada' || momento === 'salida' || momento === 'encuesta') {
+    tipoEnvio = momento;
+    const { data: det } = await admin.from('agenda_citas').select('codigo_entrada, codigo_salida, entrada_verificada_en, salida_verificada_en').eq('id', cita.id).maybeSingle();
+    const hora = horaTexto(cita.hora_inicio.slice(0, 5));
+    if (momento === 'llegada') {
+      if (!det?.codigo_entrada || det.entrada_verificada_en) return json({ ok: true, enviado: false, motivo: 'La llegada ya está registrada o no hay código.' });
+      asunto = `Inspección de hoy a las ${hora} · Inmueble ${inmueble.numero_inmueble}`;
+      titulo = 'Tu número de llegada';
+      preheader = 'Díselo al asesor cuando esté contigo en el inmueble.';
+      etiqueta = `Inspección de hoy · Inmueble ${inmueble.numero_inmueble} · Código de llegada`;
+      motivo = 'Te escribimos porque tu inspección empieza en unos minutos. Este aviso sale automáticamente.';
+      cuerpo = `<p style="margin:0 0 8px">Hola${nombreSaludo}. A las <b>${esc(hora)}</b> llega ${quien ? `<b>${esc(quien)}</b>` : 'el asesor'} a tu inmueble. Primero te dirá su código de identificación (el que te enviamos al programar la inspección).</p>
+        <p style="margin:0 0 4px">Cuando lo estés viendo en persona y el código coincida, <b>dile este número de llegada</b>:</p>${cajaCodigo(det.codigo_entrada)}
+        <p style="margin:0;font-size:13px">Con eso queda registrado que el asesor llegó. Al terminar te enviaremos el número de salida.</p>`;
+    } else if (momento === 'salida') {
+      if (!det?.entrada_verificada_en || !det.codigo_salida || det.salida_verificada_en) return json({ ok: true, enviado: false, motivo: 'Aún no hay llegada registrada o la salida ya se registró.' });
+      asunto = `Inspección de hoy · Inmueble ${inmueble.numero_inmueble}`;
+      titulo = 'Tu número de salida';
+      preheader = 'Díselo al asesor cuando termine la inspección.';
+      etiqueta = `Inspección de hoy · Inmueble ${inmueble.numero_inmueble} · Código de salida`;
+      motivo = 'Te escribimos porque el asesor ya registró su llegada. Este aviso sale automáticamente.';
+      cuerpo = `<p style="margin:0 0 8px">Hola${nombreSaludo}. Ya registramos la llegada del asesor. Cuando termine la inspección y esté por irse, <b>dile este número de salida</b>:</p>${cajaCodigo(det.codigo_salida)}
+        <p style="margin:0;font-size:13px">Con eso queda constancia de que todo salió bien. Después te haremos unas preguntas rápidas, de menos de un minuto.</p>`;
+    } else {
+      if (!det?.salida_verificada_en) return json({ ok: true, enviado: false, motivo: 'La salida aún no está registrada.' });
+      asunto = `Gracias por recibirnos en tu inmueble Nº ${inmueble.numero_inmueble}. ¿Cómo estuvo?`;
+      titulo = 'Cuéntanos cómo te fue';
+      preheader = 'Solo 1 minuto. Tus respuestas llegan a la coordinación y no se comparten con terceros.';
+      etiqueta = `${tema === 'inspección' ? 'Inspección' : tema[0].toUpperCase() + tema.slice(1)} terminada · Inmueble ${inmueble.numero_inmueble}`;
+      motivo = 'Te escribimos porque terminó la visita a tu inmueble. Este aviso sale automáticamente.';
+      cuerpo = `<p style="margin:0 0 10px">Hola${nombreSaludo}. Gracias por abrirnos la puerta. Cuéntanos en menos de un minuto cómo te fue. <b>Tus respuestas llegan a la coordinación y no se comparten con el propietario ni con terceros.</b></p>
+        <p style="margin:0;font-size:13px">Si el asesor no te dio tu código de salida o algo salió mal, escríbenos o llámanos con los botones de abajo.</p>`;
+      botones = [{ texto: 'Responder (1 minuto)', url: enlaceEncuesta, variante: 'principal' }, ...botonesAsesor];
+    }
+  }
 
   const html = (real: string) => correoVisita(marca, {
     tema: 'arrendatario',
-    titulo: 'Tienes una inspección programada',
-    preheader: `Inmueble ${inmueble.numero_inmueble}: ${fechaTexto(cita.fecha)}, ${horaTexto(cita.hora_inicio.slice(0, 5))}. El día de la visita verás tus códigos de seguridad.`,
+    titulo,
+    preheader,
     modoPruebas, destinatarioReal: real,
-    cuerpo: `<p style="margin:0 0 12px">Hola${arr?.nombre ? ' ' + esc(arr.nombre) : ''}. Vamos a hacer una inspección en tu inmueble${cita.titulo ? ` para: <b>${esc(cita.titulo)}</b>` : ''}.</p>
-      <p style="margin:0 0 12px"><b>${esc(fechaTexto(cita.fecha))}, ${esc(horaTexto(cita.hora_inicio.slice(0, 5)))}</b><br>${esc(lugar)}${quien ? `<br>Irá: <b>${esc(quien)}</b>` : ''}</p>
-      <div style="margin:0 0 12px;padding:12px 14px;border-left:4px solid ${marca.accion};background:#f4f6f8;border-radius:4px"><p style="margin:0 0 4px;font-weight:700">Para tu seguridad: códigos de la visita</p><p style="margin:0;font-size:14px;line-height:1.55">El día de la inspección, en el botón de abajo verás un <b>código de llegada</b>. Dáselo a la persona de ${esc(marca.nombre || 'la inmobiliaria')} <b>solo cuando llegue</b>. Al terminar verás un <b>código de salida</b>, que le das cuando se vaya. Si te piden los códigos antes, o no te los piden, avísanos.</p></div>`,
+    etiqueta,
+    motivo,
+    cuerpo,
     despues: botonesCorreo(marca, botones),
   });
 
@@ -107,6 +159,6 @@ Deno.serve(async (req) => {
     } catch { /* sin registro no hay nada más que hacer */ }
   }
   if (!enviados) return json({ ok: true, enviado: false, motivo: 'Falló el envío del correo. Revisa la bitácora de correos.' });
-  await admin.from('agenda_citas').update({ arrendatario_avisado_en: new Date().toISOString(), arrendatario_avisado_por: usuario?.id ?? null }).eq('id', cita.id);
+  if (tipoEnvio === 'programada') await admin.from('agenda_citas').update({ arrendatario_avisado_en: new Date().toISOString(), arrendatario_avisado_por: usuario?.id ?? null }).eq('id', cita.id);
   return json({ ok: true, enviado: true, enviados });
 });

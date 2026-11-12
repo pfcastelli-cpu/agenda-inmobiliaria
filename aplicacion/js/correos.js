@@ -29,7 +29,7 @@ function pintar() {
   const grupos = ['todos', ...new Set(d.correos.map((c) => c.grupo))];
   const visibles = d.correos.filter((c) => ui.grupo === 'todos' || c.grupo === ui.grupo);
   raiz.innerHTML = `<h2>Correos del sistema</h2>
-    <p class="suave">Así se ven con datos de ejemplo. No se envía nada. Cada muestra dice cuándo y a quién se envía el correo real.</p>
+    <p class="suave">Así se ven con datos de ejemplo. No se envía nada, y los botones abren páginas de ejemplo reales (datos de prueba). Cada muestra dice cuándo y a quién se envía el correo real.</p>
     <div class="fila">
       <label>Empresa (colores e imagen)<select id="sel-empresa">${d.empresas.map((e) => `<option value="${esc(e.id)}" ${e.id === (ui.empresa || d.empresa_usada) ? 'selected' : ''}>${esc(e.nombre)}</option>`).join('')}</select></label>
       <label>Para quién<select id="sel-grupo">${grupos.map((g) => `<option value="${esc(g)}" ${g === ui.grupo ? 'selected' : ''}>${g === 'todos' ? 'Todos' : esc(g)}</option>`).join('')}</select></label>
@@ -37,8 +37,8 @@ function pintar() {
     ${visibles.map((c, i) => `<section class="tarjeta" style="margin-bottom:18px"><h2 style="font-size:18px">${esc(c.nombre)} <small style="color:#6b7785;font-weight:500">· ${esc(c.para)}</small></h2>
       <p class="suave" style="margin:2px 0 4px"><b>Cuándo se envía:</b> ${esc(c.cuando)}</p>
       <p class="suave" style="margin:0 0 10px"><b>Asunto de ejemplo:</b> ${esc(c.asunto)}</p>
-      <iframe data-i="${i}" title="${esc(c.nombre)}" style="width:100%;height:640px;border:1px solid #dfe5ea;border-radius:10px;background:#fff" sandbox=""></iframe></section>`).join('')}`;
-  raiz.querySelectorAll('iframe').forEach((f) => { f.srcdoc = visibles[Number(f.dataset.i)].html; });
+      <iframe data-i="${i}" title="${esc(c.nombre)}" style="width:100%;height:640px;border:1px solid #dfe5ea;border-radius:10px;background:#fff" sandbox="allow-popups allow-popups-to-escape-sandbox"></iframe></section>`).join('')}`;
+  raiz.querySelectorAll('iframe').forEach((f) => { f.srcdoc = visibles[Number(f.dataset.i)].html.replace('<head>', '<head><base target="_blank">'); });
   document.getElementById('sel-grupo').onchange = (e) => { ui.grupo = e.target.value; pintar(); };
   document.getElementById('sel-empresa').onchange = (e) => { ui.empresa = e.target.value; cargar(); };
 }

@@ -2283,6 +2283,8 @@ function adjuntarEventos(rootEl) {
       const { data, error } = await supabase.rpc('agenda_inspeccion_registrar_codigo', { p_cita_id: id, p_momento: b.dataset.momento, p_codigo: codigo });
       if (error) { b.disabled = false; toast('No se pudo registrar: ' + error.message); return; }
       toast(data?.mensaje || (data?.ok ? 'Listo.' : 'No se pudo registrar el código.'));
+      // Registrada la llegada, el arrendatario recibe por correo su código de salida; registrada la salida, la encuesta (no bloquea nada si falla).
+      if (data?.ok) supabase.functions.invoke('avisar-inspeccion', { body: { cita_id: id, momento: b.dataset.momento === 'entrada' ? 'salida' : 'encuesta' } }).catch(() => {});
       if (data?.ok) await cargarInspecciones(); else { b.disabled = false; if (campo) { campo.value = ''; campo.focus(); } }
       return;
     }
@@ -2631,6 +2633,13 @@ function adjuntarEventos(rootEl) {
       if (it.virtual && !(it.enlace || '').trim() && citaNuevaId) {
         const r = await crearEnlaceReunion(citaNuevaId);
         textoToast += r.ok ? ' Enlace de la reunión creado.' : ` Pero no se pudo crear el enlace de la reunión (${r.error}). Pégalo a mano o reintenta.`;
+      }
+      // Inspección sobre un inmueble: al programarla se avisa al arrendatario con su código del asesor (si no tiene correo, la cita ya muestra el botón para avisar a mano).
+      if (it.tipo === 'inspeccion' && it.inmuebleId && citaNuevaId) {
+        try {
+          const { data: av } = await supabase.functions.invoke('avisar-inspeccion', { body: { cita_id: citaNuevaId } });
+          textoToast += av?.enviado ? ' Se avisó al arrendatario.' : ` ${av?.motivo || 'No se pudo avisar al arrendatario.'}`;
+        } catch { textoToast += ' No se pudo avisar al arrendatario; usa el botón de la cita.'; }
       }
       it.virtual = false;
       it.enlace = '';

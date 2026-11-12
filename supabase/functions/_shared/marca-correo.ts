@@ -83,15 +83,16 @@ export function enlaceInmueble(config: any, numero: number | string): string {
 
 // Bloque de captación: SOLO para propietarios (nunca en accesos, contraseñas, cancelaciones ni avisos al
 // arrendatario). Una idea, un botón. Sin cifras ni promesas que no estén confirmadas.
-export function bloqueCaptacion(marca: MarcaCorreo): string {
+export function bloqueCaptacion(marca: MarcaCorreo, urlBaja?: string): string {
   if (!contactoLegalCompleto(marca.contacto) || !marca.contacto.correo) return '';
   return `<div style="padding:6px 26px 28px">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
         <td style="background:#f4f4f4;border-radius:24px;padding:26px 24px;text-align:center">
-          <div style="font-size:12px;color:#6b6b6b;margin-bottom:6px">📣 Publicidad</div>
-          <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:20px;line-height:1.3;color:${marca.principal};margin:0 0 6px">¿Tienes otro inmueble? 🏡</div>
-          <div style="font-size:15px;line-height:1.6;color:#4d4d4d;margin:0 0 18px">Consígnanoslo y lo cuidamos con la misma tranquilidad. 🤝</div>
+          <div style="font-size:12px;color:#6b6b6b;margin-bottom:6px">Te puede interesar</div>
+          <div style="font-family:Poppins,Arial,Helvetica,sans-serif;font-weight:600;font-size:20px;line-height:1.3;color:${marca.principal};margin:0 0 6px">¿Tienes otro inmueble?</div>
+          <div style="font-size:15px;line-height:1.6;color:#4d4d4d;margin:0 0 18px">Si quieres, también podemos administrarlo.</div>
           <a href="${escaparContacto(marca.consignarUrl)}" target="_blank" style="display:inline-block;padding:14px 26px;background:${marca.principal};color:#ffffff;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;text-decoration:none;border-radius:999px">🤝&nbsp; Quiero consignar un inmueble</a>
+          ${urlBaja ? `<div style="margin-top:14px;font-size:12px;color:#6b6b6b">¿No quieres recibir esto? <a href="${escaparContacto(urlBaja)}" style="color:#6b6b6b;text-decoration:underline">Dejar de recibir publicidad</a></div>` : ''}
         </td>
       </tr></table>
     </div>`;

@@ -84,7 +84,7 @@ ${f.token ? `<div style="margin-top:8px"><a href="https://${dominio}/propietario
     titulo: 'Resumen de tus inmuebles',
     preheader: `Esto pasó ${opts.periodo}.`,
     tema: 'conjunto',
-    cuerpo: `<p style="margin:0 0 16px">Esto pasó ${esc(opts.periodo)}:</p>${tarjetas}${opts.publicidad ? bloqueCaptacion(marca) : ''}`,
+    cuerpo: `<p style="margin:0 0 16px">Esto pasó ${esc(opts.periodo)}:</p>${tarjetas}${opts.publicidad ? bloqueCaptacion(marca, opts.urlPrefs) : ''}`,
     botones: [{ texto: 'Administrar preferencias', url: opts.urlPrefs, variante: 'contorno' }],
     despues: opts.urlPrefs
       ? `<p style="margin:0;font-size:13px;line-height:1.6">Elige cuándo recibir estos correos y si quieres recibir publicidad: <a href="${esc(opts.urlPrefs)}" style="color:${marca.principal};text-decoration:underline">administra tus preferencias</a>.</p>`
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
             from: `${config.correo_remitente_nombre || config.nombre_comercial || 'Agenda de citas'} <${config.correo_remitente_email}>`,
             to: destino,
             subject: asunto,
-            html: htmlResumen(marca, config, { modoPruebas, real: p.email, periodo: p.frecuencia === 'semanal' ? 'en la última semana y lo que viene' : 'en el último mes y lo que viene', filas, urlPrefs: urlPreferencias(config, p.token), publicidad: p.publicidad !== false }),
+            html: htmlResumen(marca, config, { modoPruebas, real: p.email, periodo: p.frecuencia === 'semanal' ? 'en la última semana y lo que viene' : 'en el último mes y lo que viene', filas, urlPrefs: urlPreferencias(config, p.token), publicidad: p.publicidad === true }),
           });
           enviados++;
         } catch (e) {

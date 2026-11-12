@@ -6,6 +6,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import nodemailer from 'npm:nodemailer@6.9.16';
 import { marcaCorreo } from '../_shared/marca-correo.ts';
+import { botonesVisitaCliente } from '../_shared/botones-visita.ts';
+import { botonCorreo } from '../_shared/plantilla-correo.ts';
 import { botonConfirmarAsistencia, correoVisita } from '../_shared/visita-correo.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -98,10 +100,21 @@ Deno.serve(async (req) => {
 
       let direccion = '';
       let numero = '';
+      let latitud: number | string | null = null;
+      let longitud: number | string | null = null;
       if (c.inmueble_id) {
-        const { data: inm } = await admin.from('agenda_inmuebles').select('numero_inmueble, direccion, ciudad').eq('id', c.inmueble_id).maybeSingle();
+        const { data: inm } = await admin.from('agenda_inmuebles').select('numero_inmueble, direccion, ciudad, latitud, longitud').eq('id', c.inmueble_id).maybeSingle();
+        latitud = inm?.latitud ?? null;
+        longitud = inm?.longitud ?? null;
         numero = String(inm?.numero_inmueble ?? '');
         direccion = [inm?.direccion, inm?.ciudad].filter(Boolean).join(', ');
+      }
+      let asesorNombre = '';
+      let asesorCelular = '';
+      if (c.asesor_id) {
+        const { data: a } = await admin.from('agenda_asesores').select('nombre, celular').eq('id', c.asesor_id).maybeSingle();
+        asesorNombre = a?.nombre || '';
+        asesorCelular = a?.celular || '';
       }
       const marca = marcaCorreo(config);
       const asunto = `Confirma tu visita${numero ? ` · Inmueble ${numero}` : ''}`;
@@ -113,8 +126,13 @@ Deno.serve(async (req) => {
         destinatarioReal: c.cliente_email,
         cuerpo: `<p style="margin:0 0 12px">Hola${c.cliente_nombre ? ' ' + esc(String(c.cliente_nombre).split(' ')[0]) : ''}. Tienes una visita programada <b>${esc(formatearFecha(c.fecha))} a las ${esc(formatearHora(c.hora_inicio.slice(0, 5)))}</b>${direccion ? ` en ${esc(direccion)}` : ''}.</p>
           <p style="margin:0 0 12px">¿Podrás asistir? Confírmalo con un toque. Si no te queda bien, entra a tu visita y elige otro horario o cancélala: así el horario queda libre para otra persona.</p>`,
+        etiqueta: `Recordatorio de visita${numero ? ` · Inmueble ${numero}` : ''}`,
+        motivo: 'Te escribimos porque tienes una visita próxima que aún no has confirmado. Este recordatorio sale automáticamente.',
         despues: `${botonConfirmarAsistencia(`${SITIO_URL}/visita/${c.token_cliente}?accion=confirmar`, marca, 'Confirmo que asistiré')}
-          <p style="font-size:13px;margin:12px 0 0"><a href="${SITIO_URL}/visita/${c.token_cliente}">Ver, cambiar o cancelar mi visita</a></p>`,
+          ${botonesVisitaCliente(marca, { latitud, longitud, direccion, asesorNombre, asesorCelular, fechaTexto: formatearFecha(c.fecha), horaTexto: formatearHora(c.hora_inicio.slice(0, 5)) })}
+          <p style="margin:16px 0 4px;font-weight:700">¿Algo cambió? Puedes cambiar la hora o cancelar.</p>
+          ${botonCorreo(marca, { texto: 'Cambiar la hora de mi visita', url: `${SITIO_URL}/visita/${c.token_cliente}`, variante: 'contorno' })}
+          ${botonCorreo(marca, { texto: 'Cancelar mi visita', url: `${SITIO_URL}/visita/${c.token_cliente}`, variante: 'contorno' })}`,
       });
       const transporte = nodemailer.createTransport({
         host: config.correo_smtp_host,

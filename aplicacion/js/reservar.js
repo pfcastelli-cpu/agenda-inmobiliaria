@@ -13,6 +13,9 @@ const MESES = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
 
+// Texto exacto de la autorización opcional (se guarda tal cual con la aceptación; si se cambia, subir la versión en agenda_avisos_similares.texto_aceptado).
+const TEXTO_SIMILARES_PLANO = 'Quiero que me avisen por correo cuando llegue un inmueble similar al que visité (según precio, área, ubicación y tipo). Puedo dejar de recibir estos avisos cuando quiera.';
+const TEXTO_SIMILARES = TEXTO_SIMILARES_PLANO;
 const state = {
   paso: 'inicial', // inicial | buscando | inmueble | agendando | confirmado | error
   numero: null,
@@ -26,6 +29,7 @@ const state = {
   errorMsg: '',
   enviando: false,
   cliente: { nombre: '', telefono: '', email: '' },
+  avisosSimilares: { acepta: false, frecuencia: 'semanal' }, // opcional y sin marcar (autorización aparte de la visita)
   confirmacion: null,
   duplicados: [],
   duplicadosRevisados: false,
@@ -438,6 +442,10 @@ async function confirmarCita() {
   // la confirmación visual de la cita; el intento (o la falla) queda
   // registrado en agenda_correos_log para revisión en el panel de administración.
   supabase.functions.invoke('enviar-correo-cita', { body: { cita_id: data } }).catch(() => {});
+  // Aviso opcional de inmuebles similares: solo si marcó la casilla; se guarda el texto exacto que aceptó (no bloquea la reserva).
+  if (state.avisosSimilares.acepta) {
+    supabase.rpc('agenda_avisos_similares_registrar', { p_cita_id: data, p_frecuencia: state.avisosSimilares.frecuencia, p_texto: TEXTO_SIMILARES_PLANO }).then(() => {}, () => {});
+  }
     supabase.functions.invoke('enviar-correo-propietario', { body: { cita_id: data } }).catch(() => {});
   state.confirmacion = {
     id: data,
@@ -641,6 +649,8 @@ function formularioCliente() {
       <label for="pu-email">Correo electrónico</label>
       <input id="pu-email" type="email" autocomplete="email" value="${escaparHtml(state.cliente.email)}" placeholder="nombre@correo.com" required ${mostrarVerificacion ? 'disabled' : ''}>
       <p style="margin:6px 0 0;font-size:12.5px">Te enviaremos la confirmación, el asesor y las instrucciones para llegar.</p>
+      <label class="pu-marca" style="font-size:13px"><input type="checkbox" id="pu-similares" ${state.avisosSimilares.acepta ? 'checked' : ''}><span>${TEXTO_SIMILARES}</span></label>
+      ${state.avisosSimilares.acepta ? `<label for="pu-similares-frec" style="margin-top:6px;font-size:13px">¿Cada cuánto?</label><select id="pu-similares-frec"><option value="semanal" ${state.avisosSimilares.frecuencia === 'semanal' ? 'selected' : ''}>Una vez por semana (como máximo)</option><option value="mensual" ${state.avisosSimilares.frecuencia === 'mensual' ? 'selected' : ''}>Una vez por mes (como máximo)</option></select>` : ''}
       ${avisoDuplicados}
       ${!mostrarVerificacion && state.errorMsg ? `<div class="pu-error">${state.errorMsg}</div>` : ''}
       ${
@@ -818,6 +828,10 @@ function cablear() {
       });
     });
   }
+  const similares = document.getElementById('pu-similares');
+  if (similares) similares.addEventListener('change', (e) => { state.avisosSimilares.acepta = e.target.checked; render(); });
+  const similaresFrec = document.getElementById('pu-similares-frec');
+  if (similaresFrec) similaresFrec.addEventListener('change', (e) => { state.avisosSimilares.frecuencia = e.target.value; });
   const nombre = document.getElementById('pu-nombre');
   if (nombre) nombre.addEventListener('input', (e) => { state.cliente.nombre = e.target.value; });
   const telefono = document.getElementById('pu-telefono');

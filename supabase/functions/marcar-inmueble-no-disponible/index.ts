@@ -467,7 +467,7 @@ Deno.serve(async (req) => {
     const asunto = `Lamentamos informarte: el inmueble Nº ${inmueble.numero_inmueble} ya no está disponible`;
 
     const html = correoBase(marca, { titulo: 'Tu visita fue cancelada', tema: 'cambio', modoPruebas, destinatarioReal, cuerpo: `      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 14px">Hola ${escaparHtml(fila.cliente_nombre) || ''}, te escribimos porque el inmueble que ibas a visitar${citaOriginal ? ` el ${escaparHtml(formatearFecha(citaOriginal.fecha))} a las ${escaparHtml(formatearHora(citaOriginal.hora_inicio.slice(0, 5)))}` : ''} (Nº ${inmueble.numero_inmueble}, ${escaparHtml(direccionInmueble)}${ciudadTexto ? ', ' + escaparHtml(ciudadTexto) : ''}) ${escaparHtml(etiquetaMotivo)}, así que ya no está disponible para visitas.</p>
-      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 18px">Por eso tu cita quedó cancelada y también se quitó del calendario de tu teléfono. Si quieres, tu asesor te ayuda a encontrar otras opciones.${detalle ? ' ' + escaparHtml(detalle) : ''}</p>
+      <p style="color:#4d4d4d;text-align:justify;font-size:15px;line-height:1.65;margin:0 0 18px">Por eso tu cita quedó cancelada ; si la tenías en el calendario de tu teléfono, se actualizará sola. Si quieres, tu asesor te ayuda a encontrar otras opciones.${detalle ? ' ' + escaparHtml(detalle) : ''}</p>
       ${
         similares.length
           ? `<div style="font-size:13px;color:${marca.principal};font-weight:700;letter-spacing:.03em;margin-bottom:4px">Estos inmuebles pueden interesarte</div>
