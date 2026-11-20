@@ -259,7 +259,7 @@ async function cargarInmuebles(ctx) {
   if (ui.inmuebles) return ui.inmuebles;
   const { supabase, empresaId } = ctx;
   const { data, error } = await supabase.from('agenda_inmuebles')
-    .select('numero_inmueble, estado_crm, tipo_oferta, valor_canon, valor_venta, direccion, asesor_comercializacion, asesor_captacion, codigo_fincaraiz, codigo_metrocuadrado, codigo_ciencuadras')
+    .select('numero_inmueble, estado_crm, tipo_oferta, valor_canon, valor_venta, direccion, asesor_comercializacion, asesor_captacion, codigo_fincaraiz, codigo_metrocuadrado, codigo_ciencuadras, visto_en_ultima_sincronizacion')
     .eq('empresa_id', empresaId).limit(2000);
   if (error) throw new Error(error.message);
   ui.inmuebles = data || [];

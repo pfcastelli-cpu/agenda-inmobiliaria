@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import './ver-contrasena.js';
 import { fetchVigilado, iniciarRegistroFallos } from './fallos-cliente.js';
 
 // Se captura el hash de la URL ANTES de crear el cliente, porque supabase-js

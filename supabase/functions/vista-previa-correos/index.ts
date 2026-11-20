@@ -8,6 +8,7 @@ import { bloqueCaptacion, marcaCorreo } from '../_shared/marca-correo.ts';
 import { botonCorreo, botonesCorreo, correoBase, type BotonCorreo } from '../_shared/plantilla-correo.ts';
 import { botonConfirmarAsistencia, correoVisita, enlaceVisita } from '../_shared/visita-correo.ts';
 import { correoNegociacion, type TipoCorreoNegociacion } from '../_shared/negociacion-correo.ts';
+import { construirHtml as htmlRadicacionCliente, htmlAsesor as htmlRadicacionAsesor } from '../_shared/radicacion-correo.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -36,17 +37,18 @@ Deno.serve(async (req) => {
   // Enlaces de ejemplo que SÍ funcionan: se usan datos de pruebas ([SIM]) si existen; si no, la portada del sitio.
   const empId = config?.empresa_id as string | undefined;
   const { data: cPrueba } = empId ? await admin.from('agenda_citas').select('token_cliente, token_arrendatario, inmueble_id').eq('empresa_id', empId).eq('es_prueba', true).eq('tipo_cita', 'visita_cliente').not('token_cliente', 'is', null).limit(1).maybeSingle() : { data: null };
-  const { data: cInsp } = empId ? await admin.from('agenda_citas').select('token_arrendatario').eq('empresa_id', empId).eq('tipo_cita', 'inspeccion').not('token_arrendatario', 'is', null).limit(1).maybeSingle() : { data: null };
   const { data: inmP } = cPrueba?.inmueble_id ? await admin.from('agenda_inmuebles').select('numero_inmueble, token_informe_propietario').eq('id', cPrueba.inmueble_id).maybeSingle() : { data: null };
   const { data: prefP } = empId ? await admin.from('agenda_propietario_preferencias').select('token').eq('empresa_id', empId).limit(1).maybeSingle() : { data: null };
   const { data: solP } = empId ? await admin.from('agenda_solicitudes_propietario').select('id').eq('empresa_id', empId).limit(1).maybeSingle() : { data: null };
   const L = {
-    visita: cPrueba?.token_cliente ? `${SITIO}/visita/${cPrueba.token_cliente}` : SITIO,
-    arr: cPrueba?.token_arrendatario ? `${SITIO}/arrendatario/${cPrueba.token_arrendatario}` : SITIO,
+    // Simulaciones (aplicacion/js/simulador-visita.js e inspeccion.js): la página REAL con una cita ficticia que no toca la base de datos.
+    // Así los botones siempre funcionan, sin depender de que exista una cita de prueba vigente.
+    visita: `${SITIO}/visita/demo-cliente`,
+    arr: `${SITIO}/arrendatario/demo-arrendatario`,
     informe: inmP?.token_informe_propietario ? `${SITIO}/propietario/${inmP.token_informe_propietario}` : SITIO,
     prefs: prefP?.token ? `${SITIO}/preferencias/${prefP.token}` : SITIO,
     responder: solP?.id ? `${SITIO}/responder/${solP.id}` : SITIO,
-    insp: cInsp?.token_arrendatario ? `${SITIO}/inspeccion/${cInsp.token_arrendatario}` : SITIO,
+    insp: `${SITIO}/inspeccion/demo`,
   };
   const T = 'sim+prueba@example.com';
   const dir = 'Calle 12 # 5-30, CENTRO, Chía';
@@ -67,7 +69,7 @@ Deno.serve(async (req) => {
       html: correoVisita(marca, { ...base, etiqueta: 'Confirmación de visita · Inmueble 1234', motivo: 'Te escribimos porque acabas de agendar una visita. Este correo sale automáticamente al agendar.', puntualidad: true,
         titulo: 'Tu visita está confirmada', cuerpo: `<p style="margin:0 0 12px">Hola María, te confirmamos tu visita. Aquí están los datos.</p>${datos([['Inmueble', '1234'], ['Fecha', 'martes, 17 de noviembre de 2026'], ['Hora', '3:00 p. m.'], ['Dirección', dir], ['Tu asesor', 'Andrés Gil · 300 111 2233']])}`,
         boton: { texto: 'Confirmo que asistiré', url: `${L.visita}?accion=confirmar` },
-        despues: `<p style="margin:0 0 12px">Toca <b>«Confirmo que asistiré»</b> para avisarnos que irás: así tu asesor sabe que cuenta contigo.</p>${botonesCorreo(marca, [...llegada, ...asesorBotones])}<p style="margin:16px 0 4px;font-weight:700">¿Algo cambió? Puedes cambiar la hora o cancelar.</p>${cambiarCancelar}` }) },
+        despues: `<p style="margin:0 0 12px">Toca <b>«Confirmo que asistiré»</b> para avisarnos que irás: así tu asesor sabe que cuenta contigo.</p>${botonesCorreo(marca, [...llegada, ...asesorBotones])}<p style="margin:16px 0 4px;font-weight:700">¿Algo cambió? Puedes cambiar la hora o cancelar.</p>${cambiarCancelar}<p style="font-size:12.5px;margin:14px 0 0;color:#63707a">¿Quieres recibir información de inmuebles similares a este? <a href="${L.visita}?accion=similares" style="color:#63707a">Da clic aquí</a>.</p>` }) },
     { grupo: 'Cliente', nombre: 'Recordatorio de la visita', cuando: 'Antes de la visita (hasta 24 h), si el cliente aún no la ha confirmado.', para: 'Cliente', asunto: 'Confirma tu visita · Inmueble 1234',
       html: correoVisita(marca, { ...base, etiqueta: 'Recordatorio de visita · Inmueble 1234', motivo: 'Te escribimos porque tienes una visita próxima que aún no has confirmado. Este recordatorio sale automáticamente.', titulo: 'Te esperamos mañana: confirma tu visita',
         cuerpo: `<p style="margin:0 0 12px">Hola María, te recordamos que tu visita es <b>mañana a las 3:00 p. m.</b> en ${dir}. Con un toque nos avisas que asistirás.</p>`,
@@ -138,5 +140,22 @@ Deno.serve(async (req) => {
     venta('Venta', 'Datos para la promesa recibidos', 'Cuando el comprador completa el formulario. El correo no lleva datos personales: se ven en la agenda.', 'Asesor y supervisor', 'interno_promesa'),
   ];
   correos.push(...correosVenta);
+  // Radicación del estudio de arrendatario: MISMO código que usa enviar-radicacion-cliente (_shared/radicacion-correo.ts).
+  const dRad = {
+    numero_inmueble: 1234, direccion: dir, barrio: '', canon: 2500000, cliente_nombre: 'María Gómez',
+    aseguradoras: [{
+      aseguradora: 'Libertador', link_natural: 'https://analisisweb.ellibertador.co/estudio-digital/datos-basicos/natural', link_juridica: 'https://analisisweb.ellibertador.co/estudio-digital/datos-basicos/natural',
+      codigo_inmobiliaria: '1478', asesor_nombre: 'Andrés Gil', asesor_correo: 'asesor@patrimonios.co', nombre_inmobiliaria: marca.nombre,
+      costo_porcentaje: 15, costo_valor: 375000, costo_iva: true, estudio_valor: 120000, estudio_iva: false, descuento_porcentaje: 5, descuento_horas: 24, traslado_texto: '',
+      costo_nota: 'Se pagan una sola vez, al firmar y antes de recibir el inmueble.',
+      instrucciones: 'Ten a la mano tu cédula.\nAbre el enlace del estudio y llena tus datos.\nInvita a tu codeudor para que llene su propio formulario.\nRecibirás la respuesta el mismo día si la información está completa.\nSi te aprueban, revisa el contrato y fírmalo desde tu celular.',
+    }],
+  };
+  correos.push(
+    { grupo: 'Cliente', nombre: 'Siguiente paso: estudio de arrendatario', cuando: 'Cuando el cliente elige «quiero avanzar» en un inmueble de arriendo (o el asesor lo reenvía desde la cita). Desglosa estudio y derechos de contrato, aclara que hoy no paga nada y puede incluir un descuento con fecha límite.', para: 'Cliente', asunto: 'Hoy no pagas nada: inicia tu estudio y asegura el inmueble Nº 1234',
+      html: htmlRadicacionCliente(marca, dRad, { modoPruebas: false, real: T, paginaUrl: SITIO + '/radicar/ejemplo', asesorWa: '573001112233', asesorNombreCita: 'Andrés Gil', limite: 'miércoles, 18 de noviembre, 3:00 p. m.' }) },
+    { grupo: 'Asesor', nombre: 'Aviso: tu cliente quiere avanzar (radicación)', cuando: 'Al mismo tiempo que se le envía el correo de estudio al cliente. Trae botones para llamarlo, escribirle por WhatsApp o correo.', para: 'Asesor', asunto: 'Radicación enviada a María Gómez · Inmueble 1234',
+      html: htmlRadicacionAsesor(marca, dRad, { asesorNombre: 'Andrés Gil', clienteNombre: 'María Gómez', clienteEmail: 'maria@correo.com', clienteTel: '300 123 4567', clienteWa: '573001234567', modoPruebas: false, real: T, limite: 'miércoles, 18 de noviembre, 3:00 p. m.' }) },
+  );
   return json({ ok: true, empresas: lista, empresa_usada: config?.empresa_id || null, correos });
 });

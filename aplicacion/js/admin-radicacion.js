@@ -22,10 +22,15 @@ function formFila(f, nombre) {
   return `<form class="ad-form" data-rad-form data-id="${esc(f.id || '')}" data-ciudad="${esc(f.ciudad_id || '')}" style="margin:0 0 18px;padding:14px;border:1px solid #e5e7eb;border-radius:14px">
   <h3 style="margin-top:0">${esc(nombre)}${f.aseguradora && f.id ? ' · ' + esc(f.aseguradora) : ''}${f.id ? '' : ' <small class="ad-muted">(sin configurar)</small>'}</h3>
   <div class="ad-grid">${CAMPOS_TEXTO.map(([k, t, ph]) => `<label>${t}<input name="${k}" value="${c(k)}" placeholder="${esc(ph)}" autocomplete="off"></label>`).join('')}
-   <label>Costo del estudio (% del canon)<input name="costo_porcentaje" type="number" min="0" max="100" step="0.1" value="${c('costo_porcentaje')}" placeholder="Ej. 15"></label>
-   <label>Costo fijo en pesos (opcional)<input name="costo_valor" type="number" min="0" step="1000" value="${c('costo_valor')}" placeholder="Vacío = se calcula con el %"></label>
-   <label class="ad-check"><input type="checkbox" name="costo_iva" ${f.costo_iva === false ? '' : 'checked'}> El costo es «+ IVA»</label>
+   <label>Derechos de contrato (% del canon)<input name="costo_porcentaje" type="number" min="0" max="100" step="0.1" value="${c('costo_porcentaje')}" placeholder="Ej. 15"></label>
+   <label>Derechos de contrato en pesos fijos (opcional)<input name="costo_valor" type="number" min="0" step="1000" value="${c('costo_valor')}" placeholder="Vacío = se calcula con el %"></label>
+   <label class="ad-check"><input type="checkbox" name="costo_iva" ${f.costo_iva === false ? '' : 'checked'}> Los derechos son «+ IVA»</label>
+   <label>Costo del estudio en pesos (opcional)<input name="estudio_valor" type="number" min="0" step="1000" value="${c('estudio_valor')}" placeholder="Vacío = no se muestra el renglón"></label>
+   <label class="ad-check"><input type="checkbox" name="estudio_iva" ${f.estudio_iva ? 'checked' : ''}> El estudio es «+ IVA»</label>
+   <label>Descuento en los derechos si radica pronto (%)<input name="descuento_porcentaje" type="number" min="0" max="100" step="0.5" value="${c('descuento_porcentaje')}" placeholder="Ej. 5 (vacío = sin descuento)"></label>
+   <label>Horas para aprovechar el descuento<input name="descuento_horas" type="number" min="1" max="168" step="1" value="${f.descuento_horas ?? 24}" placeholder="24"></label>
   </div>
+  <label style="display:block;margin-top:8px">Traslado o vigencia del estudio (opcional; solo se muestra si lo escribes — confírmalo antes con la aseguradora)<textarea name="traslado_texto" rows="2" style="width:100%" placeholder="Ej. Si te aprueban, tu estudio queda vigente X meses…">${c('traslado_texto')}</textarea></label>
   <label style="display:block;margin-top:8px">Nota sobre costos y pago<textarea name="costo_nota" rows="2" style="width:100%">${c('costo_nota')}</textarea></label>
   <label style="display:block;margin-top:8px">Pasos (una línea por paso; aparecen numerados en el correo y en la página)<textarea name="instrucciones" rows="6" style="width:100%">${c('instrucciones')}</textarea></label>
   <button type="submit" style="margin-top:10px">Guardar ${esc(nombre)}</button>
@@ -89,7 +94,9 @@ export async function radicacionTab(ctx) {
       const v = {
         empresa_id: empresaId, ciudad_id: form.dataset.ciudad || null,
         costo_porcentaje: num(f.costo_porcentaje.value), costo_valor: num(f.costo_valor.value), costo_iva: f.costo_iva.checked,
-        costo_nota: f.costo_nota.value.trim(), instrucciones: f.instrucciones.value.trim(), actualizado_en: new Date().toISOString(),
+        costo_nota: f.costo_nota.value.trim(),
+        estudio_valor: num(f.estudio_valor.value), estudio_iva: f.estudio_iva.checked, descuento_porcentaje: num(f.descuento_porcentaje.value),
+        descuento_horas: Math.min(168, Math.max(1, Number(f.descuento_horas.value) || 24)), traslado_texto: f.traslado_texto.value.trim() || null, instrucciones: f.instrucciones.value.trim(), actualizado_en: new Date().toISOString(),
       };
       for (const [k] of CAMPOS_TEXTO) v[k] = f[k].value.trim() || (k === 'aseguradora' ? 'Libertador' : null);
       for (const k of ['link_natural', 'link_juridica']) if (v[k] && !/^https:\/\/\S+$/i.test(v[k])) { aviso('El enlace debe empezar por https://', true); return; }

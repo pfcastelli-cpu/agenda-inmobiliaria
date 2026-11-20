@@ -42,6 +42,7 @@ import {
   MapPinOff,
   Plus,
   Search,
+  ShieldCheck,
   Send,
   Star,
   Store,
@@ -73,6 +74,7 @@ const icons = {
   MapPinOff,
   Plus,
   Search,
+  ShieldCheck,
   Send,
   Star,
   Store,
@@ -164,7 +166,8 @@ export function iniciarAgendaReal(acceso) {
   if (pie) pie.textContent = 'Datos reales · las citas y cancelaciones quedan guardadas';
   const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', estudios: 'Estudios', soporte: 'Ayuda', propietarios: 'Propietarios', salud: 'Salud', auditoria: 'Seguridad' };
   root.querySelectorAll('[data-view]').forEach((b) => {
-    const textoIcono = b.querySelector('i');
+    // El icono puede ser aún <i data-lucide> o ya el <svg> en que Lucide lo convirtió (si esta función corre otra vez): se conserva en ambos casos.
+    const textoIcono = b.querySelector('i, svg');
     const etiqueta = ETIQUETAS_NAV[b.dataset.view] || '';
     b.textContent = '';
     if (textoIcono) b.appendChild(textoIcono);
@@ -192,6 +195,8 @@ export function iniciarAgendaReal(acceso) {
   { const bp = root.querySelector('.v-nav button[data-view=pendientes]'); if (bp) { const m = document.createElement('span'); m.className = 'v-contador'; m.setAttribute('data-contador-propietarios', ''); m.hidden = true; bp.appendChild(m); } }
   actualizarContadorPropietarios();
   state.view = 'agenda';
+  state.asesorFiltro = 'all';
+  state.filtroInicialAsesorAplicado = false;
   state.fecha = hoyISO();
   state.inmueble = null;
   state.slot = null;
@@ -553,6 +558,18 @@ function avisoUbicacion(inm) {
 
 async function cargarAsesores() {
   if (asesoresCache) return asesoresCache;
+  if (contexto.rol !== 'administrador') {
+    // Fuera de administración la tabla de asesores no es legible (RLS, tiene datos sensibles): se usa la función con lo básico (sql/089).
+    const { data: basico, error: errBasico } = await supabase.rpc('agenda_equipo_basico', { p_empresa: contexto.empresaId });
+    if (errBasico) throw new Error('No se pudo cargar el equipo: ' + errBasico.message);
+    asesoresCache = (basico || []).map((a) => ({ ...a, ciudadesTexto: '' }));
+    if (contexto.rol === 'asesor' && !state.filtroInicialAsesorAplicado) {
+      const yo = asesoresCache.find((a) => a.es_yo);
+      if (yo) state.asesorFiltro = yo.id; // el asesor arranca viendo SU agenda; puede cambiar a «Todo el equipo»
+      state.filtroInicialAsesorAplicado = true;
+    }
+    return asesoresCache;
+  }
   const { data, error } = await supabase
     .from('agenda_asesores')
     .select('*, agenda_asesores_ciudades(agenda_ciudades(nombre))')
@@ -578,6 +595,13 @@ async function cargarCoberturas() {
   return coberturasCache;
 }
 
+// Para quien no es administrador la unión agenda_asesores(*) llega vacía (RLS): se completa con la lista básica del equipo.
+async function conAsesorBasico(citas) {
+  if (contexto.rol === 'administrador') return citas;
+  const equipo = await cargarAsesores();
+  return citas.map((c) => (c.agenda_asesores || !c.asesor_id ? c : { ...c, agenda_asesores: equipo.find((a) => a.id === c.asesor_id) || null }));
+}
+
 const CITA_COLUMNAS = 'id, empresa_id, inmueble_id, asesor_id, fecha, hora_inicio, hora_fin, cliente_nombre, cliente_telefono, cliente_email, estado, evento_calendar_id, notas, creado_por, creado_en, actualizado_en, tipo_cita, titulo, direccion_libre, ciudad_libre, motivo_cancelacion, cancelado_por, feedback_cliente, cobertura_id, tipo_inmueble_captacion, valor_estimado_captacion, mandato_exclusivo, origen_captacion, actualizado_por, arrendatario_avisado_en, arrendatario_avisado_por, reubicacion_pendiente_desde, es_prueba, reubicacion_vence_en, reubicacion_motivo, reubicacion_recordada_en, reubicacion_recordada2_en, cruce_autorizado, cruce_autorizado_por, modalidad, enlace_virtual, proveedor_virtual, virtual_evento_id, llegada_en, llegada_lat, llegada_lon, llegada_distancia_m, llegada_valida, radicacion_enviada_en, arrendatario_confirmado_en, arrendatario_recordado_en';
 
 async function cargarCitas(fecha) {
@@ -590,7 +614,7 @@ async function cargarCitas(fecha) {
     .neq('estado', 'cancelada')
     .order('hora_inicio');
   if (error) throw new Error('No se pudieron cargar las citas: ' + error.message);
-  return data || [];
+  return await conAsesorBasico(data || []);
 }
 
 async function cargarCitasRango(fechaInicio, fechaFin) {
@@ -605,7 +629,7 @@ async function cargarCitasRango(fechaInicio, fechaFin) {
     .order('fecha')
     .order('hora_inicio');
   if (error) throw new Error('No se pudieron cargar las citas: ' + error.message);
-  return data || [];
+  return await conAsesorBasico(data || []);
 }
 
 function root() {
@@ -627,10 +651,26 @@ async function cargarConfirmacionesCliente() {
 
 // Verificación de las inspecciones con código de llegada y de salida (sql/076). Los códigos nunca llegan al navegador de quien inspecciona:
 // solo se pueden probar con la función agenda_inspeccion_registrar_codigo. Si el SQL aún no está aplicado, el bloque desaparece.
+// Código de identificación del asesor (sql/084): lo ve el asesor de la cita o quien tenga el permiso «agenda.ver_codigos» (con registro).
+// En captaciones el propietario puede recibirlo por correo si lo pide: nunca se envía solo.
+function htmlCodigoAsesor(id, conEnvio) {
+  return `<div class="v-actions" style="margin-top:6px"><button type="button" data-codigo-asesor="${id}" title="Es el código que le dices a quien te recibe, para que sepa que eres de la empresa">${icon('shield-check')}Ver código de identificación</button>${conEnvio ? `<button type="button" data-codigo-enviar="${id}" title="Solo si el propietario lo pide: le llega por correo con tu nombre y la hora de la cita">${icon('mail')}Enviar el código al propietario</button>` : ''}</div><p class="v-note" data-codigo-caja="${id}" style="margin:6px 0 0"></p>`;
+}
+function cargarCaptaciones() {
+  [...(root()?.querySelectorAll('[data-captacion-codigo]') || [])].forEach((h) => {
+    h.innerHTML = htmlCodigoAsesor(h.dataset.captacionCodigo, h.dataset.conCorreo === '1');
+  });
+  refreshIcons();
+}
+
 async function cargarInspecciones() {
+  cargarCaptaciones();
   const huecos = [...(root()?.querySelectorAll('[data-inspeccion]') || [])];
   if (!huecos.length) return;
-  const { data, error } = await supabase.from('agenda_citas').select('id, entrada_verificada_en, salida_verificada_en').in('id', huecos.map((h) => h.dataset.inspeccion));
+  const ids = huecos.map((h) => h.dataset.inspeccion);
+  let { data, error } = await supabase.from('agenda_citas').select('id, entrada_verificada_en, salida_verificada_en, entrada_manual_motivo, salida_manual_motivo').in('id', ids);
+  // Si el SQL 084 aún no está aplicado, faltan las columnas del motivo: se reintenta sin ellas.
+  if (error) ({ data, error } = await supabase.from('agenda_citas').select('id, entrada_verificada_en, salida_verificada_en').in('id', ids));
   if (error) { huecos.forEach((h) => h.remove()); return; }
   const hoy = hoyISO();
   const hora = (iso) => new Date(iso).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Bogota' });
@@ -650,8 +690,13 @@ async function cargarInspecciones() {
     } else {
       cuerpo = `<p class="v-note" style="margin:6px 0 0">🔐 El día de la inspección, el arrendatario te dictará un código de llegada y otro de salida, y tú los registras aquí.</p>`;
     }
-    h.innerHTML = cuerpo + (fila.salida_verificada_en ? '' : avisar);
+    // Si algo falló (arrendatario ausente, sin correo, código perdido), la coordinación puede registrar sin código dejando el motivo escrito.
+    const puedeManual = contexto.rol === 'administrador' || contexto.rol === 'coordinador';
+    const manual = !fila.salida_verificada_en && puedeManual ? `<div class="v-actions" style="margin-top:6px"><button type="button" data-insp-manual="${id}" data-momento="${fila.entrada_verificada_en ? 'salida' : 'entrada'}" title="Solo si algo falló: queda guardado quién lo hizo y el motivo">Registrar ${fila.entrada_verificada_en ? 'la salida' : 'la llegada'} sin código…</button></div>` : '';
+    const motivos = [fila.entrada_manual_motivo ? `Llegada sin código: ${escape(fila.entrada_manual_motivo)}` : '', fila.salida_manual_motivo ? `Salida sin código: ${escape(fila.salida_manual_motivo)}` : ''].filter(Boolean).join(' · ');
+    h.innerHTML = cuerpo + (motivos ? `<p class="v-note" style="margin:6px 0 0">${motivos}</p>` : '') + (fila.salida_verificada_en ? '' : htmlCodigoAsesor(id, false) + manual + avisar);
   });
+  refreshIcons();
 }
 
 async function cargarParticipantes() {
@@ -802,6 +847,7 @@ function citaCard(c) {
     ${c.tipo_cita === 'visita_cliente' && c.estado !== 'cancelada' && c.fecha >= hoyISO() ? `<p class="v-note" style="margin:6px 0 0" data-confirmacion-cliente="${c.id}"></p>` : ''}
     ${htmlLlegada(c, hoyISO(), configPublicaCache?.botonLlegada === true)}
     ${c.tipo_cita === 'inspeccion' && c.estado !== 'cancelada' && c.id ? `<div class="v-inspeccion" data-inspeccion="${c.id}" data-fecha="${c.fecha}" data-con-inmueble="${inmueble ? '1' : ''}"></div>` : ''}
+    ${c.tipo_cita === 'captacion' && c.estado !== 'cancelada' && c.id ? `<div class="v-inspeccion" data-captacion-codigo="${c.id}" data-con-correo="${/\S+@\S+\.\S+/.test(c.cliente_email || '') ? '1' : ''}"></div>` : ''}
     ${htmlBotonRadicar(c)}
     ${c.cruce_autorizado ? '<span class="v-tag v-tag-neutral" style="margin-top:6px">Cruce autorizado</span>' : ''}
     ${inmueble ? `<a class="v-link" href="${linkPublico(inmueble.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver inmueble</a>` : ''}
@@ -2313,6 +2359,44 @@ function adjuntarEventos(rootEl) {
       // Registrada la llegada, el arrendatario recibe por correo su código de salida; registrada la salida, la encuesta (no bloquea nada si falla).
       if (data?.ok) supabase.functions.invoke('avisar-inspeccion', { body: { cita_id: id, momento: b.dataset.momento === 'entrada' ? 'salida' : 'encuesta' } }).catch(() => {});
       if (data?.ok) await cargarInspecciones(); else { b.disabled = false; if (campo) { campo.value = ''; campo.focus(); } }
+      return;
+    }
+    if (b.dataset.codigoAsesor) {
+      const id = b.dataset.codigoAsesor;
+      const caja = root().querySelector(`[data-codigo-caja="${id}"]`);
+      b.disabled = true;
+      const { data, error } = await supabase.rpc('agenda_cita_codigo_asesor', { p_cita_id: id });
+      b.disabled = false;
+      if (error || !data?.ok) { toast(error ? 'No se pudo leer el código: ' + error.message : data?.mensaje || 'No se pudo leer el código.'); return; }
+      if (caja) caja.innerHTML = `Tu código de identificación: <strong style="font-size:26px;letter-spacing:6px;color:var(--empresa-principal,#1a2c45)">${escape(data.codigo)}</strong><br>Díselo a quien te recibe al llegar. Si no lo pide, no pasa nada: sigue con la visita.`;
+      return;
+    }
+    if (b.dataset.codigoEnviar) {
+      const textoOriginal = b.innerHTML;
+      b.disabled = true;
+      b.textContent = 'Enviando…';
+      try {
+        const { data, error } = await supabase.functions.invoke('avisar-codigo-captacion', { body: { cita_id: b.dataset.codigoEnviar } });
+        if (error) throw error;
+        toast(data?.enviado ? 'Se envió el código al propietario.' : (data?.motivo || 'No se pudo enviar el código.'));
+      } catch (err) {
+        toast('No se pudo enviar el código: ' + (err?.message || 'error desconocido'));
+      }
+      b.disabled = false;
+      b.innerHTML = textoOriginal;
+      return;
+    }
+    if (b.dataset.inspManual) {
+      const id = b.dataset.inspManual;
+      const momento = b.dataset.momento;
+      const motivo = window.prompt(`Vas a registrar ${momento === 'entrada' ? 'la llegada' : 'la salida'} SIN código. Escribe el motivo (queda guardado con tu nombre):`, '');
+      if (!motivo) return;
+      b.disabled = true;
+      const { data, error } = await supabase.rpc('agenda_inspeccion_registrar_manual', { p_cita_id: id, p_momento: momento, p_motivo: motivo });
+      if (error) { b.disabled = false; toast('No se pudo registrar: ' + error.message); return; }
+      toast(data?.mensaje || (data?.ok ? 'Listo.' : 'No se pudo registrar.'));
+      if (data?.ok) supabase.functions.invoke('avisar-inspeccion', { body: { cita_id: id, momento: momento === 'entrada' ? 'salida' : 'encuesta' } }).catch(() => {});
+      if (data?.ok) await cargarInspecciones(); else b.disabled = false;
       return;
     }
     if (b.dataset.inspAvisar) {

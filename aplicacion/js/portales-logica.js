@@ -84,7 +84,7 @@ export function compararPortal(portal, registros, inmuebles) {
   const items = [];
   const responsable = (i) => i.asesor_comercializacion || i.asesor_captacion || '';
   const ofertaSedi = (i) => (norm(i.tipo_oferta).startsWith('v') ? 'venta' : 'arriendo');
-  const publicable = (i) => ESTADOS_PUBLICABLES.includes(norm(i.estado_crm));
+  const publicable = (i) => ESTADOS_PUBLICABLES.includes(norm(i.estado_crm)) && i.visto_en_ultima_sincronizacion !== false; // si Sedi ya no lo trae, está retirado
 
   // 1) Sedi dice que debe estar publicado (tiene código del portal) y el portal no lo muestra activo.
   for (const [codigo, i] of porCodigoSedi) {
