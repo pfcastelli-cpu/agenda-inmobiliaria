@@ -7,6 +7,7 @@
 // pregunta con agenda_correo_requiere_verificacion si hace falta (se salta
 // si ese correo ya tiene una cita registrada antes con esta empresa).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { ipDe, permitirUso } from '../_shared/limite-uso.ts';
 import { marcaCorreo } from '../_shared/marca-correo.ts';
 import { correoBase } from '../_shared/plantilla-correo.ts';
 
@@ -95,6 +96,12 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // Anti-abuso: máx. 10 por IP y 3 por correo cada 10 minutos (evita inundar de correos a un tercero).
+  if (!(await permitirUso(admin, `codigo:ip:${ipDe(req)}`, 10, 600)) ||
+      !(await permitirUso(admin, `codigo:correo:${email.toLowerCase()}`, 3, 600))) {
+    return json({ ok: false, error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' }, 429);
+  }
 
   const { data: empresaId, error: errorEmpresa } = await admin.rpc('agenda_resolver_empresa_publica', {
     p_empresa_slug: empresaSlug,

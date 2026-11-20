@@ -6,9 +6,10 @@
 // se envía por el SMTP de la empresa (el del correo de citas), no por el correo integrado de
 // Supabase (límite ~2 por hora y solo a miembros del equipo de Supabase).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { ipDe, permitirUso } from '../_shared/limite-uso.ts';
 import { marcaCorreo } from '../_shared/marca-correo.ts';
 import { correoBase } from '../_shared/plantilla-correo.ts';
-import nodemailer from 'npm:nodemailer@6.9.16';
+import { crearTransporte } from '../_shared/transporte-correo.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -59,6 +60,12 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // Anti-abuso: máx. 5 por IP y 3 por correo cada hora. Se responde igual que siempre (no se revela nada).
+  if (!(await permitirUso(admin, `recuperar:ip:${ipDe(req)}`, 5, 3600)) ||
+      !(await permitirUso(admin, `recuperar:correo:${correo}`, 3, 3600))) {
+    return respuestaGenerica();
+  }
 
   try {
     // Primer paso: saber si existe esa persona (sin redirección todavía).
@@ -165,7 +172,7 @@ Deno.serve(async (req) => {
       });
 
     try {
-      const transporte = nodemailer.createTransport({
+      const transporte = crearTransporte({
         host: config.correo_smtp_host,
         port: config.correo_smtp_puerto || 587,
         secure: config.correo_smtp_seguridad === 'ssl',
