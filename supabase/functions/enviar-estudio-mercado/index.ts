@@ -4,7 +4,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { marcaCorreo } from '../_shared/marca-correo.ts';
 import { correoBase, filaCorreo } from '../_shared/plantilla-correo.ts';
-import nodemailer from 'npm:nodemailer@6.9.16';
+import { crearTransporte } from '../_shared/transporte-correo.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
   const { data: u } = await admin.auth.getUser(jwt);
   if (!u?.user) return json({ ok: false, error: 'Sesión no válida' }, 401);
 
-  let body: { estudio_id?: string };
+  let body: { estudio_id?: string; prueba?: boolean };
   try { body = await req.json(); } catch { return json({ ok: false, error: 'Cuerpo no válido' }, 400); }
   if (!body.estudio_id) return json({ ok: false, error: 'Falta estudio_id' }, 400);
 
@@ -34,7 +34,9 @@ Deno.serve(async (req) => {
   const { data: miembro } = await admin.from('agenda_miembros').select('rol, activo').eq('empresa_id', est.empresa_id).eq('usuario_id', u.user.id).maybeSingle();
   if (!miembro?.activo || !['administrador', 'coordinador'].includes(miembro.rol)) return json({ ok: false, error: 'No tienes permiso' }, 403);
   if (!est.archivo_path) return json({ ok: false, error: 'Primero carga el PDF del estudio.' }, 400);
-  if (!est.propietario_email) return json({ ok: false, error: 'Falta el correo del propietario. Escríbelo en la lista y guarda.' }, 400);
+  // «Enviarme una prueba»: el mismo correo con el PDF, solo a quien pulsa el botón; no marca el estudio como enviado.
+  const prueba = body.prueba === true;
+  if (!prueba && !est.propietario_email) return json({ ok: false, error: 'Falta el correo del propietario. Escríbelo en la lista y guarda.' }, 400);
 
   const { data: pdf, error: errPdf } = await admin.storage.from('estudios-mercado').download(est.archivo_path);
   if (errPdf || !pdf) return json({ ok: false, error: 'No se pudo leer el PDF cargado.' }, 500);
@@ -47,9 +49,10 @@ Deno.serve(async (req) => {
   if (!password) return json({ ok: false, error: 'No se pudo leer la contraseña del correo.' }, 500);
 
   const marca = marcaCorreo(config);
-  const modoPruebas = config.correo_modo_pruebas !== false;
-  const real = est.propietario_email as string;
-  const to = modoPruebas ? (config.correo_pruebas_destino || real) : real;
+  const modoPruebas = prueba || config.correo_modo_pruebas !== false;
+  const real = (est.propietario_email as string) || 'propietario@ejemplo.com';
+  if (prueba && !u.user.email) return json({ ok: false, error: 'Tu usuario no tiene correo para recibir la prueba.' }, 400);
+  const to = prueba ? (u.user.email as string) : modoPruebas ? (config.correo_pruebas_destino || real) : real;
   const nombre = (est.propietario_nombre || '').trim();
   const html = correoBase(marca, {
     titulo: `Tu estudio de mercado ${est.numero_inmueble ? `· inmueble Nº ${est.numero_inmueble}` : ''}`.trim(),
@@ -58,11 +61,11 @@ Deno.serve(async (req) => {
 <table style="width:100%;border-collapse:collapse;margin-top:18px">${filaCorreo(marca, 'Qué incluye', '📊 Comparables de la zona y rango de valor sugerido')}${filaCorreo(marca, 'Siguiente paso', '📞 Si quieres, lo revisamos juntos en una llamada')}</table>`,
     modoPruebas, destinatarioReal: real,
   });
-  const transporte = nodemailer.createTransport({
+  const transporte = crearTransporte({
     host: config.correo_smtp_host, port: config.correo_smtp_puerto || 587, secure: config.correo_smtp_seguridad === 'ssl',
     auth: { user: config.correo_smtp_usuario || config.correo_remitente_email, pass: password as string },
   });
-  const asunto = `Tu estudio de mercado${est.numero_inmueble ? ` — inmueble Nº ${est.numero_inmueble}` : ''}`;
+  const asunto = `${prueba ? '[PRUEBA] ' : ''}Tu estudio de mercado${est.numero_inmueble ? ` — inmueble Nº ${est.numero_inmueble}` : ''}`;
   let estadoLog: 'enviado' | 'fallido' = 'enviado', detalleError: string | null = null;
   try {
     await transporte.sendMail({
@@ -74,6 +77,7 @@ Deno.serve(async (req) => {
   try { await admin.from('agenda_correos_log').insert({ empresa_id: est.empresa_id, cita_id: null, destinatario_tipo: 'estudio_mercado', destinatario_email: to, asunto, estado: estadoLog, detalle_error: detalleError, modo_pruebas: modoPruebas }); } catch { /* sin registro no hay nada más que hacer */ }
   if (estadoLog === 'fallido') return json({ ok: false, error: 'No se pudo enviar el correo.' }, 502);
 
+  if (prueba) return json({ ok: true, prueba: true, enviado_a: to, modo_pruebas: true });
   await admin.from('agenda_estudios_mercado').update({ estado: 'enviado', enviado_en: new Date().toISOString(), enviado_por: u.user.id }).eq('id', est.id);
   return json({ ok: true, enviado_a: to, modo_pruebas: modoPruebas });
 });

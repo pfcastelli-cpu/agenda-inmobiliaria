@@ -7,7 +7,10 @@ import { claveHorario, revisarCruce, htmlAvisoCruce, puedeCruzar, estadoReunion,
 import { ORIGENES_CAPTACION, cargarCiudadesYZonas, buscarHorariosCaptacion, seleccionarHorario, htmlCiudadYZona, htmlHorariosCaptacion } from './captacion-horarios.js';
 import { renderPendientes, reiniciarPendientes } from './pendientes.js';
 import { renderEstudios } from './estudios-mercado.js';
+import { enviarPrueba, reportarProblemaCorreo } from './correo-prueba.js';
 import { renderAsambleas } from './asambleas.js';
+import { renderMiDisponibilidad } from './mi-disponibilidad.js';
+import { renderWhatsapp } from './whatsapp-bandeja.js';
 import { renderPropuestasCompra } from './propuestas-compra.js';
 import { renderTickets, reiniciarTickets, abrirTicket } from './tickets.js';
 import { montarInformeDemanda } from './informe-demanda.js';
@@ -39,6 +42,7 @@ import {
   LifeBuoy,
   ListChecks,
   Mail,
+  MailCheck,
   MapPinOff,
   Plus,
   Search,
@@ -71,6 +75,7 @@ const icons = {
   LifeBuoy,
   ListChecks,
   Mail,
+  MailCheck,
   MapPinOff,
   Plus,
   Search,
@@ -94,6 +99,8 @@ let buscarBitacoraDebounce = null;
 
 const escape = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+// Botones junto a «Enviar informe»: la prueba llega solo a quien la pide; «Reportar» abre un ticket sobre ese correo.
+const botonesPruebaInforme = (inm) => `<button type="button" class="v-link" data-prueba-informe="${inm.id}" style="display:inline" title="Te llega a ti el mismo correo, para ver cómo lo recibirá el propietario">${icon('mail-check')}Enviarme prueba</button> <button type="button" class="v-link" data-reportar-informe="${inm.numero_inmueble}" style="display:inline" title="Algo del correo se ve mal o no funciona">${icon('life-buoy')}Reportar</button>`;
 const money = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 const hora = (t) => (t ? String(t).slice(0, 5) : '');
 const hoyISO = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
@@ -164,7 +171,7 @@ export function iniciarAgendaReal(acceso) {
   if (insignia) insignia.textContent = 'Datos reales';
   const pie = root.querySelector('.v-footnote');
   if (pie) pie.textContent = 'Datos reales · las citas y cancelaciones quedan guardadas';
-  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', estudios: 'Estudios', soporte: 'Ayuda', propietarios: 'Propietarios', salud: 'Salud', auditoria: 'Seguridad' };
+  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', estudios: 'Estudios', soporte: 'Ayuda', disponibilidad: 'Mi disponibilidad', whatsapp: 'WhatsApp', propietarios: 'Propietarios', salud: 'Salud', auditoria: 'Seguridad' };
   root.querySelectorAll('[data-view]').forEach((b) => {
     // El icono puede ser aún <i data-lucide> o ya el <svg> en que Lucide lo convirtió (si esta función corre otra vez): se conserva en ambos casos.
     const textoIcono = b.querySelector('i, svg');
@@ -190,6 +197,10 @@ export function iniciarAgendaReal(acceso) {
     if (b.dataset.view === 'asambleas') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
     // Soporte (tickets): lo ve todo el equipo.
     if (b.dataset.view === 'soporte') b.hidden = false;
+    // Mi disponibilidad: quien tenga el permiso (el administrador lo da o quita por rol) edita su jornada y sus ausencias.
+    if (b.dataset.view === 'disponibilidad') b.hidden = !puede('disponibilidad.editar_propia');
+    // WhatsApp (bandeja del bot y ajustes del interruptor): según los permisos whatsapp.* del rol.
+    if (b.dataset.view === 'whatsapp') b.hidden = !puede('whatsapp.ver');
   });
 
   { const bp = root.querySelector('.v-nav button[data-view=pendientes]'); if (bp) { const m = document.createElement('span'); m.className = 'v-contador'; m.setAttribute('data-contador-propietarios', ''); m.hidden = true; bp.appendChild(m); } }
@@ -653,12 +664,12 @@ async function cargarConfirmacionesCliente() {
 // solo se pueden probar con la función agenda_inspeccion_registrar_codigo. Si el SQL aún no está aplicado, el bloque desaparece.
 // Código de identificación del asesor (sql/084): lo ve el asesor de la cita o quien tenga el permiso «agenda.ver_codigos» (con registro).
 // En captaciones el propietario puede recibirlo por correo si lo pide: nunca se envía solo.
-function htmlCodigoAsesor(id, conEnvio) {
-  return `<div class="v-actions" style="margin-top:6px"><button type="button" data-codigo-asesor="${id}" title="Es el código que le dices a quien te recibe, para que sepa que eres de la empresa">${icon('shield-check')}Ver código de identificación</button>${conEnvio ? `<button type="button" data-codigo-enviar="${id}" title="Solo si el propietario lo pide: le llega por correo con tu nombre y la hora de la cita">${icon('mail')}Enviar el código al propietario</button>` : ''}</div><p class="v-note" data-codigo-caja="${id}" style="margin:6px 0 0"></p>`;
+function htmlCodigoAsesor(id, conEnvio, conCobertura = false) {
+  return `<div class="v-actions" style="margin-top:6px"><button type="button" data-codigo-asesor="${id}" title="Es el código que le dices a quien te recibe, para que sepa que eres de la empresa">${icon('shield-check')}Ver código de identificación</button>${conEnvio ? `<button type="button" data-codigo-enviar="${id}" title="Solo si el propietario lo pide: le llega por correo con tu nombre y la hora de la cita">${icon('mail')}Enviar el código al propietario</button>` : ''}${conCobertura ? `<button type="button" data-fuera-cobertura="${id}" title="Si el inmueble queda fuera de la zona donde trabajamos: se cancela la cita y se le avisa amablemente al propietario">${icon('map-pin-off')}Fuera de zona de cobertura</button>` : ''}</div><p class="v-note" data-codigo-caja="${id}" style="margin:6px 0 0"></p>`;
 }
 function cargarCaptaciones() {
   [...(root()?.querySelectorAll('[data-captacion-codigo]') || [])].forEach((h) => {
-    h.innerHTML = htmlCodigoAsesor(h.dataset.captacionCodigo, h.dataset.conCorreo === '1');
+    h.innerHTML = htmlCodigoAsesor(h.dataset.captacionCodigo, h.dataset.conCorreo === '1', true);
   });
   refreshIcons();
 }
@@ -818,6 +829,8 @@ async function render() {
       actualizarContadorPropietarios();
     } else if (state.view === 'auditoria') await renderAuditoria({ el: main(), supabase, empresaId: contexto.empresaId, escape });
     else if (state.view === 'soporte') await renderTickets({ el: main(), supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, vistaAnterior: NOMBRES_VISTA[vistaAnteriorSoporte] || '' });
+    else if (state.view === 'disponibilidad') await renderMiDisponibilidad({ el: main(), supabase, empresaId: contexto.empresaId, escape, toast });
+    else if (state.view === 'whatsapp') await renderWhatsapp({ el: main(), supabase, empresaId: contexto.empresaId, escape, toast });
     else if (state.view === 'reserva') await renderReserva();
     else if (state.view === 'exito') renderExito();
     if (mi === renderSeq) { cargarParticipantes(); cargarConfirmacionesCliente(); cargarInspecciones(); agregarBuscadorSelect(document.getElementById('v-interna-inmueble')); }
@@ -1411,7 +1424,7 @@ function filaAtencion(x) {
     <td style="padding:9px 10px;font-size:14px;white-space:nowrap">${escape(inm.tipo_oferta)}</td>
     <td style="padding:9px 10px;font-size:14px;white-space:nowrap">${x.citas}</td>
     <td style="padding:9px 10px;font-size:13.5px;color:#B3261E">${ultima}</td>
-    <td style="padding:9px 10px;white-space:nowrap"><a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver</a> ${enlaceVerInforme(inm)} <button type="button" class="v-link" data-enviar-informe="${inm.id}" style="display:inline">${icon('send')}Enviar informe</button></td>
+    <td style="padding:9px 10px;white-space:nowrap"><a class="v-link" href="${linkPublico(inm.numero_inmueble)}" target="_blank" rel="noopener">${icon('external-link')}Ver</a> ${enlaceVerInforme(inm)} <button type="button" class="v-link" data-enviar-informe="${inm.id}" style="display:inline">${icon('send')}Enviar informe</button> ${botonesPruebaInforme(inm)}</td>
   </tr>`;
 }
 
@@ -1424,7 +1437,7 @@ function filaTablaInmueble(x) {
     <td style="padding:8px 10px;font-size:13.5px;text-align:center">${x.citas}</td>
     <td style="padding:8px 10px;font-size:13.5px;text-align:center">${x.citas}</td>
     <td style="padding:8px 10px;font-size:13px;white-space:nowrap">${x.ultimaFecha ? dateLabel(x.ultimaFecha) : '—'}</td>
-    <td style="padding:8px 10px;white-space:nowrap">${enlaceVerInforme(inm)} <button type="button" class="v-link" data-enviar-informe="${inm.id}" style="display:inline">${icon('send')}Enviar informe</button></td>
+    <td style="padding:8px 10px;white-space:nowrap">${enlaceVerInforme(inm)} <button type="button" class="v-link" data-enviar-informe="${inm.id}" style="display:inline">${icon('send')}Enviar informe</button> ${botonesPruebaInforme(inm)}</td>
   </tr>`;
 }
 
@@ -2319,6 +2332,21 @@ function adjuntarEventos(rootEl) {
     if (b.hasAttribute('data-masivo-enviar')) { enviarInformesMasivo(); return; }
     if (b.hasAttribute('data-masivo-detener')) { masivo.detener = true; pintarMasivo(); return; }
     if (b.hasAttribute('data-masivo-cerrar')) { masivo.fase = 'config'; pintarMasivo(); return; }
+    if (b.dataset.pruebaInforme) {
+      b.disabled = true;
+      const textoOriginal = b.innerHTML;
+      b.innerHTML = 'Enviando…';
+      const r = await enviarPrueba({ supabase, funcion: 'enviar-informe-propietario', cuerpo: { inmueble_id: b.dataset.pruebaInforme } });
+      toast(r.ok ? `Prueba enviada a ${r.enviadoA}. Revisa tu bandeja; si algo se ve mal, pulsa «Reportar».` : r.error);
+      b.disabled = false;
+      b.innerHTML = textoOriginal;
+      return;
+    }
+    if (b.dataset.reportarInforme) {
+      const msg = await reportarProblemaCorreo({ supabase, empresaId: contexto.empresaId, que: `Informe al propietario · inmueble ${b.dataset.reportarInforme}` });
+      if (msg) toast(msg);
+      return;
+    }
     if (b.dataset.enviarInforme) {
       const inmuebleId = b.dataset.enviarInforme;
       b.disabled = true;
@@ -2381,6 +2409,25 @@ function adjuntarEventos(rootEl) {
         toast(data?.enviado ? 'Se envió el código al propietario.' : (data?.motivo || 'No se pudo enviar el código.'));
       } catch (err) {
         toast('No se pudo enviar el código: ' + (err?.message || 'error desconocido'));
+      }
+      b.disabled = false;
+      b.innerHTML = textoOriginal;
+      return;
+    }
+    if (b.dataset.fueraCobertura) {
+      const nota = window.prompt('Vas a cancelar esta captación porque el inmueble queda FUERA de la zona de cobertura y se le avisará al propietario por correo (y por WhatsApp si nos escribió por ahí). Si quieres, escribe una nota interna; déjala vacía si no:', '');
+      if (nota === null) return;
+      const textoOriginal = b.innerHTML;
+      b.disabled = true;
+      b.textContent = 'Cancelando…';
+      try {
+        const { data, error } = await supabase.functions.invoke('avisar-fuera-cobertura', { body: { cita_id: b.dataset.fueraCobertura, nota } });
+        if (error || data?.ok === false) { let m = data?.error; if (!m && error?.context?.json) { try { m = (await error.context.json())?.error; } catch { /* sin detalle */ } } throw new Error(m || error?.message || 'error desconocido'); }
+        toast('Captación cancelada. ' + (data.correo ? 'Se le avisó al propietario por correo.' : 'El propietario no tiene correo registrado: avísale tú.') + (data.whatsapp ? ' También por WhatsApp.' : ''));
+        render();
+        return;
+      } catch (err) {
+        toast('No se pudo marcar fuera de cobertura: ' + (err?.message || 'error desconocido'));
       }
       b.disabled = false;
       b.innerHTML = textoOriginal;

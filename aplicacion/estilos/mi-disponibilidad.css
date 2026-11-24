@@ -1,0 +1,17 @@
+.md{--md-tinta:var(--empresa-principal,var(--tinta,#204b79));--md-linea:var(--linea,#dde3e7);max-width:760px;margin:auto;display:grid;gap:18px}
+.md h2{margin:0;color:var(--md-tinta)}
+.md h3{margin:18px 0 8px;font-size:17px}
+.md h3:first-child{margin-top:0}
+.md h4{margin:18px 0 6px}
+.md-card{border:1px solid var(--md-linea);border-radius:12px;padding:20px;display:grid;gap:12px}
+.md-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.md-check{display:flex;gap:10px;align-items:center;min-height:44px}
+.md-check input{width:20px;height:20px}
+.md-nota{margin:0;line-height:1.55;font-size:14px;opacity:.85}
+.md-error{margin:0;color:#a02020;font-weight:600}
+.md-aviso{margin:0;padding:10px 12px;border-radius:8px;border:1px solid var(--md-linea);background:rgba(255,193,7,.14)}
+.md-acciones{display:flex;gap:10px;flex-wrap:wrap}
+.md-lista{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.md-lista li{display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:1px solid var(--md-linea);padding-top:8px}
+.md :is(button,input,select):focus-visible{outline:3px solid var(--md-tinta);outline-offset:2px}
+@media(max-width:600px){.md-card{padding:14px}.md-lista li{flex-direction:column;align-items:flex-start}}

@@ -1,6 +1,7 @@
 // Pantalla «Estudios» (administrador/coordinador): lista de estudios de mercado pedidos por propietarios o por el equipo.
 // Flujo: pedido (pendiente) → el asesor sube el PDF (listo) → «Enviar al propietario» (enviado, función enviar-estudio-mercado).
 // Tabla agenda_estudios_mercado y bucket privado «estudios-mercado» (sql/053). Mismo estilo visual que Pendientes (clases v-*).
+import { enviarPrueba, reportarProblemaCorreo } from './correo-prueba.js';
 const ui = { filtro: 'abiertos', mensaje: '', error: '' };
 const ETIQUETA = { pendiente: 'Pendiente', listo: 'Listo para enviar', enviado: 'Enviado', descartado: 'Descartado' };
 const ORIGEN = { propietario: 'Lo pidió el propietario', informe: 'Desde el informe', manual: 'Creado por el equipo' };
@@ -32,7 +33,9 @@ export async function renderEstudios(ctx) {
       ${f.estado === 'enviado' ? `<span class="v-muted" style="font-size:13px">Enviado el ${escape(fecha(f.enviado_en))}</span>` : `
         <label class="v-btn v-quiet" style="cursor:pointer">${icon('upload')}${f.archivo_path ? 'Cambiar PDF' : 'Cargar PDF'}<input type="file" accept="application/pdf" hidden data-accion="subir"></label>
         <button type="button" class="v-btn v-primary" data-accion="enviar" ${f.archivo_path ? '' : 'disabled'}>${icon('send')}Enviar al propietario</button>
+        <button type="button" class="v-btn v-quiet" data-accion="prueba" ${f.archivo_path ? '' : 'disabled'} title="Te llega a ti el mismo correo, para ver cómo lo recibirá el propietario">${icon('mail-check')}Enviarme una prueba</button>
         <button type="button" class="v-btn v-quiet" data-accion="descartar">${icon('x')}Descartar</button>`}
+      <button type="button" class="v-btn v-quiet" data-accion="reportar" title="Algo del correo se ve mal o no funciona">${icon('life-buoy')}Reportar problema con el correo</button>
     </div></article>`;
   el.innerHTML = `<div class="v-top"><div><div class="v-eyebrow">Propietarios</div><h2>Estudios de mercado</h2></div>
       <button type="button" class="v-btn v-primary" data-accion="nuevo">${icon('plus')}Anotar estudio pendiente</button></div>
@@ -105,6 +108,14 @@ export async function renderEstudios(ctx) {
       const { data: r, error: e } = await supabase.functions.invoke('enviar-estudio-mercado', { body: { estudio_id: id } });
       if (e || !r?.ok) return recargar('', r?.error || e?.message || 'No se pudo enviar.');
       recargar(r.modo_pruebas ? `Enviado (modo de pruebas: llegó a ${r.enviado_a}).` : 'Estudio enviado al propietario.');
+    });
+    on('prueba', async () => {
+      const r = await enviarPrueba({ supabase, funcion: 'enviar-estudio-mercado', cuerpo: { estudio_id: id } });
+      recargar(r.ok ? `Prueba enviada a ${r.enviadoA}. Revisa tu bandeja; si algo se ve mal, pulsa «Reportar problema con el correo».` : '', r.ok ? '' : r.error);
+    });
+    on('reportar', async () => {
+      const msg = await reportarProblemaCorreo({ supabase, empresaId, que: `Estudio de mercado · inmueble ${f.numero_inmueble || 's/n'}` });
+      if (msg) recargar(msg);
     });
     on('descartar', async () => {
       if (!window.confirm('¿Descartar este estudio?')) return;

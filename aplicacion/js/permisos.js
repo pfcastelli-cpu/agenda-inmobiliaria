@@ -7,10 +7,11 @@ const COORDINADOR = [
   'agenda.ver_propia', 'agenda.ver_todas', 'agenda.crear', 'agenda.modificar', 'agenda.cancelar', 'agenda.reubicar', 'agenda.actividades',
   'inmuebles.ver', 'inmuebles.editar', 'inmuebles.no_disponible', 'informes.ver', 'informes.exportar', 'informes.demanda',
   'bitacora.ver', 'pendientes.ver', 'pendientes.gestionar', 'captacion.ver', 'captacion.crear', 'soporte.crear', 'soporte.ver_empresa',
+  'disponibilidad.editar_propia', 'whatsapp.ver', 'whatsapp.responder', 'whatsapp.ver_todas', 'whatsapp.tomar', 'whatsapp.transferir', 'whatsapp.transferir_todos',
 ];
 const ASESOR = [
   'agenda.ver_propia', 'agenda.crear', 'agenda.modificar', 'agenda.cancelar', 'agenda.actividades', 'inmuebles.ver',
-  'pendientes.ver', 'captacion.ver', 'captacion.crear', 'soporte.crear',
+  'pendientes.ver', 'captacion.ver', 'captacion.crear', 'soporte.crear', 'disponibilidad.editar_propia', 'whatsapp.ver', 'whatsapp.responder', 'whatsapp.tomar', 'whatsapp.transferir',
 ];
 
 let estado = { rolBase: null, permisos: null, esSuper: false, rolId: null, rolNombre: null };

@@ -12,7 +12,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { marcaCorreo, bloqueCaptacion, pieLegal } from '../_shared/marca-correo.ts';
 import { correoBase } from '../_shared/plantilla-correo.ts';
-import nodemailer from 'npm:nodemailer@6.9.16';
+import { crearTransporte } from '../_shared/transporte-correo.ts';
 import { preferenciasDe, urlPreferencias } from '../_shared/preferencias-propietario.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -122,7 +122,15 @@ Deno.serve(async (req) => {
     .maybeSingle();
   const marca = marcaCorreo(config);
 
-  const modoPruebas = config?.correo_modo_pruebas !== false;
+  // «Enviarme una prueba»: el mismo correo, solo a quien pulsa el botón, con aviso de PRUEBA y sin tocar a ningún propietario.
+  const prueba = body.prueba === true;
+  const modoPruebas = prueba || config?.correo_modo_pruebas !== false;
+  let correoPrueba = '';
+  if (prueba) {
+    const { data: u } = await comoUsuario.auth.getUser(authHeader.replace(/^Bearer\s+/i, ''));
+    correoPrueba = u?.user?.email || '';
+    if (!correoPrueba) return json({ ok: false, error: 'Tu usuario no tiene correo para recibir la prueba.' }, 400);
+  }
 
   if (!config?.correo_smtp_host || !config?.correo_smtp_password_secret_id) {
     await registrarLog(admin, {
@@ -153,6 +161,13 @@ Deno.serve(async (req) => {
     }
   }
 
+  // En una prueba se usa el primer propietario real (para ver el correo tal cual le llega) o un nombre de ejemplo.
+  if (prueba) {
+    const primero = [...destinatarios.entries()][0];
+    destinatarios.clear();
+    destinatarios.set(primero ? primero[0] : 'propietario@ejemplo.com', primero ? primero[1] : ['Nombre del propietario']);
+  }
+
   if (destinatarios.size === 0) {
     await registrarLog(admin, {
       empresa_id: empresaId,
@@ -170,7 +185,7 @@ Deno.serve(async (req) => {
   const prefs = await preferenciasDe(admin, empresaId, [...destinatarios.keys()]);
   const dominio = config.dominio_publico || 'citas.patrimonios.co';
   const linkInforme = `https://${dominio}/propietario/${token}`;
-  const asunto = `El informe en vivo de tu inmueble Nº ${numeroInmueble}`;
+  const asunto = `${prueba ? '[PRUEBA] ' : ''}El informe en vivo de tu inmueble Nº ${numeroInmueble}`;
 
   let password: string | null = null;
   try {
@@ -205,7 +220,7 @@ Deno.serve(async (req) => {
     return json({ ok: true, enviados: 0, motivo: 'Falta guardar la contraseña SMTP.' });
   }
 
-  const transporte = nodemailer.createTransport({
+  const transporte = crearTransporte({
     host: config.correo_smtp_host,
     port: config.correo_smtp_puerto || 587,
     secure: config.correo_smtp_seguridad === 'ssl',
@@ -239,7 +254,7 @@ Deno.serve(async (req) => {
   let enviados = 0;
   for (const [correoPropietario, nombres] of destinatarios) {
     const nombrePropietario = nombres[0] || '';
-    const destinatarioEnvio = modoPruebas ? config.correo_pruebas_destino || correoPropietario : correoPropietario;
+    const destinatarioEnvio = prueba ? correoPrueba : modoPruebas ? config.correo_pruebas_destino || correoPropietario : correoPropietario;
 
     try {
       await transporte.sendMail({
@@ -273,5 +288,6 @@ Deno.serve(async (req) => {
     }
   }
 
+  if (prueba) return json({ ok: true, prueba: true, enviados, enviado_a: enviados > 0 ? correoPrueba : null, motivo: enviados > 0 ? undefined : 'La prueba no salió. Revisa la bitácora de correos.' });
   return json({ ok: true, enviados, total_propietarios: destinatarios.size });
 });
