@@ -41,6 +41,7 @@ const INDICE = [
  ['marca', 'Varias personas en el mismo inmueble', 'mismo inmueble grupo escalonada simultanea separacion visita en grupo', '[name=modo_mismo_inmueble]', 'horarios'],
  ['marca', 'Radio de zona', 'radio zona km agrupar manana tarde cercania', '[name=radio_zona_km]', 'horarios'],
  ['marca', 'Anticipación mínima para agendar', 'anticipacion minima horas agendar llaves tiempo antes', '[name=horas_minimas_anticipacion]', 'horarios'],
+ ['marca', 'Anticipación mínima para captaciones', 'anticipacion minima horas captacion consignar consignacion propietario tiempo antes', '[name=horas_minimas_anticipacion_captacion]', 'horarios'],
  ['marca', 'Formato de hora (12 o 24 horas)', 'formato hora 12 24 militar am pm', '[name=formato_hora]', 'horarios'],
  ['marca', 'Citas de seguimiento según el valor', 'seguimiento canon minimo precio venta valor citas seguimiento', 'Citas de seguimiento según el valor del inmueble', 'horarios'],
  ['marca', 'Inmuebles de alto valor', 'alto valor canon precio excepcion zona', '[name=valor_alto_canon_zona]', 'horarios'],
