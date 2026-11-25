@@ -434,9 +434,8 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
           ${r.alertas.length ? `<ul class="wa-rev-alertas">${r.alertas.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}
           ${igual ? '' : `<div class="wa-rev-sug"><span>Texto sugerido</span><p>${esc(r.texto_sugerido)}</p></div>`}
           ${r.cambios.length ? `<ul class="wa-rev-cambios">${r.cambios.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
-          ${r.lo_que_espera_el_cliente ? `<p class="wa-rev-cli">💭 Lo que probablemente espera el cliente: ${esc(r.lo_que_espera_el_cliente)}</p>` : ''}
           <div class="wa-rev-acc">${igual ? '' : '<button type="button" class="wa-rev-btn" data-r="sug">Usar el sugerido y enviar</button><button type="button" class="wa-rev-btn wa-sec" data-r="editar">Pasarlo a la caja para editarlo</button>'}
-            ${igual ? '<button type="button" class="wa-rev-btn" data-r="mio">Enviar</button>' : '<p class="wa-rev-cli">Corrige tu mensaje (o usa el sugerido) para poder enviarlo.</p>'}<button type="button" class="wa-rev-btn wa-sec" data-r="cerrar">Seguir editando</button></div>`;
+            ${igual || !r.errores_ortografia ? `<button type="button" class="wa-rev-btn ${igual ? '' : 'wa-sec'}" data-r="mio">${igual ? 'Enviar' : 'Enviar el mío'}</button>` : '<p class="wa-rev-cli">Hay faltas de ortografía: use el sugerido o corrija su mensaje para poder enviarlo.</p>'}<button type="button" class="wa-rev-btn wa-sec" data-r="cerrar">Seguir editando</button></div>`;
         panelRev.querySelector('[data-r=sug]')?.addEventListener('click', () => enviarTexto(r.texto_sugerido));
         panelRev.querySelector('[data-r=editar]')?.addEventListener('click', () => { const t2 = hilo.querySelector('#wa-texto'); t2.value = r.texto_sugerido; t2.dispatchEvent(new Event('input')); cerrarPanel(); t2.focus(); });
         panelRev.querySelector('[data-r=mio]')?.addEventListener('click', () => {

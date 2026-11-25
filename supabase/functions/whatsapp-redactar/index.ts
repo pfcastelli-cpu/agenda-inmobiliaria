@@ -55,6 +55,7 @@ Veredictos:
 - «no_enviar»: el mensaje contiene algo que NO se puede decir (ilegal, contra las normas o riesgoso). En texto_sugerido entrega una versión segura que
   conserve la intención legítima; en alertas explica el problema en lenguaje simple.
 
+«errores_ortografia» = true SOLO si el mensaje ORIGINAL del asesor tiene faltas de ortografía, tildes, puntuación o errores de digitación. Si la ortografía es correcta, false, aunque propongas otra redacción por estilo, tono o normas.
 Reglas de salida: llama SIEMPRE a la herramienta «revision». texto_sugerido va listo para enviar por WhatsApp (sin comillas ni explicaciones,
 sin saludos si la conversación ya está en curso, máximo ~900 caracteres). «cambios» son 1 a 4 frases cortas y concretas que explican qué
 mejoraste y por qué, para que el asesor aprenda. «alertas» solo si hay riesgo real. «lo_que_espera_el_cliente» es una frase breve.`;
@@ -66,12 +67,13 @@ const HERRAMIENTA = [{
     type: 'object',
     properties: {
       veredicto: { type: 'string', enum: ['ok', 'mejorar', 'no_enviar'] },
+      errores_ortografia: { type: 'boolean' },
       texto_sugerido: { type: 'string' },
       cambios: { type: 'array', items: { type: 'string' } },
       alertas: { type: 'array', items: { type: 'string' } },
       lo_que_espera_el_cliente: { type: 'string' },
     },
-    required: ['veredicto', 'texto_sugerido', 'cambios', 'alertas'],
+    required: ['veredicto', 'errores_ortografia', 'texto_sugerido', 'cambios', 'alertas'],
   },
 }];
 
@@ -149,6 +151,7 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     veredicto: ['ok', 'mejorar', 'no_enviar'].includes(r.veredicto) ? r.veredicto : 'mejorar',
+    errores_ortografia: r.errores_ortografia === true,
     texto_sugerido: r.texto_sugerido.slice(0, 4000),
     cambios: lista(r.cambios),
     alertas: lista(r.alertas),

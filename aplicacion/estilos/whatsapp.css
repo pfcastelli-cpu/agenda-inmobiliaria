@@ -365,3 +365,14 @@ details.wa-mas>summary:hover{background:#f4f6f7}
 .wa-chip.wa-ia{background:#e8f0fe;color:#1a4fa3}
 .wa-chip.wa-vence{background:#fff1d6;color:#8a5a00}
 .wa-global-msg{font-style:italic;opacity:1;white-space:normal;max-height:2.6em;overflow:hidden}
+
+/* ═══ Pantalla completa para WhatsApp y panel de revisión compacto ═══ */
+.v-content:has(> .wa),.v-content:has(.wa){max-width:none;width:100%;padding-left:16px;padding-right:16px;box-sizing:border-box}
+.wa-grid{grid-template-columns:clamp(320px,28%,460px) 1fr}
+.wa-revision{padding:8px 12px;gap:6px;max-height:34%;overflow:auto;border-left-width:3px}
+.wa-rev-tit{font-size:13.5px}
+.wa-rev-sug{padding:6px 10px}.wa-rev-sug p{font-size:13.5px;line-height:1.35}
+.wa-rev-alertas,.wa-rev-cambios{font-size:12.5px;line-height:1.35;padding-left:18px}
+.wa-rev-acc{gap:6px;align-items:center}
+.wa-rev-btn{min-height:32px;padding:0 14px;font-size:13px}
+.wa-rev-acc .wa-rev-cli{flex:1 1 100%}
