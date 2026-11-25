@@ -150,6 +150,16 @@ async function clasificar(empresaId: string, conv: Fila, temas: Fila[], etiqueta
   }
 }
 
+// ¿Hay alguien del equipo conectado a la plataforma ahora (latido en los últimos 90 s)? Decide si el cliente se atiende aquí o se le da el WhatsApp del asesor.
+async function instruccionPresencia(empresaId: string): Promise<string> {
+  const desde = new Date(Date.now() - 90_000).toISOString();
+  const { count } = await admin.from('agenda_wa_presencia').select('usuario_id', { count: 'exact', head: true }).eq('empresa_id', empresaId).gte('visto_en', desde);
+  if ((count || 0) > 0) {
+    return 'EQUIPO CONECTADO AHORA: SÍ. Si el cliente pide hablar con una persona o hace falta criterio humano, NO des números de WhatsApp: dile que un asesor le escribirá por este mismo chat en unos minutos y emite [HUMANO:motivo breve].';
+  }
+  return 'EQUIPO CONECTADO AHORA: NO (nadie está en la plataforma). Si el cliente pide hablar con una persona o hace falta criterio humano, dale el WhatsApp directo del asesor de su ciudad (de la lista de contactos) para que le escriba ya, y emite igualmente [HUMANO:motivo breve] para dejar el aviso.';
+}
+
 // Deduce perfil y número de inmueble del texto del cliente. Solo agrega (nunca quita lo que ya puso la IA o una persona).
 async function etiquetarPorPalabras(empresaId: string, conv: Fila, texto: string | undefined) {
   const t = String(texto || '').toLowerCase();
@@ -244,7 +254,7 @@ async function procesarEntrante(e: EntranteWA) {
   const ia = await responderConIA({
     admin, empresaId: emp.empresaId, cfgWA: emp.cfgWA, cfgEmpresa: emp.cfgEmpresa, slug: emp.slug, historial,
     cliente: { nombre: conv.nombre || e.nombre, telefono: e.telefono },
-    extraVariable: `${instruccionesClasificacion(temas, conv)}\n${await contextoInmuebles(admin, emp.empresaId, emp.cfgEmpresa, emp.cfgWA, [...(conv.inmuebles_ofrecidos || []), ...(conv.inmueble_numero ? [conv.inmueble_numero] : [])])}`.trim(),
+    extraVariable: `${instruccionesClasificacion(temas, conv)}\n${await instruccionPresencia(emp.empresaId)}\n${await contextoInmuebles(admin, emp.empresaId, emp.cfgEmpresa, emp.cfgWA, [...(conv.inmuebles_ofrecidos || []), ...(conv.inmueble_numero ? [conv.inmueble_numero] : [])])}`.trim(),
   });
   if (!ia.ok) {
     await admin.from('agenda_wa_conversaciones').update({ requiere_atencion: true }).eq('id', conv.id);

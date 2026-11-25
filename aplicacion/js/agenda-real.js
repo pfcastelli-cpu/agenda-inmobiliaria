@@ -11,6 +11,7 @@ import { enviarPrueba, reportarProblemaCorreo } from './correo-prueba.js';
 import { renderAsambleas } from './asambleas.js';
 import { renderMiDisponibilidad } from './mi-disponibilidad.js';
 import { renderWhatsapp } from './whatsapp-bandeja.js';
+import { iniciarPresenciaWhatsapp, detenerPresenciaWhatsapp } from './whatsapp-presencia.js';
 import { renderPropuestasCompra } from './propuestas-compra.js';
 import { renderTickets, reiniciarTickets, abrirTicket } from './tickets.js';
 import { montarInformeDemanda } from './informe-demanda.js';
@@ -202,6 +203,10 @@ export function iniciarAgendaReal(acceso) {
     // WhatsApp (bandeja del bot y ajustes del interruptor): según los permisos whatsapp.* del rol.
     if (b.dataset.view === 'whatsapp') b.hidden = !puede('whatsapp.ver');
   });
+
+  // Presencia y alerta global de WhatsApp (solo si la persona puede ver WhatsApp).
+  if (puede('whatsapp.ver')) iniciarPresenciaWhatsapp({ supabase, empresaId: contexto.empresaId, vistaActual: () => state.view, irAWhatsapp: () => setView('whatsapp') });
+  else detenerPresenciaWhatsapp();
 
   { const bp = root.querySelector('.v-nav button[data-view=pendientes]'); if (bp) { const m = document.createElement('span'); m.className = 'v-contador'; m.setAttribute('data-contador-propietarios', ''); m.hidden = true; bp.appendChild(m); } }
   actualizarContadorPropietarios();

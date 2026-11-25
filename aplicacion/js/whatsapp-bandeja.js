@@ -202,6 +202,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
   function pintarLista() {
     const ul = el.querySelector('#wa-items');
     if (!ul) return;
+    el.querySelector('.wa-grid')?.classList.toggle('wa-ver-chat', !!st.sel); // en móvil: o la lista o el chat
     const v = ordenar(visibles());
     ul.innerHTML = v.length ? v.map((c) => `<li><button type="button" class="wa-item ${c.id === st.sel ? 'wa-sel' : ''} ${esAlerta(c) ? 'wa-alerta' : ''} ${c.estado === 'cerrada' ? 'wa-cerrada' : ''}" data-id="${esc(c.id)}">
       <span class="wa-av" style="background:${colorDe(c)}" aria-hidden="true">${esc(iniciales(c))}</span>
@@ -273,7 +274,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     const temaDe = st.meta.temas.find((t) => t.id === conv.tema_id);
     const rapidas = Array.isArray(st.cfg.respuestas_rapidas) ? st.cfg.respuestas_rapidas : [];
     const plantillas = Array.isArray(st.cfg.plantillas) ? st.cfg.plantillas : [];
-    hilo.innerHTML = `<header class="wa-hcab"><span class="wa-av" style="background:${colorDe(conv)}" aria-hidden="true">${esc(iniciales(conv))}</span>
+    hilo.innerHTML = `<header class="wa-hcab"><button type="button" class="wa-icono wa-atras" id="wa-atras" aria-label="Volver a los chats">←</button><span class="wa-av" style="background:${colorDe(conv)}" aria-hidden="true">${esc(iniciales(conv))}</span>
       <div><strong>${esc(tituloConv(conv))}</strong><small>+${esc(conv.telefono)}${conv.es_prueba ? ' · número de prueba' : ''}${conv.asesor_id ? ` · Atiende ${esc(nombreAsesor(conv.asesor_id) || 'un asesor')}` : ' · Sin asignar'}${temaDe ? ` · ${esc(temaDe.nombre)}` : ''}</small>
         ${(conv.perfiles || []).length ? `<div class="wa-etiquetas">${conv.perfiles.map((p) => `<b class="wa-chip wa-perfil">${esc(PERFILES[p] || p)}</b>`).join('')}</div>` : ''}</div>
       <div class="wa-hacc">${poder && puedeTomar && !conv.asesor_id && st.meta.yo ? '<button type="button" class="wa-resolver" id="wa-tomar" title="Quedarte con esta conversación: la IA queda en pausa y la atiendes tú">✋ Tomar</button>' : ''}${poder && puedeTransferir && (conv.asesor_id === st.meta.yo || verTodas) ? '<button type="button" class="wa-resolver" id="wa-transferir" title="Pasar la conversación a otro asesor">↪ Transferir</button>' : ''}${poder ? `<button type="button" class="wa-resolver ${conv.estado === 'cerrada' ? 'wa-reabrir' : ''}" id="wa-resolver" title="${conv.estado === 'cerrada' ? 'Volver a dejar esta conversación como pendiente' : 'El tema quedó resuelto: sale de pendientes'}">${conv.estado === 'cerrada' ? '↩ Reabrir' : '✓ Marcar resuelta'}</button>` : ''}${poder ? `<button type="button" class="wa-interr" id="wa-ia" aria-pressed="${conv.ia_activa}" title="Cuando la IA está activa responde sola; al pausarla, atiende una persona"><i aria-hidden="true"></i>${conv.ia_activa ? 'IA activa' : 'IA en pausa'}</button>` : `<span class="wa-chip ${conv.ia_activa ? 'wa-ia-on' : ''}">${conv.ia_activa ? 'IA activa' : 'IA en pausa'}</span>`}${poder ? '<button type="button" class="wa-icono" id="wa-herr-btn" title="Tema, etiquetas, ofrecer inmuebles y enlaces" aria-label="Más acciones">⋮</button>' : ''}</div></header>
@@ -290,6 +291,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     const alternarMas = () => { const p = hilo.querySelector('#wa-mas'); if (!p) return; p.hidden = !p.hidden; st.masAbierto = !p.hidden; };
     hilo.querySelector('#wa-mas-btn')?.addEventListener('click', alternarMas);
     hilo.querySelector('#wa-herr-btn')?.addEventListener('click', alternarMas);
+    hilo.querySelector('#wa-atras')?.addEventListener('click', () => { st.sel = null; hilo.innerHTML = '<p class="v-muted">Elige una conversación para verla aquí.</p>'; pintarLista(); });
     cargarMedios(hilo);
     const caja = hilo.querySelector('#wa-msgs');
     if (caja) caja.scrollTop = irAbajo || !st.yaDesplazado ? caja.scrollHeight : caja.scrollTop;

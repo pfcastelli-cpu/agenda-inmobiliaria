@@ -253,7 +253,7 @@ details.wa-mas>summary:hover{background:#f4f6f7}
 /* conversación */
 .wa-hcab{padding:8px 14px;gap:12px;min-height:56px;box-sizing:border-box}
 .wa-hcab .wa-av{width:40px;height:40px;font-size:15px}
-.wa-hcab>div:nth-child(2){min-width:0;flex:1}
+.wa-hcab>div:not(.wa-hacc){min-width:0;flex:1}
 .wa-hcab strong{font-size:16px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wa-hcab small{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wa-hcab .wa-etiquetas{display:none}
@@ -285,3 +285,80 @@ details.wa-mas>summary:hover{background:#f4f6f7}
 .wa-prio{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:6px;max-width:460px}
 .wa-prio li{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:6px 10px;border:1px solid var(--wa-linea);border-radius:10px;background:#fff}
 @media (max-width:760px){.wa-grid{grid-template-columns:1fr}.wa-item::after{left:14px}}
+
+/* ═══ Ajustes: compacto y limpio (estilo WhatsApp Web / Linear) ═══ */
+.wa-aj{gap:10px;font-size:13px}
+.wa-aj-panel{gap:10px}
+.wa-aj .wa-sec,.wa-aj .wa-card{padding:14px 16px;gap:10px;border-radius:10px}
+.wa-aj .wa-sec h3,.wa-aj .wa-card legend{font-size:14px;font-weight:600;letter-spacing:-.1px}
+.wa-aj .wa-nota{font-size:12.5px;line-height:1.45;opacity:.8;color:var(--wa-suave)}
+.wa-aj .wa-nota code{font-size:11.5px}
+.wa-aj .v-field{gap:4px;font-size:12.5px;font-weight:600;color:var(--wa-texto)}
+.wa-aj .v-field small{font-size:12px;line-height:1.4;color:var(--wa-suave);opacity:1}
+.wa-aj :is(input[type=text],input:not([type]),input[type=number],textarea,select){min-height:34px;padding:6px 10px;font-size:13px;border-radius:8px;border-color:#d9dee1;transition:border-color .12s,box-shadow .12s}
+.wa-aj :is(input,textarea,select):focus{outline:0;border-color:var(--wa-acento);box-shadow:0 0 0 3px rgba(0,168,132,.15)}
+.wa-aj .wa-plant input{min-height:34px}
+.wa-aj .wa-grande{min-height:160px;font-size:13px;line-height:1.5}
+.wa-aj .v-btn,.wa-aj .wa-acciones .v-btn{min-height:34px;padding:0 14px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid #d9dee1;background:#fff;color:var(--wa-texto);transition:background .12s}
+.wa-aj .v-btn:hover{background:var(--wa-panel)}
+.wa-aj .v-primary,.wa-aj .wa-acciones .v-primary{background:var(--wa-verde);border-color:var(--wa-verde);color:#fff}
+.wa-aj .v-primary:hover{background:var(--wa-verde-osc);border-color:var(--wa-verde-osc)}
+.wa-aj .v-quiet{min-height:30px;padding:0 10px;border-color:transparent;background:transparent;color:#b3261e}
+.wa-aj .v-quiet:hover{background:#fdecea}
+.wa-aj .wa-acciones{gap:8px}
+.wa-aj .wa-sec-btn{min-height:30px;padding:0 10px;border-radius:8px;font-size:12.5px}
+.wa-aj .wa-check{min-height:30px;gap:8px;align-items:center;font-size:13px}
+.wa-aj .wa-check input,.wa-aj .wa-modo-op input{width:16px;height:16px;margin:2px 0 0;accent-color:var(--wa-verde);flex:none}
+.wa-aj .wa-checks{gap:2px 14px}
+.wa-aj .wa-modos{gap:8px}
+.wa-aj .wa-modos .wa-modo-op{min-height:0;gap:8px;padding:8px 10px;border-radius:8px;font-size:13px;transition:border-color .12s,background .12s}
+.wa-aj .wa-modo-op strong{font-size:13px;font-weight:600}
+.wa-aj .wa-modo-op small{font-size:12px;line-height:1.35;margin-top:1px;color:var(--wa-suave);opacity:1}
+.wa-aj .wa-modos .wa-modo-op:hover{background:var(--wa-panel)}
+.wa-aj .wa-modos .wa-modo-op:has(input:checked){border-color:var(--wa-verde);background:#f0faf5;box-shadow:inset 0 0 0 1px var(--wa-verde)}
+.wa-aj .wa-acciones-bot{gap:6px}
+.wa-aj .wa-acciones-bot li{padding:7px 10px;font-size:12.5px;border-radius:8px}
+.wa-aj .wa-tema{padding:8px;border-radius:8px}
+.wa-aj .wa-aviso-det summary{min-height:30px;font-size:13px}
+.wa-aj .wa-aj-nav{flex-wrap:nowrap;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.wa-aj .wa-aj-nav::-webkit-scrollbar{display:none}
+.wa-aj .wa-aj-nav button{flex:none;min-height:36px;padding:0 12px;font-size:13px;border-bottom-width:2px}
+.wa-aj .wa-aj-nav button:hover{color:var(--wa-texto)}
+.wa-aj .wa-aj-barra{gap:10px;padding:10px 0;border-top:1px solid var(--wa-linea);background:#fff}
+@media (max-width:640px){
+  .wa-aj .wa-modos,.wa-aj .wa-grid2{grid-template-columns:1fr}
+  .wa-aj .wa-plant{grid-template-columns:1fr}
+  .wa-aj .wa-sec,.wa-aj .wa-card{padding:12px}
+  .wa-aj .v-field :is(input,textarea,select){font-size:16px}
+  .wa-aj .wa-aj-barra{position:sticky;bottom:0;margin:0 -4px;padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:5;box-shadow:0 -4px 10px rgba(11,20,26,.06)}
+  .wa-aj .wa-aj-barra .v-btn{flex:1;min-height:40px}
+}
+
+/* ═══ Alerta global (en cualquier pantalla de la plataforma) ═══ */
+.wa-global{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:14px;max-width:min(560px,calc(100vw - 24px));padding:12px 14px 12px 18px;border-radius:12px;background:#d93025;color:#fff;box-shadow:0 8px 28px rgba(217,48,37,.45);animation:wa-global-pulso 1.4s ease-in-out infinite}
+.wa-global[hidden]{display:none}
+.wa-global-txt{min-width:0;flex:1}
+.wa-global-txt b{display:block;font-size:15px}
+.wa-global-txt small{display:block;font-size:12.5px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wa-global button{flex:none;min-height:38px;padding:0 18px;border:0;border-radius:999px;background:#fff;color:#b3261e;font:inherit;font-weight:700;cursor:pointer}
+@keyframes wa-global-pulso{50%{box-shadow:0 8px 28px rgba(217,48,37,.45),0 0 0 8px rgba(217,48,37,.22)}}
+@media (prefers-reduced-motion:reduce){.wa-global{animation:none}}
+
+/* ═══ Móvil: una sola columna, o la lista o el chat (con botón ←) ═══ */
+.wa-atras{display:none}
+@media (max-width:760px){
+  .wa-grid{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr);height:calc(100dvh - 200px);min-height:420px}
+  .wa-grid .wa-lista{max-height:none}
+  .wa-grid .wa-hilo{display:none;height:auto}
+  .wa-grid.wa-ver-chat .wa-lista{display:none}
+  .wa-grid.wa-ver-chat .wa-hilo{display:flex}
+  .wa-atras{display:grid}
+  .wa-hcab{padding:6px 8px;gap:8px}
+  .wa-hacc{flex-wrap:wrap;justify-content:flex-end}
+  .wa-m{max-width:86%}
+}
+@media (max-width:760px){
+  .wa-hcab{flex-wrap:wrap;row-gap:4px}
+  .wa-hcab>div:not(.wa-hacc){flex:1 1 0}
+  .wa-hacc{flex:1 1 100%;justify-content:flex-start;order:5}
+}
