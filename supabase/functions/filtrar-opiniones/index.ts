@@ -15,7 +15,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 // Proveedores admitidos (la empresa elige uno en Configuración → Inteligencia artificial) y su modelo por defecto.
 // El modelo puede cambiarse desde la misma pantalla (agenda_configuracion.ia_modelo) sin tocar el código.
 type Proveedor = 'anthropic' | 'openai' | 'google';
-const MODELOS_POR_DEFECTO: Record<Proveedor, string> = { anthropic: 'claude-haiku-5-5', openai: 'gpt-4o-mini', google: 'gemini-2.5-flash' };
+const MODELOS_POR_DEFECTO: Record<Proveedor, string> = { anthropic: 'claude-haiku-5-5', openai: 'gpt-4o-mini', google: 'gemini-flash-lite-latest' };
 type Credencial = { clave: string; proveedor: Proveedor; modelo: string };
 const LOTE_POR_EMPRESA = 10;
 const MAX_INTENTOS = 3;
@@ -82,7 +82,8 @@ ${comentario.slice(0, MAX_CARACTERES_ENTRADA)}
       signal: AbortSignal.timeout(25000),
     });
   } else {
-    respuesta = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cred.modelo)}:generateContent`, {
+    // Google a veces responde 503 («mucha demanda») o 429: se reintenta una vez antes de rendirse.
+    const llamarGoogle = () => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cred.modelo)}:generateContent`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-goog-api-key': cred.clave },
       body: JSON.stringify({
@@ -90,8 +91,13 @@ ${comentario.slice(0, MAX_CARACTERES_ENTRADA)}
         contents: [{ role: 'user', parts: [{ text: entrada }] }],
         generationConfig: { maxOutputTokens: 400, temperature: 0, responseMimeType: 'application/json' },
       }),
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(20000),
     });
+    respuesta = await llamarGoogle();
+    if (respuesta.status === 503 || respuesta.status === 429) {
+      await new Promise((r) => setTimeout(r, 2500));
+      respuesta = await llamarGoogle();
+    }
   }
   if (!respuesta.ok) {
     // Nunca se registra el cuerpo completo ni la clave; solo el código.
@@ -143,7 +149,9 @@ async function listarModelos(cred: Credencial): Promise<string[]> {
     const d = await r.json();
     ids = (d.data ?? []).map((m: { id: string }) => m.id);
   }
-  return [...new Set(ids)].sort().slice(0, 60);
+  // Primero los alias «-latest» (Google los mantiene apuntando al modelo vigente) y los «lite» (rápidos y baratos).
+  const puntos = (n: string) => (n.includes('latest') ? 2 : 0) + (n.includes('lite') ? 1 : 0);
+  return [...new Set(ids)].sort((a, b) => puntos(b) - puntos(a) || a.localeCompare(b)).slice(0, 60);
 }
 
 async function procesarEmpresa(admin: Admin, empresaId: string): Promise<{ revisados: number; errores: number; sinClave?: boolean }> {

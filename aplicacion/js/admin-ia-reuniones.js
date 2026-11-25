@@ -10,7 +10,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const PROVEEDORES_IA = {
   anthropic: { nombre: 'Anthropic (Claude)', modelo: 'claude-haiku-5-5', modelos: ['claude-haiku-5-5','claude-sonnet-5-5','claude-opus-5-5'], prefijo: 'sk-ant-…', ayuda: 'Crea la clave en console.anthropic.com → API keys.' },
   openai: { nombre: 'OpenAI (ChatGPT)', modelo: 'gpt-4o-mini', modelos: ['gpt-4o-mini','gpt-4o','gpt-4.1-mini','gpt-4.1'], prefijo: 'sk-…', ayuda: 'Crea la clave en platform.openai.com → API keys.' },
-  google: { nombre: 'Google (Gemini)', modelo: 'gemini-2.5-flash', modelos: ['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.5-pro'], prefijo: 'AIza…', ayuda: 'Crea la clave en aistudio.google.com → Get API key.' },
+  google: { nombre: 'Google (Gemini)', modelo: 'gemini-flash-lite-latest', modelos: ['gemini-flash-lite-latest','gemini-flash-latest','gemini-3.5-flash-lite'], prefijo: 'AIza…', ayuda: 'Crea la clave en aistudio.google.com → Get API key.' },
 };
 
 export async function iaTab(ctx) {
@@ -28,7 +28,7 @@ export async function iaTab(ctx) {
  <form id="ad-ia-form">
   <div class="ad-grid">
    <label>Proveedor de IA<select name="ia_proveedor">${Object.entries(PROVEEDORES_IA).map(([k, v]) => `<option value="${k}" ${k === prov ? 'selected' : ''}>${v.nombre}</option>`).join('')}</select></label>
-   <label>Modelo <small class="ad-muted">(déjalo vacío para usar el recomendado)</small><input name="ia_modelo" value="${esc(estado.modelo || '')}" placeholder="${esc(PROVEEDORES_IA[prov].modelo)}" autocomplete="off" list="ad-ia-modelos"><datalist id="ad-ia-modelos"></datalist><small class="ad-muted">Despliega la flecha para elegir uno sugerido o escribe otro. Formato: Claude <code>claude-haiku-5-5</code> · OpenAI <code>gpt-4o-mini</code> · Gemini <code>gemini-2.5-flash</code> (sin espacios, en minúsculas).</small></label>
+   <label>Modelo <small class="ad-muted">(déjalo vacío para usar el recomendado)</small><input name="ia_modelo" value="${esc(estado.modelo || '')}" placeholder="${esc(PROVEEDORES_IA[prov].modelo)}" autocomplete="off" list="ad-ia-modelos"><datalist id="ad-ia-modelos"></datalist><small class="ad-muted">Despliega la flecha para elegir uno sugerido o escribe otro. Formato: Claude <code>claude-haiku-5-5</code> · OpenAI <code>gpt-4o-mini</code> · Gemini <code>gemini-flash-lite-latest</code> (sin espacios, en minúsculas).</small></label>
    <label>Clave de API${tiene ? ' · <small class="ad-muted">ya guardada, deja este campo vacío para conservarla</small>' : ''}<span class="ad-correo-password-row"><input name="ia_clave" type="password" placeholder="${tiene ? '••••••••••••••••' : 'Pega aquí la clave'}" autocomplete="new-password"><button type="button" class="ad-link-btn" data-reveal-ia>Mostrar</button></span></label>
   </div>
   <p class="ad-note" data-ayuda-ia></p>
