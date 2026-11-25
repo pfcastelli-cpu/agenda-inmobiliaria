@@ -245,7 +245,10 @@ async function guardarDelBotAnterior(b: Fila) {
   const tel = soloDigitos(b.telefono);
   const t = String(b.texto || '').slice(0, 4000);
   if (!tel || !t) return;
-  const { data: conv } = await admin.from('agenda_wa_conversaciones').select('id').eq('empresa_id', emp.empresaId).eq('telefono', tel).maybeSingle();
+  // Los números ocultos se guardan como identificador de Meta (ej. «CO.1234…»): se busca primero tal cual, luego solo por dígitos.
+  const crudo = String(b.telefono || '').trim();
+  let { data: conv } = await admin.from('agenda_wa_conversaciones').select('id').eq('empresa_id', emp.empresaId).eq('telefono', crudo).maybeSingle();
+  if (!conv) ({ data: conv } = await admin.from('agenda_wa_conversaciones').select('id').eq('empresa_id', emp.empresaId).eq('telefono', tel).maybeSingle());
   if (!conv) return;
   await admin.from('agenda_wa_mensajes').insert({ conversacion_id: conv.id, empresa_id: emp.empresaId, direccion: 'salida', origen: 'bot_anterior', tipo: 'text', texto: t, estado_envio: 'enviado' });
   await admin.from('agenda_wa_conversaciones').update({ ultimo_texto: t.slice(0, 200), ultimo_en: new Date().toISOString() }).eq('id', conv.id);

@@ -172,3 +172,17 @@
 #wa-rapidas{min-height:38px;border:1px solid var(--wa-linea);border-radius:10px;padding:0 8px;font:inherit;background:#fff;max-width:100%}
 .wa-ficha{display:grid;gap:6px;padding:12px;border:1px solid var(--wa-linea);border-radius:12px;background:#fff;font-size:13.5px}
 .wa-ficha h4{margin:0;font-size:14px}.wa-ficha ul{margin:0;padding-left:18px}
+
+/* Hilo más compacto: herramientas plegables y botones del encabezado pequeños */
+.wa-hcab{padding:6px 12px;gap:8px}
+.wa-hcab .wa-av{width:32px;height:32px;font-size:13px}
+.wa-hcab strong{font-size:14.5px}.wa-hcab small{font-size:12px}
+.wa-hacc{gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.wa-resolver,.wa-interr{min-height:30px;padding:0 10px;font-size:12.5px}
+.wa-interr{padding:0 10px 0 6px;gap:6px}
+details.wa-mas{border-top:1px solid var(--wa-linea);background:var(--wa-panel)}
+details.wa-mas>summary{cursor:pointer;padding:5px 14px;font-size:12.5px;color:var(--wa-suave);list-style:none}
+details.wa-mas>summary::-webkit-details-marker{display:none}
+details.wa-mas[open]>summary{font-weight:600;color:var(--wa-texto)}
+details.wa-mas .wa-herr,details.wa-mas .wa-enlaces{border-top:0;padding:6px 14px}
+.wa-msgs{min-height:200px}
