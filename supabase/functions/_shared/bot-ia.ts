@@ -95,7 +95,8 @@ export async function buscarInmuebles(admin: Admin, empresaId: string, cfgEmpres
     p_habitaciones_min: Number.isInteger(f.habitaciones_min) ? f.habitaciones_min : null,
     p_valor_max: Number.isFinite(f.valor_max) ? f.valor_max : null,
     p_limite: 6,
-    p_codigo_portal: f.codigo_portal ? String(f.codigo_portal).replace(/[^A-Za-z0-9-]/g, '').slice(0, 40) || null : null,
+    // Solo se envía si el cliente dio un código de portal (la base debe tener el SQL 101 aplicado para aceptarlo).
+    ...(f.codigo_portal ? { p_codigo_portal: String(f.codigo_portal).replace(/[^A-Za-z0-9-]/g, '').slice(0, 40) } : {}),
   });
   if (error || !data) return { error: 'No se pudo consultar el catálogo en este momento.' };
   const dominio = String(cfgEmpresa.dominio_publico || 'citas.patrimonios.co').replace(/[^a-zA-Z0-9.-]/g, '');
