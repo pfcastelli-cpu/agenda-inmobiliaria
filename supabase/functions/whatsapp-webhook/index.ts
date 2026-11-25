@@ -226,14 +226,18 @@ async function procesarEntrante(e: EntranteWA) {
   }
   const dominio = String(emp.cfgEmpresa.dominio_publico || 'citas.patrimonios.co').replace(/[^a-zA-Z0-9.-]/g, '');
   const aviso = await ejecutarEtiquetas(admin, emp.empresaId, emp.cfgWA, ia.r.etiquetas, { nombre: conv.nombre || e.nombre, telefono: e.telefono }, `https://${dominio}/`);
+  let iaContesto = false;
   if (ia.r.texto) {
     const r = await enviarTexto(e.phone_number_id, e.telefono, ia.r.texto);
     await guardarSalida(conv.id, emp.empresaId, 'ia', ia.r.texto, r);
+    iaContesto = !!r.ok;
   }
   const visibles = ia.r.etiquetas.filter((t) => t.tipo !== 'TEMA' && t.tipo !== 'PERFIL');
   const cambios: Fila = { ultima_etiqueta: visibles.length ? { tipo: visibles[visibles.length - 1].tipo, en: new Date().toISOString() } : conv.ultima_etiqueta ?? null };
   if (visibles.length) cambios.etiquetas = [...new Set([...(conv.etiquetas || []), ...visibles.map((t) => t.tipo)])];
   if (aviso.pasarAHumano) Object.assign(cambios, { requiere_atencion: true, motivo_pausa: aviso.motivo });
+  // Si la IA ya contestó y no necesita a una persona, no queda «sin leer»: el humano solo ve el globo cuando de verdad hay algo por hacer.
+  else if (iaContesto) cambios.sin_leer = 0;
   await clasificar(emp.empresaId, conv, temas, ia.r.etiquetas, cambios);
   await admin.from('agenda_wa_conversaciones').update(cambios).eq('id', conv.id);
 }
