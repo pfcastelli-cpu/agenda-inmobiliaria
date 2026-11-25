@@ -186,3 +186,25 @@ details.wa-mas>summary::-webkit-details-marker{display:none}
 details.wa-mas[open]>summary{font-weight:600;color:var(--wa-texto)}
 details.wa-mas .wa-herr,details.wa-mas .wa-enlaces{border-top:0;padding:6px 14px}
 .wa-msgs{min-height:200px}
+
+/* Revisión de usabilidad: el cuadro de escribir siempre a la vista, filtros compactos, herramientas con aspecto de botón */
+.wa-grid{height:clamp(440px,calc(100dvh - 250px),860px);min-height:0}
+.wa-hilo>*{flex-shrink:0}
+.wa-hilo>.wa-msgs{flex:1 1 auto;flex-shrink:1;min-height:120px}
+.wa-form{border-top:1px solid var(--wa-linea);padding:10px 12px}
+.wa-form textarea{border:1px solid var(--wa-linea);min-height:42px}
+.wa-enviar{min-width:42px;min-height:42px}
+.wa-filtros{padding:6px 10px;gap:6px}
+.wa-filtros input,.wa-filtros select{min-height:34px;font-size:13px}
+.wa-pildoras{gap:4px}
+.wa-pildoras button{min-height:26px;padding:0 9px;font-size:12px}
+.wa-selects{grid-template-columns:1fr}
+details.wa-mas{border-top:0;background:var(--wa-panel);padding:0}
+details.wa-mas>summary{display:flex;align-items:center;gap:8px;margin:6px 12px;padding:6px 12px;border:1px solid var(--wa-linea);border-radius:8px;background:#fff;font-size:13px;font-weight:600;color:var(--wa-texto)}
+details.wa-mas>summary::after{content:"▾";margin-left:auto;color:var(--wa-suave);transition:transform .15s}
+details.wa-mas[open]>summary::after{transform:rotate(180deg)}
+details.wa-mas>summary:hover{background:#f4f6f7}
+.wa-grid{grid-template-rows:minmax(0,1fr)}
+.wa-hilo,.wa-lista{min-height:0;overflow:hidden}
+.wa-items{overflow:auto;min-height:0}
+@media (max-width:760px){.wa-grid{grid-template-rows:auto;height:auto}.wa-hilo{height:78vh}}
