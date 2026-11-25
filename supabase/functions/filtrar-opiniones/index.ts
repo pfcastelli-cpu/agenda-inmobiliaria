@@ -131,12 +131,12 @@ async function listarModelos(cred: Credencial): Promise<string[]> {
     if (!r.ok) throw new Error(`El proveedor respondió ${r.status}`);
     const d = await r.json();
     ids = (d.models ?? []).filter((m: { supportedGenerationMethods?: string[] }) => (m.supportedGenerationMethods ?? []).includes('generateContent'))
-      .map((m: { name: string }) => String(m.name).replace(/^models//, '')).filter((n: string) => /^gemini-/.test(n) && !/(embedding|image|tts|live|audio|robotics|computer|vision|aqa)/.test(n));
+      .map((m: { name: string }) => String(m.name).replace('models/', '')).filter((n: string) => /^gemini-/.test(n) && !/(embedding|image|tts|live|audio|robotics|computer|vision|aqa)/.test(n));
   } else if (cred.proveedor === 'openai') {
     const r = await fetch('https://api.openai.com/v1/models', { headers: { authorization: `Bearer ${cred.clave}` }, signal: senal });
     if (!r.ok) throw new Error(`El proveedor respondió ${r.status}`);
     const d = await r.json();
-    ids = (d.data ?? []).map((m: { id: string }) => m.id).filter((n: string) => /^(gpt-|od)/.test(n) && !/(audio|realtime|transcribe|tts|image|embedding|search|moderation|instruct|codex)/.test(n));
+    ids = (d.data ?? []).map((m: { id: string }) => m.id).filter((n: string) => /^(gpt-|o[0-9])/.test(n) && !/(audio|realtime|transcribe|tts|image|embedding|search|moderation|instruct|codex)/.test(n));
   } else {
     const r = await fetch('https://api.anthropic.com/v1/models?limit=100', { headers: { 'x-api-key': cred.clave, 'anthropic-version': '2023-06-01' }, signal: senal });
     if (!r.ok) throw new Error(`El proveedor respondió ${r.status}`);
