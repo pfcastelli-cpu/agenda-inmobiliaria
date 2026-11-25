@@ -413,3 +413,13 @@ details.wa-mas>summary:hover{background:#f4f6f7}
 /* Pantallas grandes: la lista crece y el chat aprovecha el resto */
 @media (min-width:1500px){.wa-grid{grid-template-columns:clamp(360px,26%,520px) 1fr}}
 @media (min-width:1900px){.wa-grid{height:clamp(560px,calc(100dvh - 220px),1100px)}}
+
+/* ===== iPhone: una sola columna de verdad (la regla de escritorio de arriba la pisaba) ===== */
+@media (max-width:760px){
+  .wa-grid,.wa-grid.wa-ver-chat{grid-template-columns:minmax(0,1fr)}
+  .wa-grid>*{grid-column:1;min-width:0}
+  .wa-filtro-btn{padding:0 10px}
+  .wa-fpanel{left:4px;right:4px}
+  .wa-fpanel .wa-pildoras{grid-template-columns:1fr 1fr}
+  .wa-conect-panel{right:auto;left:0}
+}
