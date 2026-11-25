@@ -10,6 +10,7 @@ const ORIGEN = { cliente: 'Cliente', ia: '🤖 Asistente IA', asesor: 'Asesor', 
 const COLORES = ['#00a884', '#6b3fa0', '#d9534f', '#2f7bd9', '#c77d00', '#009688', '#8e5a3c', '#5c6bc0'];
 const FILTROS = [['todas', 'Todas'], ['mias', 'Mías'], ['cola', 'Sin asignar'], ['pendientes', 'Pendientes'], ['atencion', 'Atención'], ['pausadas', 'IA en pausa'], ['resueltas', 'Resueltas'], ['prueba', 'Pruebas']];
 const PERFILES = { interesado_arriendo: 'Interesado en arriendo', interesado_compra: 'Interesado en compra', propietario: 'Propietario', arrendatario: 'Arrendatario', consignacion: 'Consignación' };
+const TIPO_TXT = { pide_asesor: 'pide hablar con una persona', fallo_entrega: 'un mensaje no se entregó', inmueble: 'inmueble sin identificar', ia_sin_respuesta: 'la IA no pudo responder', otro: 'requiere atención' };
 const tituloConv = (c) => `${c.nombre || '+' + c.telefono}${c.inmueble_numero ? ` · Inmueble ${c.inmueble_numero}` : ''}`;
 const zona = { timeZone: 'America/Bogota' };
 const horaCorta = (iso) => new Date(iso).toLocaleTimeString('es-CO', { ...zona, hour: 'numeric', minute: '2-digit' });
@@ -38,7 +39,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
   const puede = puedeFn || puedePermisos;
   const verAjustes = puede('whatsapp.configurar');
   const poder = puede('whatsapp.responder');
-  const st = { convs: [], sel: null, filtro: 'todas', buscar: '', cfg: null, timer: null, pestana: 'chats', firma: '', yaDesplazado: false, urls: {}, fTema: '', fAses: '', meta: { temas: [], asesores: [], yo: null } };
+  const st = { avisados: null, ultimoSonido: 0, tituloOriginal: document.title, convs: [], sel: null, filtro: 'todas', buscar: '', cfg: null, timer: null, pestana: 'chats', firma: '', yaDesplazado: false, urls: {}, fTema: '', fAses: '', meta: { temas: [], asesores: [], yo: null } };
   const verTodas = puede('whatsapp.ver_todas');
   const puedeTomar = puede('whatsapp.tomar');
   const puedeTransferir = puede('whatsapp.transferir') || puede('whatsapp.transferir_todos');
@@ -78,7 +79,8 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
 
   function cuerpoChats() {
     el.querySelector('#wa-cuerpo').innerHTML = `<div class="wa-grid">
-  <aside class="wa-lista"><div class="wa-lista-cab"><span>Chats</span></div>
+  <aside class="wa-lista"><div class="wa-lista-cab"><span>Chats</span><button type="button" class="wa-icono" id="wa-sonido" aria-pressed="${sonidoActivo()}" title="Activar o silenciar el sonido de las alertas">${sonidoActivo() ? '🔔' : '🔕'}</button></div>
+    <button type="button" class="wa-banner" id="wa-banner" hidden></button>
     <div class="wa-filtros"><input id="wa-buscar" type="search" placeholder="Buscar un chat" value="${esc(st.buscar)}" aria-label="Buscar conversación">
       <div class="wa-pildoras" role="group" aria-label="Filtrar">${FILTROS.map(([v, t]) => `<button type="button" data-f="${v}" aria-pressed="${st.filtro === v}">${esc(t)}</button>`).join('')}</div>
       ${st.meta.temas.length || (verTodas && st.meta.asesores.length) ? `<div class="wa-selects">
@@ -86,6 +88,14 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
         ${verTodas && st.meta.asesores.length ? `<select id="wa-fases" aria-label="Filtrar por asesor"><option value="">Todos los asesores</option>${st.meta.asesores.map((a) => `<option value="${esc(a.id)}" ${st.fAses === a.id ? 'selected' : ''}>${esc(a.nombre)}</option>`).join('')}</select>` : ''}</div>` : ''}</div>
     <ul id="wa-items" class="wa-items"></ul></aside>
   <div class="wa-hilo" id="wa-hilo"><p class="v-muted">Elige una conversación para verla aquí.</p></div></div>`;
+    el.querySelector('#wa-sonido')?.addEventListener('click', (ev) => {
+      const on = !sonidoActivo();
+      try { localStorage.setItem('wa_sonido', on ? 'si' : 'no'); } catch { /* sin almacenamiento */ }
+      ev.currentTarget.textContent = on ? '🔔' : '🔕'; ev.currentTarget.setAttribute('aria-pressed', String(on));
+      if (on) sonar();
+    });
+    el.querySelector('#wa-banner')?.addEventListener('click', () => { st.filtro = 'atencion'; el.querySelectorAll('.wa-pildoras button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.f === 'atencion'))); pintarLista(); });
+    ajustarAlto();
     el.querySelector('#wa-buscar').addEventListener('input', (e) => { st.buscar = e.target.value; pintarLista(); });
     el.querySelector('#wa-ftema')?.addEventListener('change', (e) => { st.fTema = e.target.value; pintarLista(); });
     el.querySelector('#wa-fases')?.addEventListener('change', (e) => { st.fAses = e.target.value; pintarLista(); });
@@ -95,6 +105,65 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
       pintarLista();
     }));
   }
+
+  // ── Alertas: conversaciones que necesitan a una persona ──
+  function sonidoActivo() { try { return localStorage.getItem('wa_sonido') !== 'no'; } catch { return true; } }
+  function reglaAl() {
+    const a = st.cfg?.contactos?.alertas || {};
+    return { orden: a.orden || 'antigua', sonido: a.sonido !== false, repetir: Number.isFinite(Number(a.repetir)) ? Number(a.repetir) : 5, prioridad: Array.isArray(a.prioridad) && a.prioridad.length ? a.prioridad : ['pide_asesor', 'fallo_entrega', 'inmueble', 'ia_sin_respuesta', 'otro'] };
+  }
+  function tipoAlerta(c) {
+    return (c.alerta === 'inmueble_no_identificado' ? 'inmueble' : /no se entreg/i.test(c.motivo_pausa || '') ? 'fallo_entrega'
+    : /asesor|persona|humano/i.test(c.motivo_pausa || '') ? 'pide_asesor' : !c.motivo_pausa ? 'ia_sin_respuesta' : 'otro');
+  }
+  function esAlerta(c) { return c.estado !== 'cerrada' && !!c.requiere_atencion; }
+  function espera(c) { return new Date(c.ultimo_cliente_en || c.ultimo_en || 0).getTime(); }
+  function ordenAlertas(a, b) {
+    const r = reglaAl();
+    if (r.orden === 'reciente') return espera(b) - espera(a);
+    if (r.orden === 'prioridad') { const d = r.prioridad.indexOf(tipoAlerta(a)) - r.prioridad.indexOf(tipoAlerta(b)); if (d) return d; }
+    return espera(a) - espera(b);
+  }
+  // Las alertas van arriba (según la regla de Ajustes → Alertas); el resto, por la última actividad.
+  function ordenar(lista) { const al = lista.filter(esAlerta).sort(ordenAlertas); return [...al, ...lista.filter((c) => !esAlerta(c))]; }
+  function sonar() {
+    try {
+      const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+      st.audio = st.audio || new A(); const a = st.audio; if (a.state === 'suspended') a.resume();
+      [[880, 0], [1175, 0.2], [880, 0.4]].forEach(([fr, t]) => {
+        const o = a.createOscillator(); const g = a.createGain(); o.type = 'sine'; o.frequency.value = fr;
+        g.gain.setValueAtTime(0.0001, a.currentTime + t); g.gain.exponentialRampToValueAtTime(0.3, a.currentTime + t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + t + 0.18);
+        o.connect(g); g.connect(a.destination); o.start(a.currentTime + t); o.stop(a.currentTime + t + 0.19);
+      });
+    } catch { /* el navegador bloqueó el audio hasta que se toque la página */ }
+  }
+  function claveAl(c) { return c.id + '|' + (c.motivo_pausa || '') + '|' + (c.alerta || ''); }
+  function revisarAlertas() {
+    const pend = st.convs.filter(esAlerta);
+    const nuevas = st.avisados ? pend.filter((c) => !st.avisados.has(claveAl(c)) && c.id !== st.sel) : [];
+    const r = reglaAl();
+    const repite = r.repetir > 0 && pend.length && Date.now() - st.ultimoSonido > r.repetir * 60000;
+    if ((nuevas.length || repite) && r.sonido && sonidoActivo()) { sonar(); st.ultimoSonido = Date.now(); }
+    st.avisados = new Set(pend.map(claveAl));
+    const ban = el.querySelector('#wa-banner');
+    if (ban) {
+      ban.hidden = !pend.length;
+      if (pend.length) {
+        const masAntigua = [...pend].sort((a, b) => espera(a) - espera(b))[0];
+        ban.innerHTML = `<b>🔔 ${pend.length} ${pend.length === 1 ? 'conversación necesita' : 'conversaciones necesitan'} a una persona</b><small>${esc(tituloConv(masAntigua))} · ${esc(TIPO_TXT[tipoAlerta(masAntigua)])}</small>`;
+      }
+    }
+    const pill = el.querySelector('.wa-pildoras button[data-f="atencion"]');
+    if (pill) pill.textContent = pend.length ? `Atención (${pend.length})` : 'Atención';
+    document.title = pend.length && document.hidden ? `(${pend.length}) ⚠ ${st.tituloOriginal}` : st.tituloOriginal;
+  }
+  function ajustarAlto() {
+    const g = el.querySelector('.wa-grid'); if (!g) return;
+    if (window.innerWidth <= 760) { g.style.height = ''; return; }
+    g.style.height = Math.max(440, window.innerHeight - g.getBoundingClientRect().top - 14) + 'px';
+  }
+  window.addEventListener('resize', () => { if (el.querySelector('.wa-grid')) ajustarAlto(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = st.tituloOriginal; });
 
   async function cargarLista() {
     if (st.pestana !== 'chats') return;
@@ -133,21 +202,22 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
   function pintarLista() {
     const ul = el.querySelector('#wa-items');
     if (!ul) return;
-    const v = visibles();
-    ul.innerHTML = v.length ? v.map((c) => `<li><button type="button" class="wa-item ${c.id === st.sel ? 'wa-sel' : ''} ${c.estado === 'cerrada' ? 'wa-cerrada' : ''}" data-id="${esc(c.id)}">
+    const v = ordenar(visibles());
+    ul.innerHTML = v.length ? v.map((c) => `<li><button type="button" class="wa-item ${c.id === st.sel ? 'wa-sel' : ''} ${esAlerta(c) ? 'wa-alerta' : ''} ${c.estado === 'cerrada' ? 'wa-cerrada' : ''}" data-id="${esc(c.id)}">
       <span class="wa-av" style="background:${colorDe(c)}" aria-hidden="true">${esc(iniciales(c))}</span>
       <span class="wa-nom">${esc(tituloConv(c))}${c.es_prueba ? '<em>prueba</em>' : ''}</span>
       <span class="wa-fecha ${c.sin_leer ? 'wa-nuevo-f' : ''}">${esc(fechaLista(c.ultimo_en))}</span>
       <span class="wa-sub"><span class="wa-ult">${esc(c.ultimo_texto || '')}</span>
-        ${c.alerta === 'inmueble_no_identificado' ? '<b class="wa-chip wa-aten" title="La IA no supo de qué inmueble hablan">⚠ Inmueble?</b>' : ''}${c.estado === 'cerrada' ? '<b class="wa-chip wa-res">✓ Resuelta</b>' : c.requiere_atencion ? '<b class="wa-chip wa-aten">Atención</b>' : ''}${c.ia_activa ? '' : '<b class="wa-chip">Pausada</b>'}${c.sin_leer ? `<b class="wa-badge" aria-label="${c.sin_leer} sin leer">${c.sin_leer}</b>` : ''}</span></button></li>`).join('')
+        ${c.estado === 'cerrada' ? '<b class="wa-chip wa-res">✓ Resuelta</b>' : ''}${c.ia_activa ? '' : '<b class="wa-chip">Pausada</b>'}${c.sin_leer ? `<b class="wa-badge" aria-label="${c.sin_leer} sin leer">${c.sin_leer}</b>` : ''}</span></button></li>`).join('')
       : '<li class="wa-vacio">No hay conversaciones con este filtro.</li>';
     // Segunda línea de la lista: perfil del contacto y quién la atiende (para ver de un vistazo a quién le toca).
     ul.querySelectorAll('.wa-item').forEach((b) => {
       const c = st.convs.find((x) => x.id === b.dataset.id);
-      const etiquetas = [...(c?.perfiles || []).map((p) => `<b class="wa-chip wa-perfil">${esc(PERFILES[p] || p)}</b>`), c?.asesor_id ? `<b class="wa-chip wa-asesor">👤 ${esc(nombreAsesor(c.asesor_id) || 'Asignada')}</b>` : '<b class="wa-chip wa-cola">Sin asignar</b>'];
+      const etiquetas = [...(c && esAlerta(c) ? [`<b class="wa-chip wa-aten">🔔 ${esc(TIPO_TXT[tipoAlerta(c)])}</b>`] : []), ...(c?.perfiles || []).map((p) => `<b class="wa-chip wa-perfil">${esc(PERFILES[p] || p)}</b>`), c?.asesor_id ? `<b class="wa-chip wa-asesor">👤 ${esc(nombreAsesor(c.asesor_id) || 'Asignada')}</b>` : '<b class="wa-chip wa-cola">Sin asignar</b>'];
       b.insertAdjacentHTML('beforeend', `<span class="wa-etiquetas">${etiquetas.join('')}</span>`);
     });
     ul.querySelectorAll('.wa-item').forEach((b) => b.addEventListener('click', async () => { st.sel = b.dataset.id; st.firma = ''; st.yaDesplazado = false; pintarLista(); await cargarHilo(true); }));
+    revisarAlertas();
   }
 
   // Fotos, notas de voz y documentos: se piden con un enlace temporal firmado (el almacenamiento es privado).
@@ -206,19 +276,20 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     hilo.innerHTML = `<header class="wa-hcab"><span class="wa-av" style="background:${colorDe(conv)}" aria-hidden="true">${esc(iniciales(conv))}</span>
       <div><strong>${esc(tituloConv(conv))}</strong><small>+${esc(conv.telefono)}${conv.es_prueba ? ' · número de prueba' : ''}${conv.asesor_id ? ` · Atiende ${esc(nombreAsesor(conv.asesor_id) || 'un asesor')}` : ' · Sin asignar'}${temaDe ? ` · ${esc(temaDe.nombre)}` : ''}</small>
         ${(conv.perfiles || []).length ? `<div class="wa-etiquetas">${conv.perfiles.map((p) => `<b class="wa-chip wa-perfil">${esc(PERFILES[p] || p)}</b>`).join('')}</div>` : ''}</div>
-      <div class="wa-hacc">${poder && puedeTomar && !conv.asesor_id && st.meta.yo ? '<button type="button" class="wa-resolver" id="wa-tomar" title="Quedarte con esta conversación: la IA queda en pausa y la atiendes tú">✋ Tomar</button>' : ''}${poder && puedeTransferir && (conv.asesor_id === st.meta.yo || verTodas) ? '<button type="button" class="wa-resolver" id="wa-transferir" title="Pasar la conversación a otro asesor">↪ Transferir</button>' : ''}${poder ? `<button type="button" class="wa-resolver ${conv.estado === 'cerrada' ? 'wa-reabrir' : ''}" id="wa-resolver" title="${conv.estado === 'cerrada' ? 'Volver a dejar esta conversación como pendiente' : 'El tema quedó resuelto: sale de pendientes'}">${conv.estado === 'cerrada' ? '↩ Reabrir' : '✓ Marcar resuelta'}</button>` : ''}${poder ? `<button type="button" class="wa-interr" id="wa-ia" aria-pressed="${conv.ia_activa}" title="Cuando la IA está activa responde sola; al pausarla, atiende una persona"><i aria-hidden="true"></i>${conv.ia_activa ? 'IA activa' : 'IA en pausa'}</button>` : `<span class="wa-chip ${conv.ia_activa ? 'wa-ia-on' : ''}">${conv.ia_activa ? 'IA activa' : 'IA en pausa'}</span>`}</div></header>
+      <div class="wa-hacc">${poder && puedeTomar && !conv.asesor_id && st.meta.yo ? '<button type="button" class="wa-resolver" id="wa-tomar" title="Quedarte con esta conversación: la IA queda en pausa y la atiendes tú">✋ Tomar</button>' : ''}${poder && puedeTransferir && (conv.asesor_id === st.meta.yo || verTodas) ? '<button type="button" class="wa-resolver" id="wa-transferir" title="Pasar la conversación a otro asesor">↪ Transferir</button>' : ''}${poder ? `<button type="button" class="wa-resolver ${conv.estado === 'cerrada' ? 'wa-reabrir' : ''}" id="wa-resolver" title="${conv.estado === 'cerrada' ? 'Volver a dejar esta conversación como pendiente' : 'El tema quedó resuelto: sale de pendientes'}">${conv.estado === 'cerrada' ? '↩ Reabrir' : '✓ Marcar resuelta'}</button>` : ''}${poder ? `<button type="button" class="wa-interr" id="wa-ia" aria-pressed="${conv.ia_activa}" title="Cuando la IA está activa responde sola; al pausarla, atiende una persona"><i aria-hidden="true"></i>${conv.ia_activa ? 'IA activa' : 'IA en pausa'}</button>` : `<span class="wa-chip ${conv.ia_activa ? 'wa-ia-on' : ''}">${conv.ia_activa ? 'IA activa' : 'IA en pausa'}</span>`}${poder ? '<button type="button" class="wa-icono" id="wa-herr-btn" title="Tema, etiquetas, ofrecer inmuebles y enlaces" aria-label="Más acciones">⋮</button>' : ''}</div></header>
       ${conv.estado === 'cerrada' ? `<p class="wa-aviso wa-aviso-ok">✓ Resuelta${conv.nota_cierre ? ': ' + esc(conv.nota_cierre) : ''}. Si el cliente escribe de nuevo, se reabre sola.</p>` : ''}
       ${conv.motivo_pausa && !conv.ia_activa ? `<p class="wa-aviso">${esc(conv.motivo_pausa)}</p>` : ''}
       ${conv.alerta === 'inmueble_no_identificado' ? '<p class="wa-aviso wa-aviso-alerta">⚠ La IA no identificó el inmueble del que habla el cliente. Pregúntale cuál es, o usa los botones de abajo para enviarle el enlace de agendamiento (escribe el número del inmueble) o el de consignar. Queda registrado como caso para corregir.</p>' : ''}
-      ${poder ? `<details class="wa-mas" data-k="herr" ${st.mas?.herr ? 'open' : ''}><summary>🏷 Tema, etiquetas e inmueble</summary><div class="wa-herr">${st.meta.temas.length ? `<label>Tema <select id="wa-tema"><option value="">Sin tema</option>${st.meta.temas.map((t) => `<option value="${esc(t.id)}" ${conv.tema_id === t.id ? 'selected' : ''}>${esc(t.nombre)}</option>`).join('')}</select></label>` : ''}<button type="button" class="wa-sec-btn" id="wa-etiquetar">🏷 Etiquetas e inmueble</button>${conv.inmueble_numero ? `<button type="button" class="wa-sec-btn" id="wa-ficha">📋 Ficha del inmueble ${esc(conv.inmueble_numero)}</button>` : ''}</div></details>` : ''}
       <div id="wa-panel" class="wa-panel" hidden></div>
       <div class="wa-msgs" id="wa-msgs">${burbujas(msgs)}</div>
-      ${poder && ventana ? `<details class="wa-mas" data-k="enl" ${st.mas?.enl ? 'open' : ''}><summary>📨 Ofrecer inmuebles y enviar enlaces</summary><div class="wa-enlaces" aria-label="Ofrecer inmuebles"><span class="wa-enl-ofrecer"><label for="wa-ofrecer-num">Ofrecer inmueble(s):</label><input id="wa-ofrecer-num" type="text" maxlength="40" placeholder="Ej. 500, 501" aria-label="Números de inmueble"><button type="button" class="wa-sec-btn wa-destacado" id="wa-ofrecer" title="Envía la ficha de cada inmueble con su enlace de visita. La IA sigue atendiendo con esa información.">📨 Pasar información</button></span>${rapidas.length ? `<select id="wa-rapidas" aria-label="Respuestas rápidas"><option value="">💬 Respuestas rápidas…</option>${rapidas.map((r, i) => `<option value="${i}">${esc(r.titulo)}</option>`).join('')}</select>` : ''}</div>
-      <div class="wa-enlaces" aria-label="Enlaces rápidos"><span>Enviar enlace:</span><button type="button" class="wa-sec-btn" id="wa-enl-consignar" title="Enlace para que un propietario consigne su inmueble">🏡 Consignar inmueble</button><span class="wa-enl-cita"><input id="wa-enl-num" type="text" inputmode="numeric" maxlength="8" placeholder="Nº inmueble" aria-label="Número del inmueble"><button type="button" class="wa-sec-btn" id="wa-enl-cita" title="Enlace para ver el inmueble y agendar la visita">📅 Agendar visita</button></span></div></details>` : ''}
+      ${poder ? `<div class="wa-mas-panel" id="wa-mas" ${st.masAbierto ? '' : 'hidden'}><strong class="wa-mas-tit">Acciones de esta conversación</strong><div class="wa-herr">${st.meta.temas.length ? `<label>Tema <select id="wa-tema"><option value="">Sin tema</option>${st.meta.temas.map((t) => `<option value="${esc(t.id)}" ${conv.tema_id === t.id ? 'selected' : ''}>${esc(t.nombre)}</option>`).join('')}</select></label>` : ''}<button type="button" class="wa-sec-btn" id="wa-etiquetar">🏷 Etiquetas e inmueble</button>${conv.inmueble_numero ? `<button type="button" class="wa-sec-btn" id="wa-ficha">📋 Ficha del inmueble ${esc(conv.inmueble_numero)}</button>` : ''}</div>${ventana ? `<div class="wa-enlaces" aria-label="Ofrecer inmuebles"><span class="wa-enl-ofrecer"><label for="wa-ofrecer-num">Ofrecer inmueble(s):</label><input id="wa-ofrecer-num" type="text" maxlength="40" placeholder="Ej. 500, 501" aria-label="Números de inmueble"><button type="button" class="wa-sec-btn wa-destacado" id="wa-ofrecer" title="Envía la ficha de cada inmueble con su enlace de visita. La IA sigue atendiendo con esa información.">📨 Pasar información</button></span>${rapidas.length ? `<select id="wa-rapidas" aria-label="Respuestas rápidas"><option value="">💬 Respuestas rápidas…</option>${rapidas.map((r, i) => `<option value="${i}">${esc(r.titulo)}</option>`).join('')}</select>` : ''}</div>
+      <div class="wa-enlaces" aria-label="Enlaces rápidos"><span>Enviar enlace:</span><button type="button" class="wa-sec-btn" id="wa-enl-consignar" title="Enlace para que un propietario consigne su inmueble">🏡 Consignar inmueble</button><span class="wa-enl-cita"><input id="wa-enl-num" type="text" inputmode="numeric" maxlength="8" placeholder="Nº inmueble" aria-label="Número del inmueble"><button type="button" class="wa-sec-btn" id="wa-enl-cita" title="Enlace para ver el inmueble y agendar la visita">📅 Agendar visita</button></span></div>` : ''}</div>` : ''}
       ${poder && ventana ? '<div id="wa-revision" class="wa-revision" hidden></div>' : ''}
-      ${poder ? (ventana ? `<form id="wa-form" class="wa-form"><textarea id="wa-texto" rows="1" maxlength="4000" placeholder="Escribe un mensaje. Al enviar, la IA queda en pausa en este chat." aria-label="Mensaje"></textarea><button class="wa-enviar" type="submit" aria-label="Enviar">➤</button></form>`
+      ${poder ? (ventana ? `<form id="wa-form" class="wa-form"><button type="button" class="wa-mas-btn" id="wa-mas-btn" aria-label="Más acciones" title="Etiquetas, ofrecer inmuebles y enlaces">＋</button><textarea id="wa-texto" rows="1" maxlength="4000" placeholder="Escribe un mensaje. Al enviar, la IA queda en pausa en este chat." aria-label="Mensaje"></textarea><button class="wa-enviar" type="submit" aria-label="Enviar">➤</button></form>`
         : `<div class="wa-form wa-fuera"><p>Pasaron más de 24 horas desde el último mensaje del cliente: WhatsApp solo deja enviar una <strong>plantilla aprobada</strong>.</p>${plantillas.length ? `<select id="wa-plant" aria-label="Plantilla">${plantillas.map((p, i) => `<option value="${i}">${esc(p.nombre)} — ${esc(String(p.texto || '').slice(0, 60))}</option>`).join('')}</select><div id="wa-pars"></div><button type="button" id="wa-env-plant">Enviar plantilla</button>` : '<p>Aún no hay plantillas registradas (Ajustes e interruptor).</p>'}</div>`) : '<p class="wa-solo-ver">Solo puedes ver esta conversación.</p>'}`;
-    hilo.querySelectorAll('details.wa-mas').forEach((d) => d.addEventListener('toggle', () => { st.mas = { ...(st.mas || {}), [d.dataset.k]: d.open }; }));
+    const alternarMas = () => { const p = hilo.querySelector('#wa-mas'); if (!p) return; p.hidden = !p.hidden; st.masAbierto = !p.hidden; };
+    hilo.querySelector('#wa-mas-btn')?.addEventListener('click', alternarMas);
+    hilo.querySelector('#wa-herr-btn')?.addEventListener('click', alternarMas);
     cargarMedios(hilo);
     const caja = hilo.querySelector('#wa-msgs');
     if (caja) caja.scrollTop = irAbajo || !st.yaDesplazado ? caja.scrollHeight : caja.scrollTop;

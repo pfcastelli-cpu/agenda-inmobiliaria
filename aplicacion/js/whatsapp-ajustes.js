@@ -8,7 +8,7 @@ const MODOS = [
   ['pruebas', 'Pruebas', 'La plataforma responde SOLO a tus números de prueba. Los demás clientes siguen con el bot anterior.'],
   ['nuevo', 'Bot nuevo', 'La plataforma responde a todos los clientes. El Apps Script solo reenvía lo que llega y no contesta.'],
 ];
-const PESTANAS = [['conexion', 'Interruptor y conexión'], ['reglas', 'Reglas del bot'], ['ciudades', 'Ciudades y contactos'], ['temas', 'Temas y equipo'], ['respuestas', 'Respuestas y plantillas']];
+const PESTANAS = [['conexion', 'Interruptor y conexión'], ['reglas', 'Reglas del bot'], ['alertas', 'Alertas'], ['ciudades', 'Ciudades y contactos'], ['temas', 'Temas y equipo'], ['respuestas', 'Respuestas y plantillas']];
 // Lo que el bot hace por su cuenta (etiquetas invisibles que emite la IA) y a quién le avisa.
 const ACCIONES = [
   ['Buscar inmuebles', 'Consulta el catálogo real de la plataforma (disponibles, por ciudad, zona, precio, habitaciones o código) y da el enlace de ficha y de reserva de visita.', 'Siempre activa'],
@@ -56,6 +56,9 @@ export async function renderWhatsappAjustes({ el, supabase, empresaId, escape: e
     temas = (t.data || []).map((x) => ({ ...x, asesor_ids: (ta.data || []).filter((r) => r.tema_id === x.id).map((r) => r.asesor_id) }));
   } catch { temasDisponibles = false; }
 
+  const TIPOS_ALERTA = { pide_asesor: 'El cliente pide hablar con una persona', fallo_entrega: 'Un mensaje no se entregó', inmueble: 'La IA no identificó el inmueble', ia_sin_respuesta: 'La IA no pudo responder', otro: 'Otros motivos' };
+  const AL = { orden: 'antigua', sonido: true, repetir: 5, ...(ct.alertas || {}) };
+  AL.prioridad = [...new Set([...(Array.isArray(AL.prioridad) ? AL.prioridad : []).filter((k) => TIPOS_ALERTA[k]), ...Object.keys(TIPOS_ALERTA)])];
   let pestana = 'conexion';
   el.innerHTML = `<form class="wa-aj" id="wa-aj" novalidate>
   <nav class="wa-aj-nav" role="tablist" aria-label="Secciones de los ajustes">${PESTANAS.map(([k, t]) => `<button type="button" role="tab" data-p="${k}" aria-selected="${k === pestana}">${esc(t)}</button>`).join('')}</nav>
@@ -94,6 +97,17 @@ export async function renderWhatsappAjustes({ el, supabase, empresaId, escape: e
       <ul class="wa-acciones-bot">${ACCIONES.map(([t, d, q]) => `<li><strong>${esc(t)}</strong><span>${esc(d)}</span><em>${esc(q)}</em></li>`).join('')}</ul></div>
   </section>
 
+  <section class="wa-aj-panel" data-panel="alertas" hidden>
+    <div class="wa-sec"><h3>Cuando hace falta una persona</h3>
+      <p class="wa-nota">Cuando una conversación necesita a un humano (el cliente pide un asesor, un mensaje no se entregó, la IA no supo qué inmueble o no pudo responder), la bandeja suena, muestra un aviso rojo y la sube al inicio de la lista. Aquí defines cómo se ordenan esas alertas.</p>
+      <label class="wa-check"><input type="checkbox" name="al_sonido" ${AL.sonido !== false ? 'checked' : ''}> Hacer sonar una alerta cuando llega una nueva (cada persona puede silenciarla con la campana de la lista)</label>
+      <label class="v-field">Repetir el sonido mientras haya alertas sin atender, cada (minutos)<input type="number" min="0" max="120" name="al_repetir" value="${esc(AL.repetir ?? 5)}"><small>0 = suena solo una vez por alerta.</small></label>
+      <label class="v-field">Orden de las alertas en la lista
+        <select name="al_orden">${[['antigua', 'La que lleva más tiempo esperando, primero'], ['reciente', 'La más reciente, primero'], ['prioridad', 'Por tipo de motivo (el orden de abajo) y luego la más antigua']].map(([v, t]) => `<option value="${v}" ${AL.orden === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
+      <div class="v-field">Prioridad por tipo de motivo (se usa con la última opción)
+        <ol class="wa-prio" id="al-prio">${(AL.prioridad).map((k) => `<li data-k="${esc(k)}"><span>${esc(TIPOS_ALERTA[k] || k)}</span><button type="button" class="wa-sec-btn" data-sube aria-label="Subir">↑</button><button type="button" class="wa-sec-btn" data-baja aria-label="Bajar">↓</button></li>`).join('')}</ol></div></div>
+  </section>
+
   <section class="wa-aj-panel" data-panel="ciudades" hidden>
     <div class="wa-sec"><h3>WhatsApp del asesor por ciudad</h3>
       <p class="wa-nota">Son las ciudades de la plataforma. Cuando un cliente pide una persona, el bot le da el número de su ciudad. Déjalo vacío si en esa ciudad atienden solo desde aquí.</p>
@@ -130,6 +144,11 @@ export async function renderWhatsappAjustes({ el, supabase, empresaId, escape: e
     el.querySelectorAll('.wa-aj-panel').forEach((s) => { s.hidden = s.dataset.panel !== k; });
   };
   el.querySelectorAll('.wa-aj-nav button').forEach((b) => b.addEventListener('click', () => mostrar(b.dataset.p)));
+  el.querySelector('#al-prio')?.addEventListener('click', (ev) => {
+    const li = ev.target.closest('li'); if (!li) return;
+    if (ev.target.closest('[data-sube]') && li.previousElementSibling) li.parentNode.insertBefore(li, li.previousElementSibling);
+    if (ev.target.closest('[data-baja]') && li.nextElementSibling) li.parentNode.insertBefore(li.nextElementSibling, li);
+  });
 
   // ---- Reglas: el texto original ya viene cargado ----
   const campoReglas = el.querySelector('[name=prompt_reglas]');
@@ -220,6 +239,7 @@ export async function renderWhatsappAjustes({ el, supabase, empresaId, escape: e
     const lineas = (v) => String(v || '').split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean);
     const contactos = { ...ct };
     for (const k of ['wa_bogota_medellin', 'wa_barranquilla', ...CAMPOS_CONTACTO.map(([x]) => x)]) { const v = f[`c_${k}`]?.value.trim(); if (v) contactos[k] = v; else delete contactos[k]; }
+    contactos.alertas = { orden: f.al_orden.value, sonido: !!f.al_sonido.checked, repetir: Math.max(0, Math.min(120, Number(f.al_repetir.value) || 0)), prioridad: [...el.querySelectorAll('#al-prio li')].map((x) => x.dataset.k) };
     contactos.por_ciudad = [...el.querySelectorAll('[data-ciudad]')].filter((i) => i.value.trim()).map((i) => ({ ciudad_id: i.dataset.ciudad, ciudad: i.dataset.nombre, whatsapp: i.value.trim() }));
     const modo = f.modo.value;
     // Si el texto es igual al original se guarda vacío: así el bot sigue recibiendo las mejoras de la plataforma.

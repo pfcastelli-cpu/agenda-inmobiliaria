@@ -150,6 +150,31 @@ async function clasificar(empresaId: string, conv: Fila, temas: Fila[], etiqueta
   }
 }
 
+// Deduce perfil y número de inmueble del texto del cliente. Solo agrega (nunca quita lo que ya puso la IA o una persona).
+async function etiquetarPorPalabras(empresaId: string, conv: Fila, texto: string | undefined) {
+  const t = String(texto || '').toLowerCase();
+  if (!t) return;
+  const nuevos: string[] = [];
+  if (/consign|quiero (arrendar|vender|ofrecer)|tengo (un|una) (apartamento|casa|local|inmueble)|mi (apartamento|casa|inmueble) (est[aá]|para)/.test(t)) nuevos.push('consignacion', 'propietario');
+  else if (/\b(comprar|compra|en venta|venta)\b/.test(t)) nuevos.push('interesado_compra');
+  else if (/arriendo|arrendar|alquil|apartamento|apartaestudio|casa|inmueble|visitar|visita|canon|disponible|c[oó]digo|ficha|inmuebles\//.test(t)) nuevos.push('interesado_arriendo');
+  const cambios: Fila = {};
+  const faltan = nuevos.filter((v) => !(conv.perfiles || []).includes(v));
+  if (faltan.length) cambios.perfiles = [...(conv.perfiles || []), ...faltan];
+  if (!conv.inmueble_numero) {
+    const m = t.match(/inmuebles?\/(\d{1,6})|inmueble\s*(?:n[ouú]mero|no\.?|#)?\s*(\d{1,6})|c[oó]digo\s*(\d{1,6})/);
+    const n = m ? parseInt(m[1] || m[2] || m[3], 10) : 0;
+    if (n > 0) {
+      const { data: inm } = await admin.from('agenda_inmuebles').select('numero_inmueble').eq('empresa_id', empresaId).eq('numero_inmueble', n).maybeSingle();
+      if (inm) cambios.inmueble_numero = n;
+    }
+  }
+  if (Object.keys(cambios).length) {
+    await admin.from('agenda_wa_conversaciones').update(cambios).eq('id', conv.id);
+    Object.assign(conv, cambios);
+  }
+}
+
 async function procesarEntrante(e: EntranteWA) {
   const emp = await cargarEmpresa(e.phone_number_id);
   if (!emp || emp.cfgWA.modo === 'anterior') return;
@@ -162,6 +187,8 @@ async function procesarEntrante(e: EntranteWA) {
     await admin.from('agenda_wa_conversaciones').update({ estado: reabre, resuelta_en: null, resuelta_por: null, nota_cierre: null, requiere_atencion: !conv.ia_activa }).eq('id', conv.id);
     conv = { ...conv, estado: reabre };
   }
+  // Etiquetado básico por palabras (también cuando atiende el bot anterior y la IA nueva no corre): perfil e inmueble.
+  await etiquetarPorPalabras(emp.empresaId, conv, e.texto);
   if (!debeResponderLaPlataforma(emp.cfgWA, e.telefono)) return;
 
   // Reactivación automática de la IA tras N horas sin que un asesor escriba.

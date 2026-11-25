@@ -208,3 +208,80 @@ details.wa-mas>summary:hover{background:#f4f6f7}
 .wa-hilo,.wa-lista{min-height:0;overflow:hidden}
 .wa-items{overflow:auto;min-height:0}
 @media (max-width:760px){.wa-grid{grid-template-rows:auto;height:auto}.wa-hilo{height:78vh}}
+
+/* ═══ Rediseño v2: copia fiel de WhatsApp Web (compacta, llena la ventana, acciones en un menú «+») ═══ */
+.wa{gap:8px;font-size:14px}
+.wa-cab{gap:10px}.wa-cab h2{font-size:20px;line-height:1}
+.wa-modo{font-size:12px;padding:3px 10px}
+.wa-tabs button{min-height:32px;padding:0 14px;font-size:13px}
+.wa-grid{grid-template-columns:clamp(300px,32%,440px) 1fr;border-radius:10px;border:1px solid var(--wa-linea);box-shadow:0 2px 10px rgba(11,20,26,.1)}
+.wa-icono{width:36px;height:36px;border:0;border-radius:50%;background:transparent;color:var(--wa-suave);font-size:20px;line-height:1;cursor:pointer;display:grid;place-items:center;flex:none}
+.wa-icono:hover{background:rgba(11,20,26,.07)}
+
+/* lista de chats */
+.wa-lista{background:#fff}
+.wa-lista-cab{padding:10px 8px 6px 16px;background:#fff;font-size:21px;font-weight:700;letter-spacing:-.2px}
+.wa-filtros{padding:4px 12px 8px;gap:8px;border-bottom:0;background:#fff}
+.wa-filtros input,.wa-filtros select{min-height:36px;border-radius:8px;background:var(--wa-panel);font-size:14px}
+.wa-pildoras{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px;padding-bottom:2px}
+.wa-pildoras::-webkit-scrollbar{display:none}
+.wa-pildoras button{flex:none;min-height:30px;padding:0 12px;font-size:13.5px;background:var(--wa-panel);color:var(--wa-suave);white-space:nowrap}
+.wa-pildoras button[aria-pressed=true]{background:#d9fdd3;color:#0a5f4d;font-weight:600}
+.wa-selects{grid-template-columns:1fr 1fr;gap:6px}
+.wa-selects select{min-height:32px;font-size:13px}
+.wa-item{grid-template-columns:49px 1fr auto;column-gap:13px;row-gap:1px;padding:9px 14px 9px 14px;min-height:72px;border-bottom:0;position:relative}
+.wa-item::after{content:"";position:absolute;left:76px;right:0;bottom:0;border-bottom:1px solid var(--wa-linea)}
+.wa-sel,.wa-sel:hover{background:var(--wa-panel)}
+.wa-av{width:49px;height:49px;font-size:18px}
+.wa-nom{font-size:16px;font-weight:400}
+.wa-fecha{font-size:12px}
+.wa-ult{font-size:13.8px}
+.wa-item .wa-etiquetas{flex-wrap:nowrap;overflow:hidden;margin-top:1px;gap:4px}
+.wa-chip{font-size:10.5px;padding:1px 7px}
+.wa-badge{min-width:19px;height:19px;font-size:11.5px}
+.wa-alerta{background:#fff4f2}
+.wa-alerta .wa-av{box-shadow:0 0 0 3px #fff4f2,0 0 0 5px #d93025;animation:wa-pulso 1.8s ease-in-out infinite}
+.wa-alerta::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#d93025}
+.wa-alerta .wa-aten{background:#d93025;color:#fff}
+.wa-banner{display:block;width:100%;text-align:left;border:0;border-top:1px solid #f3c1bc;border-bottom:1px solid #f3c1bc;background:#fde4e1;color:#8a1f17;padding:8px 16px;font:inherit;cursor:pointer;animation:wa-fondo 2.4s ease-in-out infinite}
+.wa-banner[hidden]{display:none}
+.wa-banner b{display:block;font-size:13.5px}.wa-banner small{display:block;font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@keyframes wa-pulso{50%{box-shadow:0 0 0 3px #fff4f2,0 0 0 8px rgba(217,48,37,.25)}}
+@keyframes wa-fondo{50%{background:#fbd0cb}}
+@media (prefers-reduced-motion:reduce){.wa-alerta .wa-av,.wa-banner{animation:none}}
+
+/* conversación */
+.wa-hcab{padding:8px 14px;gap:12px;min-height:56px;box-sizing:border-box}
+.wa-hcab .wa-av{width:40px;height:40px;font-size:15px}
+.wa-hcab>div:nth-child(2){min-width:0;flex:1}
+.wa-hcab strong{font-size:16px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wa-hcab small{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wa-hcab .wa-etiquetas{display:none}
+.wa-hacc{gap:6px}
+.wa-resolver{min-height:30px;padding:0 12px;font-size:12.5px;background:#fff;color:var(--wa-verde-osc);box-shadow:inset 0 0 0 1px #cfd8dc}
+.wa-resolver:hover{background:var(--wa-panel)}
+#wa-resolver:not(.wa-reabrir){background:var(--wa-acento);color:#fff;box-shadow:none}
+.wa-interr{min-height:30px;padding:0 10px 0 6px;gap:6px;font-size:12.5px;box-shadow:inset 0 0 0 1px #cfd8dc}
+.wa-interr i{width:30px;height:18px}.wa-interr i::after{width:14px;height:14px}.wa-interr[aria-pressed=true] i::after{left:14px}
+.wa-aviso{padding:6px 14px;font-size:12.5px}
+.wa-msgs{padding:10px clamp(12px,7%,64px) 8px}
+.wa-m{max-width:min(68%,560px);border-radius:8px;padding:6px 8px 4px 9px}
+.wa-m p{font-size:14.2px;line-height:1.35}
+.wa-in{border-top-left-radius:0}.wa-out{border-top-right-radius:0}
+.wa-dia{font-size:12px;padding:4px 10px}
+.wa-quien{font-size:11.5px}
+
+/* menú «+» con las acciones extra */
+.wa-mas-panel{background:#fff;border-top:1px solid var(--wa-linea);padding:6px 12px 8px;max-height:40%;overflow:auto;display:grid;gap:2px}
+.wa-mas-panel[hidden]{display:none}
+.wa-mas-tit{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--wa-suave)}
+.wa-mas-panel .wa-herr,.wa-mas-panel .wa-enlaces{padding:5px 0;border:0;background:transparent}
+.wa-mas-panel .wa-enlaces+.wa-enlaces{border-top:1px dashed var(--wa-linea)}
+.wa-form{padding:8px 12px;gap:8px;align-items:center;border-top:0;background:var(--wa-panel)}
+.wa-form textarea{border:0;border-radius:8px;min-height:42px;padding:11px 14px;font-size:14.5px;line-height:1.3}
+.wa-mas-btn{width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:#54656f;font-size:26px;line-height:1;cursor:pointer;flex:none;display:grid;place-items:center}
+.wa-mas-btn:hover{background:rgba(11,20,26,.07)}
+.wa-enviar{width:42px;height:42px}
+.wa-prio{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:6px;max-width:460px}
+.wa-prio li{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:6px 10px;border:1px solid var(--wa-linea);border-radius:10px;background:#fff}
+@media (max-width:760px){.wa-grid{grid-template-columns:1fr}.wa-item::after{left:14px}}
