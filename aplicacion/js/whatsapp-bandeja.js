@@ -9,7 +9,7 @@ import { sonarAlerta } from './whatsapp-presencia.js';
 
 const ORIGEN = { cliente: 'Cliente', ia: '🤖 Asistente IA', asesor: 'Asesor', sistema: 'Sistema', bot_anterior: 'Bot anterior' };
 const COLORES = ['#00a884', '#6b3fa0', '#d9534f', '#2f7bd9', '#c77d00', '#009688', '#8e5a3c', '#5c6bc0'];
-const FILTROS = [['todas', 'Todas'], ['mias', 'Mías'], ['cola', 'Sin asignar'], ['pendientes', 'Pendientes'], ['atencion', 'Atención'], ['pausadas', 'IA en pausa'], ['resueltas', 'Resueltas'], ['prueba', 'Pruebas']];
+const FILTROS = [['todas', 'Todas'], ['mias', 'Mías'], ['cola', 'Sin asignar'], ['pendientes', 'Pendientes'], ['atencion', 'Atención'], ['ia', 'Atiende la IA'], ['asesor', 'Con asesor'], ['pausadas', 'IA en pausa'], ['resueltas', 'Resueltas'], ['prueba', 'Pruebas']];
 const PERFILES = { interesado_arriendo: 'Interesado en arriendo', interesado_compra: 'Interesado en compra', propietario: 'Propietario', arrendatario: 'Arrendatario', consignacion: 'Consignación' };
 const TIPO_TXT = { pide_asesor: 'pide hablar con una persona', fallo_entrega: 'un mensaje no se entregó', inmueble: 'inmueble sin identificar', ia_sin_respuesta: 'la IA no pudo responder', otro: 'requiere atención' };
 const tituloConv = (c) => `${c.nombre || '+' + c.telefono}${c.inmueble_numero ? ` · Inmueble ${c.inmueble_numero}` : ''}`;
@@ -120,6 +120,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     return (c.alerta === 'inmueble_no_identificado' ? 'inmueble' : /no se entreg/i.test(c.motivo_pausa || '') ? 'fallo_entrega'
     : /asesor|persona|humano/i.test(c.motivo_pausa || '') ? 'pide_asesor' : !c.motivo_pausa ? 'ia_sin_respuesta' : 'otro');
   }
+  function atiendeIA(c) { const m = st.cfg?.modo; return c.estado !== 'cerrada' && !!c.ia_activa && (m === 'nuevo' || (m === 'pruebas' && !!c.es_prueba)); }
   function venceVentana(c) { return c.estado !== 'cerrada' && !!c.ultimo_cliente_en && Date.now() - new Date(c.ultimo_cliente_en).getTime() > 24 * 3600 * 1000; }
   function esAlerta(c) { return c.estado !== 'cerrada' && !!c.requiere_atencion; }
   function espera(c) { return new Date(c.ultimo_cliente_en || c.ultimo_en || 0).getTime(); }
@@ -190,7 +191,9 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
       if (st.filtro === 'cola') return !c.asesor_id && c.estado !== 'cerrada';
       if (st.filtro === 'pendientes') return c.estado !== 'cerrada';
       if (st.filtro === 'resueltas') return c.estado === 'cerrada';
-      if (st.filtro === 'atencion') return c.estado !== 'cerrada' && (c.requiere_atencion || c.sin_leer > 0);
+      if (st.filtro === 'atencion') return c.estado !== 'cerrada' && (c.requiere_atencion || (c.sin_leer > 0 && !c.ia_activa));
+      if (st.filtro === 'ia') return c.estado !== 'cerrada' && c.ia_activa;
+      if (st.filtro === 'asesor') return c.estado !== 'cerrada' && !!c.asesor_id;
       if (st.filtro === 'pausadas') return !c.ia_activa;
       if (st.filtro === 'prueba') return c.es_prueba;
       return true;
@@ -205,9 +208,9 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     ul.innerHTML = v.length ? v.map((c) => `<li><button type="button" class="wa-item ${c.id === st.sel ? 'wa-sel' : ''} ${esAlerta(c) ? 'wa-alerta' : ''} ${c.estado === 'cerrada' ? 'wa-cerrada' : ''}" data-id="${esc(c.id)}">
       <span class="wa-av" style="background:${colorDe(c)}" aria-hidden="true">${esc(iniciales(c))}</span>
       <span class="wa-nom">${esc(tituloConv(c))}${c.es_prueba ? '<em>prueba</em>' : ''}</span>
-      <span class="wa-fecha ${c.sin_leer ? 'wa-nuevo-f' : ''}">${esc(fechaLista(c.ultimo_en))}</span>
+      <span class="wa-fecha ${c.sin_leer && (!c.ia_activa || c.requiere_atencion) ? 'wa-nuevo-f' : ''}">${esc(fechaLista(c.ultimo_en))}</span>
       <span class="wa-sub"><span class="wa-ult">${esc(c.ultimo_texto || '')}</span>
-        ${c.estado === 'cerrada' ? '<b class="wa-chip wa-res">✓ Resuelta</b>' : ''}${c.estado === 'cerrada' ? '' : c.ia_activa ? '<b class="wa-chip wa-ia" title="La atiende la IA">🤖 IA</b>' : '<b class="wa-chip">Pausada</b>'}${venceVentana(c) ? '<b class="wa-chip wa-vence" title="Pasaron más de 24 h desde el último mensaje del cliente: solo se le puede escribir con una plantilla">⏳ 24 h vencidas</b>' : ''}${c.sin_leer ? `<b class="wa-badge" aria-label="${c.sin_leer} sin leer">${c.sin_leer}</b>` : ''}</span></button></li>`).join('')
+        ${c.estado === 'cerrada' ? '<b class="wa-chip wa-res">✓ Resuelta</b>' : ''}${c.estado === 'cerrada' ? '' : atiendeIA(c) ? '<b class="wa-chip wa-ia" title="La atiende la IA">🤖 IA</b>' : c.ia_activa ? '<b class="wa-chip" title="Por ahora responde el bot anterior">Bot anterior</b>' : '<b class="wa-chip">Pausada</b>'}${venceVentana(c) ? '<b class="wa-chip wa-vence" title="Pasaron más de 24 h desde el último mensaje del cliente: solo se le puede escribir con una plantilla">⏳ 24 h vencidas</b>' : ''}${c.sin_leer && (!c.ia_activa || c.requiere_atencion) ? `<b class="wa-badge" aria-label="${c.sin_leer} sin leer">${c.sin_leer}</b>` : ''}</span></button></li>`).join('')
       : '<li class="wa-vacio">No hay conversaciones con este filtro.</li>';
     // Segunda línea de la lista: perfil del contacto y quién la atiende (para ver de un vistazo a quién le toca).
     ul.querySelectorAll('.wa-item').forEach((b) => {
@@ -264,7 +267,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     const { data, error } = await supabase.from('agenda_wa_mensajes').select('*').eq('conversacion_id', conv.id).order('creado_en', { ascending: true }).limit(500);
     if (error) { hilo.innerHTML = `<p class="wa-error" role="alert">${esc(mensajeError(error, 'No se pudo cargar el hilo.'))}</p>`; return; }
     const msgs = data || [];
-    const firma = `${conv.id}|${msgs.length}|${conv.ia_activa}|${conv.estado}|${conv.asesor_id}|${conv.tema_id}|${conv.alerta}|${(conv.perfiles || []).join(',')}|${conv.inmueble_numero}|${msgs[msgs.length - 1]?.id || ''}`;
+    const firma = `${conv.id}|${msgs.length}|${conv.ia_activa}|${conv.requiere_atencion}|${conv.estado}|${conv.asesor_id}|${conv.tema_id}|${conv.alerta}|${(conv.perfiles || []).join(',')}|${conv.inmueble_numero}|${msgs[msgs.length - 1]?.id || ''}`;
     if (!irAbajo && firma === st.firma) return; // nada cambió: no se repinta (conserva lo que se está escribiendo)
     st.firma = firma;
     const borrador = hilo.querySelector('#wa-texto')?.value || '';
@@ -275,7 +278,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     hilo.innerHTML = `<header class="wa-hcab"><button type="button" class="wa-icono wa-atras" id="wa-atras" aria-label="Volver a los chats">←</button><span class="wa-av" style="background:${colorDe(conv)}" aria-hidden="true">${esc(iniciales(conv))}</span>
       <div><strong>${esc(tituloConv(conv))}</strong><small>+${esc(conv.telefono)}${conv.es_prueba ? ' · número de prueba' : ''}${conv.asesor_id ? ` · Atiende ${esc(nombreAsesor(conv.asesor_id) || 'un asesor')}` : ' · Sin asignar'}${temaDe ? ` · ${esc(temaDe.nombre)}` : ''}</small>
         ${(conv.perfiles || []).length ? `<div class="wa-etiquetas">${conv.perfiles.map((p) => `<b class="wa-chip wa-perfil">${esc(PERFILES[p] || p)}</b>`).join('')}</div>` : ''}</div>
-      <div class="wa-hacc">${poder && puedeTomar && !conv.asesor_id && st.meta.yo ? '<button type="button" class="wa-resolver" id="wa-tomar" title="Quedarte con esta conversación: la IA queda en pausa y la atiendes tú">✋ Tomar</button>' : ''}${poder && puedeTransferir && (conv.asesor_id === st.meta.yo || verTodas) ? '<button type="button" class="wa-resolver" id="wa-transferir" title="Pasar la conversación a otro asesor">↪ Transferir</button>' : ''}${poder ? `<button type="button" class="wa-resolver ${conv.estado === 'cerrada' ? 'wa-reabrir' : ''}" id="wa-resolver" title="${conv.estado === 'cerrada' ? 'Volver a dejar esta conversación como pendiente' : 'El tema quedó resuelto: sale de pendientes'}">${conv.estado === 'cerrada' ? '↩ Reabrir' : '✓ Marcar resuelta'}</button>` : ''}${poder ? `<button type="button" class="wa-interr" id="wa-ia" aria-pressed="${conv.ia_activa}" title="Cuando la IA está activa responde sola; al pausarla, atiende una persona"><i aria-hidden="true"></i>${conv.ia_activa ? 'IA activa' : 'IA en pausa'}</button>` : `<span class="wa-chip ${conv.ia_activa ? 'wa-ia-on' : ''}">${conv.ia_activa ? 'IA activa' : 'IA en pausa'}</span>`}${poder ? '<button type="button" class="wa-icono" id="wa-herr-btn" title="Tema, etiquetas, ofrecer inmuebles y enlaces" aria-label="Más acciones">⋮</button>' : ''}</div></header>
+      <div class="wa-hacc">${poder && puedeTomar && !conv.asesor_id && st.meta.yo ? '<button type="button" class="wa-resolver" id="wa-tomar" title="Quedarte con esta conversación: la IA queda en pausa y la atiendes tú">✋ Tomar</button>' : ''}${poder && puedeTransferir && (conv.asesor_id === st.meta.yo || verTodas) ? '<button type="button" class="wa-resolver" id="wa-transferir" title="Pasar la conversación a otro asesor">↪ Transferir</button>' : ''}${poder && conv.requiere_atencion && conv.estado !== 'cerrada' ? '<button type="button" class="wa-resolver wa-atendido" id="wa-atendido" title="Ya vi este caso: quita el aviso y la IA sigue contestando">✓ Atendido</button>' : ''}${poder ? `<button type="button" class="wa-resolver ${conv.estado === 'cerrada' ? 'wa-reabrir' : ''}" id="wa-resolver" title="${conv.estado === 'cerrada' ? 'Volver a dejar esta conversación como pendiente' : 'El tema quedó resuelto: sale de pendientes'}">${conv.estado === 'cerrada' ? '↩ Reabrir' : '✓ Marcar resuelta'}</button>` : ''}${poder ? `<button type="button" class="wa-interr" id="wa-ia" aria-pressed="${conv.ia_activa}" title="Cuando la IA está activa responde sola; al pausarla, atiende una persona"><i aria-hidden="true"></i>${conv.ia_activa ? 'IA activa' : 'IA en pausa'}</button>` : `<span class="wa-chip ${conv.ia_activa ? 'wa-ia-on' : ''}">${conv.ia_activa ? 'IA activa' : 'IA en pausa'}</span>`}${poder ? '<button type="button" class="wa-icono" id="wa-herr-btn" title="Tema, etiquetas, ofrecer inmuebles y enlaces" aria-label="Más acciones">⋮</button>' : ''}</div></header>
       ${conv.estado === 'cerrada' ? `<p class="wa-aviso wa-aviso-ok">✓ Resuelta${conv.nota_cierre ? ': ' + esc(conv.nota_cierre) : ''}. Si el cliente escribe de nuevo, se reabre sola.</p>` : ''}
       ${conv.motivo_pausa && !conv.ia_activa ? `<p class="wa-aviso">${esc(conv.motivo_pausa)}</p>` : ''}
       ${conv.alerta === 'inmueble_no_identificado' ? '<p class="wa-aviso wa-aviso-alerta">⚠ La IA no identificó el inmueble del que habla el cliente. Pregúntale cuál es, o usa los botones de abajo para enviarle el enlace de agendamiento (escribe el número del inmueble) o el de consignar. Queda registrado como caso para corregir.</p>' : ''}
@@ -301,6 +304,12 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
       t.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); hilo.querySelector('#wa-form').requestSubmit(); } });
     }
     if (conv.sin_leer) { supabase.rpc('agenda_wa_marcar_leida', { p_conv: conv.id }).then(() => { conv.sin_leer = 0; pintarLista(); }); }
+    hilo.querySelector('#wa-atendido')?.addEventListener('click', async () => {
+      const { error: e } = await supabase.rpc('agenda_wa_atendida', { p_conv: conv.id });
+      if (e) return toast?.(mensajeError(e, 'No se pudo marcar como atendida.'));
+      toast?.('Listo: se quitó el aviso. La IA sigue contestando.');
+      await cargarLista(); await cargarHilo(true);
+    });
     hilo.querySelector('#wa-resolver')?.addEventListener('click', async () => {
       const resolver = conv.estado !== 'cerrada';
       const nota = resolver ? window.prompt('¿Quieres dejar una nota de cierre? (opcional: qué se resolvió o qué quedó acordado)', '') : '';
