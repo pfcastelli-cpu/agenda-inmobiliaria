@@ -28,7 +28,7 @@ estás atendiendo al cliente: un asesor humano va a enviar un mensaje por WhatsA
 
 Haz esto, en este orden:
 1. Corrige ortografía, tildes, puntuación y errores de digitación sin cambiar lo que el asesor quiere decir.
-2. Mejora la redacción para que el cliente lo entienda y responda: español colombiano natural, cálido y profesional; frases cortas; lo más
+2. Mejora la redacción para que el cliente lo entienda y responda: español formal, cordial y respetuoso (trato de «usted», sin coloquialismos como «ojo», «listo» o «parce»); frases cortas; lo más
    importante primero; UN solo siguiente paso claro al final (una pregunta o una acción). Sin jerga, sin relleno, sin mayúsculas sostenidas.
 3. Piensa en lo que el cliente espera y siente en ese momento de la conversación (duda, ansiedad por el dinero, urgencia, desconfianza,
    emoción por el inmueble) y ajusta el tono: empatía breve y sincera, claridad, transparencia, reconocer su tiempo. Usa principios
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
   const slug: string = (Array.isArray(rel) ? rel[0]?.slug : rel?.slug) || '';
   const dominio = String(cfgEmp?.dominio_publico || 'citas.patrimonios.co').replace(/[^a-zA-Z0-9.-]/g, '');
 
-  const { data: filas } = await admin.from('agenda_wa_mensajes').select('direccion, origen, texto, tipo').eq('conversacion_id', conv.id).neq('tipo', 'evento').order('creado_en', { ascending: false }).limit(14);
+  const { data: filas } = await admin.from('agenda_wa_mensajes').select('direccion, origen, texto, tipo').eq('conversacion_id', conv.id).neq('tipo', 'evento').order('creado_en', { ascending: false }).limit(8);
   const hilo = (filas || []).reverse().filter((m: { texto: string | null }) => m.texto)
     .map((m: { direccion: string; origen: string; texto: string }) => `${m.direccion === 'entrada' ? 'CLIENTE' : m.origen === 'ia' ? 'ASISTENTE IA' : m.origen === 'asesor' ? 'ASESOR' : 'EMPRESA'}: ${m.texto}`).join('\n');
 
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
       headers: { 'x-api-key': clave, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({
         model: cfgWA.modelo || 'claude-haiku-5-5',
-        max_tokens: 1500,
+        max_tokens: 800,
         system: [{ type: 'text', text: fijo, cache_control: { type: 'ephemeral' } }],
         tools: HERRAMIENTA,
         tool_choice: { type: 'tool', name: 'revision' },

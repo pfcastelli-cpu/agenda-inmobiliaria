@@ -7,10 +7,22 @@ const LATIDO_MS = 30000;
 const REVISION_MS = 15000;
 let temporizadores = [];
 let audio = null;
+let desbloqueado = false;
 
-function sonidoActivo() { try { return localStorage.getItem('wa_sonido') !== 'no'; } catch { return true; } }
+export function sonidoActivo() { try { return localStorage.getItem('wa_sonido') !== 'no'; } catch { return true; } }
 
-function sonar() {
+// Los navegadores no dejan sonar nada hasta que la persona toque la página una vez: se prepara el audio con el primer toque.
+function prepararAudio() {
+  try {
+    const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+    audio = audio || new A(); if (audio.state === 'suspended') audio.resume();
+    desbloqueado = audio.state === 'running' || desbloqueado;
+  } catch { /* sin audio */ }
+}
+['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.addEventListener(ev, prepararAudio, { passive: true }));
+export function audioListo() { return !!audio && audio.state === 'running'; }
+
+export function sonarAlerta() {
   try {
     const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
     audio = audio || new A(); if (audio.state === 'suspended') audio.resume();
@@ -65,17 +77,24 @@ export function iniciarPresenciaWhatsapp({ supabase, empresaId, vistaActual, irA
     conocidas = new Set(data.map((c) => c.id));
     if (!data.length || enWA) { el.hidden = true; document.title = tituloOriginal; primera = false; return; }
     const repite = Date.now() - ultimoSonido > 5 * 60000;
-    if ((nuevas.length && !primera || repite) && sonidoActivo()) { sonar(); ultimoSonido = Date.now(); }
-    else if (primera && sonidoActivo()) { sonar(); ultimoSonido = Date.now(); }
+    if ((nuevas.length && !primera || repite) && sonidoActivo()) { sonarAlerta(); ultimoSonido = Date.now(); }
+    else if (primera && sonidoActivo()) { sonarAlerta(); ultimoSonido = Date.now(); }
     primera = false;
     const quien = (data[0].nombre || data[0].telefono || 'Un cliente').toString().slice(0, 40);
+    let ultimoMsg = '';
+    try {
+      const { data: m } = await supabase.from('agenda_wa_mensajes').select('texto').eq('conversacion_id', data[0].id).eq('direccion', 'entrada').order('creado_en', { ascending: false }).limit(1).maybeSingle();
+      ultimoMsg = String(m?.texto || '').replace(/\s+/g, ' ').slice(0, 110);
+    } catch { /* sin detalle */ }
     el.innerHTML = '';
     const txt = document.createElement('div'); txt.className = 'wa-global-txt';
-    const b = document.createElement('b'); b.textContent = data.length === 1 ? 'Un cliente de WhatsApp te necesita' : `${data.length} clientes de WhatsApp te necesitan`;
-    const s = document.createElement('small'); s.textContent = data.length === 1 ? `${quien}${data[0].motivo_pausa ? ' · ' + data[0].motivo_pausa : ''}` : `${quien} y ${data.length - 1} más esperando`;
+    const b = document.createElement('b'); b.textContent = data.length === 1 ? 'Un cliente de WhatsApp requiere a una persona' : `${data.length} clientes de WhatsApp requieren a una persona`;
+    const s = document.createElement('small'); s.textContent = `${quien}${data[0].motivo_pausa ? ' · ' + data[0].motivo_pausa : ''}${data.length > 1 ? ' (y ' + (data.length - 1) + ' más)' : ''}`;
     txt.append(b, s);
+    if (ultimoMsg) { const q = document.createElement('small'); q.className = 'wa-global-msg'; q.textContent = '«' + ultimoMsg + '»'; txt.append(q); }
+    if (!audioListo() && sonidoActivo()) { const h = document.createElement('small'); h.textContent = '🔕 Toque cualquier parte de la página para activar el sonido.'; txt.append(h); }
     const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Atender';
-    btn.addEventListener('click', () => { el.hidden = true; irAWhatsapp(); });
+    btn.addEventListener('click', () => { el.hidden = true; try { sessionStorage.setItem('wa_abrir', data[0].id); } catch { /* sin almacenamiento */ } irAWhatsapp(); });
     el.append(txt, btn);
     el.hidden = false;
     document.title = `(${data.length}) 🔔 ${tituloOriginal}`;

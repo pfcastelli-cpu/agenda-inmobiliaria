@@ -155,9 +155,9 @@ async function instruccionPresencia(empresaId: string): Promise<string> {
   const desde = new Date(Date.now() - 90_000).toISOString();
   const { count } = await admin.from('agenda_wa_presencia').select('usuario_id', { count: 'exact', head: true }).eq('empresa_id', empresaId).gte('visto_en', desde);
   if ((count || 0) > 0) {
-    return 'EQUIPO CONECTADO AHORA: SÍ. Si el cliente pide hablar con una persona o hace falta criterio humano, NO des números de WhatsApp: dile que un asesor le escribirá por este mismo chat en unos minutos y emite [HUMANO:motivo breve].';
+    return 'TONO OBLIGATORIO: español formal y cordial, tratando al cliente de «usted». Sin coloquialismos ni muletillas (nada de «ojo», «listo», «parce», «chévere», «de una», «tranquilo»). Frases completas, claras y breves; saludo y despedida corteses; a lo sumo un emoji sobrio y solo si aporta.\nEQUIPO CONECTADO AHORA: SÍ. Si el cliente pide hablar con una persona o hace falta criterio humano, NO des números de WhatsApp: dile que un asesor le escribirá por este mismo chat en unos minutos y emite [HUMANO:motivo breve].';
   }
-  return 'EQUIPO CONECTADO AHORA: NO (nadie está en la plataforma). Si el cliente pide hablar con una persona o hace falta criterio humano, dale el WhatsApp directo del asesor de su ciudad (de la lista de contactos) para que le escriba ya, y emite igualmente [HUMANO:motivo breve] para dejar el aviso.';
+  return 'TONO OBLIGATORIO: español formal y cordial, tratando al cliente de «usted». Sin coloquialismos ni muletillas (nada de «ojo», «listo», «parce», «chévere», «de una», «tranquilo»). Frases completas, claras y breves; saludo y despedida corteses; a lo sumo un emoji sobrio y solo si aporta.\nEQUIPO CONECTADO AHORA: NO (nadie está en la plataforma). Si el cliente pide hablar con una persona o hace falta criterio humano, dale el WhatsApp directo del asesor de su ciudad (de la lista de contactos) para que le escriba ya, y emite igualmente [HUMANO:motivo breve] para dejar el aviso.';
 }
 
 // Deduce perfil y número de inmueble del texto del cliente. Solo agrega (nunca quita lo que ya puso la IA o una persona).
@@ -242,7 +242,7 @@ async function procesarEntrante(e: EntranteWA) {
   if (!fresca?.ia_activa) return;
 
   const { data: filas } = await admin.from('agenda_wa_mensajes').select('direccion, origen, tipo, texto, creado_en')
-    .eq('conversacion_id', conv.id).neq('tipo', 'evento').order('creado_en', { ascending: false }).limit(40);
+    .eq('conversacion_id', conv.id).neq('tipo', 'evento').order('creado_en', { ascending: false }).limit(24);
   const historial: MensajeHist[] = (filas || []).reverse().filter((m: Fila) => m.texto).map((m: Fila) => ({
     rol: m.direccion === 'entrada' ? 'user' : 'assistant',
     texto: m.origen === 'asesor' ? `[Un asesor humano escribió]: ${m.texto}` : m.texto,

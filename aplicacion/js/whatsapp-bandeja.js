@@ -5,6 +5,7 @@
 import '../estilos/whatsapp.css';
 import { puede as puedePermisos } from './permisos.js';
 import { renderWhatsappAjustes } from './whatsapp-ajustes.js';
+import { sonarAlerta } from './whatsapp-presencia.js';
 
 const ORIGEN = { cliente: 'Cliente', ia: '🤖 Asistente IA', asesor: 'Asesor', sistema: 'Sistema', bot_anterior: 'Bot anterior' };
 const COLORES = ['#00a884', '#6b3fa0', '#d9534f', '#2f7bd9', '#c77d00', '#009688', '#8e5a3c', '#5c6bc0'];
@@ -94,7 +95,10 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
       ev.currentTarget.textContent = on ? '🔔' : '🔕'; ev.currentTarget.setAttribute('aria-pressed', String(on));
       if (on) sonar();
     });
-    el.querySelector('#wa-banner')?.addEventListener('click', () => { st.filtro = 'atencion'; el.querySelectorAll('.wa-pildoras button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.f === 'atencion'))); pintarLista(); });
+    el.querySelector('#wa-banner')?.addEventListener('click', async () => {
+      const primera = ordenar(st.convs.filter(esAlerta))[0];
+      if (primera) { st.sel = primera.id; st.firma = ''; st.yaDesplazado = false; }
+      st.filtro = 'atencion'; el.querySelectorAll('.wa-pildoras button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.f === 'atencion'))); pintarLista(); if (primera) await cargarHilo(true); });
     ajustarAlto();
     el.querySelector('#wa-buscar').addEventListener('input', (e) => { st.buscar = e.target.value; pintarLista(); });
     el.querySelector('#wa-ftema')?.addEventListener('change', (e) => { st.fTema = e.target.value; pintarLista(); });
@@ -128,20 +132,12 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
   // Las alertas van arriba (según la regla de Ajustes → Alertas); el resto, por la última actividad.
   function ordenar(lista) { const al = lista.filter(esAlerta).sort(ordenAlertas); return [...al, ...lista.filter((c) => !esAlerta(c))]; }
   function sonar() {
-    try {
-      const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
-      st.audio = st.audio || new A(); const a = st.audio; if (a.state === 'suspended') a.resume();
-      [[880, 0], [1175, 0.2], [880, 0.4]].forEach(([fr, t]) => {
-        const o = a.createOscillator(); const g = a.createGain(); o.type = 'sine'; o.frequency.value = fr;
-        g.gain.setValueAtTime(0.0001, a.currentTime + t); g.gain.exponentialRampToValueAtTime(0.3, a.currentTime + t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + t + 0.18);
-        o.connect(g); g.connect(a.destination); o.start(a.currentTime + t); o.stop(a.currentTime + t + 0.19);
-      });
-    } catch { /* el navegador bloqueó el audio hasta que se toque la página */ }
+    try { sonarAlerta(); } catch { /* sin audio */ }
   }
   function claveAl(c) { return c.id + '|' + (c.motivo_pausa || '') + '|' + (c.alerta || ''); }
   function revisarAlertas() {
     const pend = st.convs.filter(esAlerta);
-    const nuevas = st.avisados ? pend.filter((c) => !st.avisados.has(claveAl(c)) && c.id !== st.sel) : [];
+    const nuevas = st.avisados ? pend.filter((c) => !st.avisados.has(claveAl(c))) : [];
     const r = reglaAl();
     const repite = r.repetir > 0 && pend.length && Date.now() - st.ultimoSonido > r.repetir * 60000;
     if ((nuevas.length || repite) && r.sonido && sonidoActivo()) { sonar(); st.ultimoSonido = Date.now(); }
@@ -151,7 +147,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
       ban.hidden = !pend.length;
       if (pend.length) {
         const masAntigua = [...pend].sort((a, b) => espera(a) - espera(b))[0];
-        ban.innerHTML = `<b>🔔 ${pend.length} ${pend.length === 1 ? 'conversación necesita' : 'conversaciones necesitan'} a una persona</b><small>${esc(tituloConv(masAntigua))} · ${esc(TIPO_TXT[tipoAlerta(masAntigua)])}</small>`;
+        ban.innerHTML = `<b>🔔 ${pend.length} ${pend.length === 1 ? 'conversación requiere' : 'conversaciones requieren'} a una persona · toque para abrir</b><small>${esc(tituloConv(masAntigua))} · ${esc(TIPO_TXT[tipoAlerta(masAntigua)])}</small>`;
       }
     }
     const pill = el.querySelector('.wa-pildoras button[data-f="atencion"]');
@@ -171,6 +167,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     const { data, error } = await supabase.from('agenda_wa_conversaciones').select('*').eq('empresa_id', empresaId).order('ultimo_en', { ascending: false }).limit(200);
     if (error) { el.querySelector('#wa-cuerpo').innerHTML = `<p class="wa-error" role="alert">${esc(mensajeError(error, 'No se pudieron cargar las conversaciones.'))}</p>`; return; }
     st.convs = data || [];
+    try { const ab = sessionStorage.getItem('wa_abrir'); if (ab) { sessionStorage.removeItem('wa_abrir'); if (st.convs.some((c) => c.id === ab)) { st.sel = ab; st.firma = ''; st.yaDesplazado = false; } } } catch { /* sin almacenamiento */ }
     pintarLista();
     if (st.sel) await cargarHilo(false);
     detener();
@@ -432,7 +429,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
       } else {
         const igual = r.texto_sugerido.trim() === texto.trim();
         panelRev.className = `wa-revision wa-rev-${r.veredicto}`;
-        const titulo = r.veredicto === 'ok' ? '✅ Tu mensaje está bien' : r.veredicto === 'no_enviar' ? '⚠️ Ojo: este mensaje puede tener un problema' : '✨ Sugerencia de la IA';
+        const titulo = r.veredicto === 'ok' ? '✅ Tu mensaje está bien' : r.veredicto === 'no_enviar' ? '⚠️ Atención: este mensaje puede tener un problema' : '✨ Sugerencia de la IA';
         panelRev.innerHTML = `<div class="wa-rev-tit">${titulo}</div>
           ${r.alertas.length ? `<ul class="wa-rev-alertas">${r.alertas.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}
           ${igual ? '' : `<div class="wa-rev-sug"><span>Texto sugerido</span><p>${esc(r.texto_sugerido)}</p></div>`}
