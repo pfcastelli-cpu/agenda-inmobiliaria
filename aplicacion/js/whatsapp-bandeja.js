@@ -9,7 +9,7 @@ import { sonarAlerta } from './whatsapp-presencia.js';
 
 const ORIGEN = { cliente: 'Cliente', ia: '🤖 Asistente IA', asesor: 'Asesor', sistema: 'Sistema', bot_anterior: 'Bot anterior' };
 const COLORES = ['#00a884', '#6b3fa0', '#d9534f', '#2f7bd9', '#c77d00', '#009688', '#8e5a3c', '#5c6bc0'];
-const FILTROS = [['todas', 'Todas'], ['mias', 'Mías'], ['cola', 'Sin asignar'], ['pendientes', 'Pendientes'], ['atencion', 'Atención'], ['ia', 'Atiende la IA'], ['asesor', 'Con asesor'], ['pausadas', 'IA en pausa'], ['resueltas', 'Resueltas'], ['prueba', 'Pruebas']];
+const FILTROS = [['todas', 'Todas'], ['mias', 'Mías'], ['cola', 'Sin asignar'], ['pendientes', 'Pendientes'], ['atencion', 'Atención'], ['ianueva', 'IA nueva'], ['anterior', 'Bot anterior'], ['asesor', 'Con asesor'], ['pausadas', 'IA en pausa'], ['resueltas', 'Resueltas'], ['prueba', 'Pruebas']];
 const PERFILES = { interesado_arriendo: 'Interesado en arriendo', interesado_compra: 'Interesado en compra', propietario: 'Propietario', arrendatario: 'Arrendatario', consignacion: 'Consignación' };
 const TIPO_TXT = { pide_asesor: 'pide hablar con una persona', fallo_entrega: 'un mensaje no se entregó', inmueble: 'inmueble sin identificar', ia_sin_respuesta: 'la IA no pudo responder', otro: 'requiere atención' };
 const tituloConv = (c) => `${c.nombre || '+' + c.telefono}${c.inmueble_numero ? ` · Inmueble ${c.inmueble_numero}` : ''}`;
@@ -192,7 +192,8 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
       if (st.filtro === 'pendientes') return c.estado !== 'cerrada';
       if (st.filtro === 'resueltas') return c.estado === 'cerrada';
       if (st.filtro === 'atencion') return c.estado !== 'cerrada' && (c.requiere_atencion || (c.sin_leer > 0 && !c.ia_activa));
-      if (st.filtro === 'ia') return c.estado !== 'cerrada' && c.ia_activa;
+      if (st.filtro === 'ianueva') return atiendeIA(c);
+      if (st.filtro === 'anterior') return c.estado !== 'cerrada' && c.ia_activa && !atiendeIA(c);
       if (st.filtro === 'asesor') return c.estado !== 'cerrada' && !!c.asesor_id;
       if (st.filtro === 'pausadas') return !c.ia_activa;
       if (st.filtro === 'prueba') return c.es_prueba;
@@ -210,7 +211,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
       <span class="wa-nom">${esc(tituloConv(c))}${c.es_prueba ? '<em>prueba</em>' : ''}</span>
       <span class="wa-fecha ${c.sin_leer && (!c.ia_activa || c.requiere_atencion) ? 'wa-nuevo-f' : ''}">${esc(fechaLista(c.ultimo_en))}</span>
       <span class="wa-sub"><span class="wa-ult">${esc(c.ultimo_texto || '')}</span>
-        ${c.estado === 'cerrada' ? '<b class="wa-chip wa-res">✓ Resuelta</b>' : ''}${c.estado === 'cerrada' ? '' : atiendeIA(c) ? '<b class="wa-chip wa-ia" title="La atiende la IA">🤖 IA</b>' : c.ia_activa ? '<b class="wa-chip" title="Por ahora responde el bot anterior">Bot anterior</b>' : '<b class="wa-chip">Pausada</b>'}${venceVentana(c) ? '<b class="wa-chip wa-vence" title="Pasaron más de 24 h desde el último mensaje del cliente: solo se le puede escribir con una plantilla">⏳ 24 h vencidas</b>' : ''}${c.sin_leer && (!c.ia_activa || c.requiere_atencion) ? `<b class="wa-badge" aria-label="${c.sin_leer} sin leer">${c.sin_leer}</b>` : ''}</span></button></li>`).join('')
+        ${c.estado === 'cerrada' ? '<b class="wa-chip wa-res">✓ Resuelta</b>' : ''}${c.estado === 'cerrada' ? '' : atiendeIA(c) ? '<b class="wa-chip wa-ia" title="Responde la IA nueva de la plataforma">🤖 IA nueva</b>' : c.ia_activa ? '<b class="wa-chip wa-ant" title="Responde el bot anterior (Apps Script); la plataforma solo guarda la copia">🤖 Bot anterior</b>' : '<b class="wa-chip wa-per" title="La IA está en pausa: atiende una persona">👤 Persona</b>'}${venceVentana(c) ? '<b class="wa-chip wa-vence" title="Pasaron más de 24 h desde el último mensaje del cliente: solo se le puede escribir con una plantilla">⏳ 24 h vencidas</b>' : ''}${c.sin_leer && (!c.ia_activa || c.requiere_atencion) ? `<b class="wa-badge" aria-label="${c.sin_leer} sin leer">${c.sin_leer}</b>` : ''}</span></button></li>`).join('')
       : '<li class="wa-vacio">No hay conversaciones con este filtro.</li>';
     // Segunda línea de la lista: perfil del contacto y quién la atiende (para ver de un vistazo a quién le toca).
     ul.querySelectorAll('.wa-item').forEach((b) => {
