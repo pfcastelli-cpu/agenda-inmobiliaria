@@ -254,6 +254,25 @@ async function guardarDelBotAnterior(b: Fila) {
   await admin.from('agenda_wa_conversaciones').update({ ultimo_texto: t.slice(0, 200), ultimo_en: new Date().toISOString() }).eq('id', conv.id);
 }
 
+// Avisos de entrega de Meta: si un mensaje que la plataforma envió NO se entregó (ej. pasaron 24 h), se marca en rojo y la conversación pide atención.
+// deno-lint-ignore no-explicit-any
+async function procesarEstados(payload: any) {
+  // deno-lint-ignore no-explicit-any
+  const estados: any[] = (payload?.entry || []).flatMap((e: any) => (e?.changes || []).flatMap((c: any) => c?.value?.statuses || []));
+  for (const s of estados) {
+    if (s?.status !== 'failed' || !s?.id) continue;
+    const er = (s.errors || [])[0] || {};
+    const motivo = er.code === 131047 || er.code === 131049
+      ? 'No se entregó: pasaron más de 24 horas desde el último mensaje del cliente. Usa una plantilla aprobada.'
+      : er.code === 131026 ? 'No se entregó: el número no tiene WhatsApp o no puede recibir el mensaje.'
+      : `No se entregó: ${String(er.error_data?.details || er.message || er.title || 'WhatsApp no pudo entregarlo').slice(0, 200)}`;
+    const { data: m } = await admin.from('agenda_wa_mensajes').select('id, conversacion_id, direccion').eq('wa_id', String(s.id)).maybeSingle();
+    if (!m || m.direccion !== 'salida') continue;
+    await admin.from('agenda_wa_mensajes').update({ estado_envio: 'fallido', error: motivo }).eq('id', m.id);
+    await admin.from('agenda_wa_conversaciones').update({ requiere_atencion: true, motivo_pausa: motivo }).eq('id', m.conversacion_id);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'GET') {
     const u = new URL(req.url);
@@ -290,6 +309,7 @@ Deno.serve(async (req) => {
   const tarea = (async () => {
     try {
       if (payload?.bot_anterior) { await guardarDelBotAnterior(payload.bot_anterior); return; }
+      await procesarEstados(payload).catch((err) => console.error('whatsapp-webhook estados', err instanceof Error ? err.message : err));
       const entrantes = extraerEntrantes(payload);
       await Promise.all(entrantes.map((e) => procesarEntrante(e).catch((err) => console.error('whatsapp-webhook', err instanceof Error ? err.message : err))));
     } catch (err) {

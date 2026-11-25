@@ -40,7 +40,7 @@ function plataformaAtiende_(contenidoCrudo, data) {
     if (!plataformaActiva_()) return false;
     const mensaje = data && data.entry && data.entry[0] && data.entry[0].changes && data.entry[0].changes[0] &&
                     data.entry[0].changes[0].value && data.entry[0].changes[0].value.messages;
-    if (!mensaje || !mensaje.length) return false; // estados de entrega, lecturas, etc.: no se reenvían
+    if (!mensaje || !mensaje.length) { reenviarFallosDeEntrega_(contenidoCrudo, data); return false; } // lecturas y entregas OK no se reenvían
     const p = PropertiesService.getScriptProperties();
     const r = UrlFetchApp.fetch(p.getProperty('PLATAFORMA_URL'), {
       method: 'post',
@@ -56,6 +56,21 @@ function plataformaAtiende_(contenidoCrudo, data) {
     try { Logger.log('Plataforma no disponible, responde el bot anterior: ' + err); } catch (e2) {}
     return false;
   }
+}
+
+/** Si Meta avisa que un mensaje NO se entregó («failed»), se lo cuenta a la plataforma para marcarlo en rojo. Nunca interrumpe nada. */
+function reenviarFallosDeEntrega_(contenidoCrudo, data) {
+  try {
+    const estados = data && data.entry && data.entry[0] && data.entry[0].changes && data.entry[0].changes[0] &&
+                    data.entry[0].changes[0].value && data.entry[0].changes[0].value.statuses;
+    if (!estados || !estados.some(function (s) { return s && s.status === 'failed'; })) return;
+    const p = PropertiesService.getScriptProperties();
+    UrlFetchApp.fetch(p.getProperty('PLATAFORMA_URL'), {
+      method: 'post', contentType: 'application/json',
+      headers: { 'x-reenvio-secret': p.getProperty('PLATAFORMA_SECRETO') },
+      payload: contenidoCrudo, muteHttpExceptions: true
+    });
+  } catch (err) {}
 }
 
 /** Le cuenta a la plataforma lo que contestó el bot anterior (solo para el historial). Nunca interrumpe el envío. */
