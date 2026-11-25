@@ -116,6 +116,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     return (c.alerta === 'inmueble_no_identificado' ? 'inmueble' : /no se entreg/i.test(c.motivo_pausa || '') ? 'fallo_entrega'
     : /asesor|persona|humano/i.test(c.motivo_pausa || '') ? 'pide_asesor' : !c.motivo_pausa ? 'ia_sin_respuesta' : 'otro');
   }
+  function venceVentana(c) { return c.estado !== 'cerrada' && !!c.ultimo_cliente_en && Date.now() - new Date(c.ultimo_cliente_en).getTime() > 24 * 3600 * 1000; }
   function esAlerta(c) { return c.estado !== 'cerrada' && !!c.requiere_atencion; }
   function espera(c) { return new Date(c.ultimo_cliente_en || c.ultimo_en || 0).getTime(); }
   function ordenAlertas(a, b) {
@@ -209,7 +210,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
       <span class="wa-nom">${esc(tituloConv(c))}${c.es_prueba ? '<em>prueba</em>' : ''}</span>
       <span class="wa-fecha ${c.sin_leer ? 'wa-nuevo-f' : ''}">${esc(fechaLista(c.ultimo_en))}</span>
       <span class="wa-sub"><span class="wa-ult">${esc(c.ultimo_texto || '')}</span>
-        ${c.estado === 'cerrada' ? '<b class="wa-chip wa-res">✓ Resuelta</b>' : ''}${c.ia_activa ? '' : '<b class="wa-chip">Pausada</b>'}${c.sin_leer ? `<b class="wa-badge" aria-label="${c.sin_leer} sin leer">${c.sin_leer}</b>` : ''}</span></button></li>`).join('')
+        ${c.estado === 'cerrada' ? '<b class="wa-chip wa-res">✓ Resuelta</b>' : ''}${c.estado === 'cerrada' ? '' : c.ia_activa ? '<b class="wa-chip wa-ia" title="La atiende la IA">🤖 IA</b>' : '<b class="wa-chip">Pausada</b>'}${venceVentana(c) ? '<b class="wa-chip wa-vence" title="Pasaron más de 24 h desde el último mensaje del cliente: solo se le puede escribir con una plantilla">⏳ 24 h vencidas</b>' : ''}${c.sin_leer ? `<b class="wa-badge" aria-label="${c.sin_leer} sin leer">${c.sin_leer}</b>` : ''}</span></button></li>`).join('')
       : '<li class="wa-vacio">No hay conversaciones con este filtro.</li>';
     // Segunda línea de la lista: perfil del contacto y quién la atiende (para ver de un vistazo a quién le toca).
     ul.querySelectorAll('.wa-item').forEach((b) => {
@@ -438,7 +439,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
           ${r.cambios.length ? `<ul class="wa-rev-cambios">${r.cambios.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
           ${r.lo_que_espera_el_cliente ? `<p class="wa-rev-cli">💭 Lo que probablemente espera el cliente: ${esc(r.lo_que_espera_el_cliente)}</p>` : ''}
           <div class="wa-rev-acc">${igual ? '' : '<button type="button" class="wa-rev-btn" data-r="sug">Usar el sugerido y enviar</button><button type="button" class="wa-rev-btn wa-sec" data-r="editar">Pasarlo a la caja para editarlo</button>'}
-            <button type="button" class="wa-rev-btn ${igual ? '' : 'wa-sec'}" data-r="mio">${igual ? 'Enviar' : 'Enviar el mío'}</button><button type="button" class="wa-rev-btn wa-sec" data-r="cerrar">Seguir editando</button></div>`;
+            ${igual ? '<button type="button" class="wa-rev-btn" data-r="mio">Enviar</button>' : '<p class="wa-rev-cli">Corrige tu mensaje (o usa el sugerido) para poder enviarlo.</p>'}<button type="button" class="wa-rev-btn wa-sec" data-r="cerrar">Seguir editando</button></div>`;
         panelRev.querySelector('[data-r=sug]')?.addEventListener('click', () => enviarTexto(r.texto_sugerido));
         panelRev.querySelector('[data-r=editar]')?.addEventListener('click', () => { const t2 = hilo.querySelector('#wa-texto'); t2.value = r.texto_sugerido; t2.dispatchEvent(new Event('input')); cerrarPanel(); t2.focus(); });
         panelRev.querySelector('[data-r=mio]')?.addEventListener('click', () => {
