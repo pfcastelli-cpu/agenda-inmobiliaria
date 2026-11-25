@@ -9,7 +9,8 @@ import { sonarAlerta } from './whatsapp-presencia.js';
 
 const ORIGEN = { cliente: 'Cliente', ia: '🤖 Asistente IA', asesor: 'Asesor', sistema: 'Sistema', bot_anterior: 'Bot anterior' };
 const COLORES = ['#00a884', '#6b3fa0', '#d9534f', '#2f7bd9', '#c77d00', '#009688', '#8e5a3c', '#5c6bc0'];
-const FILTROS = [['todas', 'Todas'], ['mias', 'Mías'], ['cola', 'Sin asignar'], ['pendientes', 'Pendientes'], ['atencion', 'Atención'], ['ianueva', 'IA nueva'], ['anterior', 'Bot anterior'], ['asesor', 'Con asesor'], ['pausadas', 'IA en pausa'], ['resueltas', 'Resueltas'], ['prueba', 'Pruebas']];
+const FILTROS = [['todas', 'Todas', 'Todos los chats'], ['atencion', 'Atención', 'Requieren a una persona'], ['mias', 'Mías', 'Asignadas a mí'], ['cola', 'Sin asignar', 'Nadie las atiende aún'], ['pendientes', 'Pendientes', 'Abiertas, no resueltas'],
+  ['ianueva', 'IA nueva', 'Responde la IA de la plataforma'], ['anterior', 'Bot anterior', 'Responde el bot del Script'], ['asesor', 'Con asesor', 'Tienen asesor asignado'], ['pausadas', 'IA en pausa', 'Las atiende una persona'], ['resueltas', 'Resueltas', 'Ya cerradas'], ['prueba', 'Pruebas', 'Números de prueba']];
 const PERFILES = { interesado_arriendo: 'Interesado en arriendo', interesado_compra: 'Interesado en compra', propietario: 'Propietario', arrendatario: 'Arrendatario', consignacion: 'Consignación' };
 const TIPO_TXT = { pide_asesor: 'pide hablar con una persona', fallo_entrega: 'un mensaje no se entregó', inmueble: 'inmueble sin identificar', ia_sin_respuesta: 'la IA no pudo responder', otro: 'requiere atención' };
 const tituloConv = (c) => `${c.nombre || '+' + c.telefono}${c.inmueble_numero ? ` · Inmueble ${c.inmueble_numero}` : ''}`;
@@ -65,6 +66,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     const modoTxt = { anterior: 'Bot anterior (Apps Script) responde', observador: 'Observador: el bot anterior responde y aquí solo se guarda', pruebas: 'Pruebas: la plataforma responde solo a números de prueba', nuevo: 'Bot nuevo responde' }[st.cfg.modo];
     el.innerHTML = `<section class="wa">
   <header class="wa-cab"><h2>WhatsApp</h2><span class="wa-modo wa-modo-${esc(st.cfg.modo)}">${esc(modoTxt)}</span>
+    <div class="wa-conect"><button type="button" id="wa-conect-btn" aria-expanded="false" title="Quién está conectado a la plataforma"><span class="wa-punto"></span> <span id="wa-conect-n">Conectados</span></button><div class="wa-conect-panel" id="wa-conect-panel" hidden></div></div>
     <nav class="wa-tabs"><button type="button" data-tab="chats" aria-pressed="${st.pestana === 'chats'}">Conversaciones</button>${verAjustes ? `<button type="button" data-tab="ajustes" aria-pressed="${st.pestana === 'ajustes'}">Ajustes e interruptor</button>` : ''}</nav></header>
   <div id="wa-cuerpo"></div></section>`;
     el.querySelectorAll('.wa-tabs button').forEach((b) => b.addEventListener('click', async () => {
@@ -78,17 +80,39 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     if (st.pestana === 'chats') cuerpoChats();
   }
 
+  function textoFiltro() {
+    const f = FILTROS.find((x) => x[0] === st.filtro);
+    const extra = (st.fTema ? 1 : 0) + (st.fAses ? 1 : 0);
+    return (st.filtro === 'todas' && !extra ? 'Filtros' : `${f ? f[1] : 'Filtros'}${extra ? ' +' + extra : ''}`);
+  }
   function cuerpoChats() {
     el.querySelector('#wa-cuerpo').innerHTML = `<div class="wa-grid">
   <aside class="wa-lista"><div class="wa-lista-cab"><span>Chats</span><button type="button" class="wa-icono" id="wa-sonido" aria-pressed="${sonidoActivo()}" title="Activar o silenciar el sonido de las alertas">${sonidoActivo() ? '🔔' : '🔕'}</button></div>
     <button type="button" class="wa-banner" id="wa-banner" hidden></button>
-    <div class="wa-filtros"><input id="wa-buscar" type="search" placeholder="Buscar un chat" value="${esc(st.buscar)}" aria-label="Buscar conversación">
-      <div class="wa-pildoras" role="group" aria-label="Filtrar">${FILTROS.map(([v, t]) => `<button type="button" data-f="${v}" aria-pressed="${st.filtro === v}">${esc(t)}</button>`).join('')}</div>
+    <div class="wa-filtros"><div class="wa-busqueda"><input id="wa-buscar" type="search" placeholder="Buscar un chat" value="${esc(st.buscar)}" aria-label="Buscar conversación">
+      <button type="button" class="wa-filtro-btn" id="wa-filtro-btn" aria-expanded="false" aria-controls="wa-fpanel"><span aria-hidden="true">⚙</span> <span id="wa-filtro-txt">${esc(textoFiltro())}</span></button></div>
+      <div class="wa-fpanel" id="wa-fpanel" hidden>
+      <div class="wa-ftit">Mostrar conversaciones</div>
+      <div class="wa-pildoras" role="group" aria-label="Filtrar">${FILTROS.map(([v, t, d]) => `<button type="button" data-f="${v}" aria-pressed="${st.filtro === v}"><b>${esc(t)}</b><small>${esc(d || '')}</small></button>`).join('')}</div>
       ${st.meta.temas.length || (verTodas && st.meta.asesores.length) ? `<div class="wa-selects">
         ${st.meta.temas.length ? `<select id="wa-ftema" aria-label="Filtrar por tema"><option value="">Todos los temas</option>${st.meta.temas.map((t) => `<option value="${esc(t.id)}" ${st.fTema === t.id ? 'selected' : ''}>${esc(t.nombre)}</option>`).join('')}</select>` : ''}
-        ${verTodas && st.meta.asesores.length ? `<select id="wa-fases" aria-label="Filtrar por asesor"><option value="">Todos los asesores</option>${st.meta.asesores.map((a) => `<option value="${esc(a.id)}" ${st.fAses === a.id ? 'selected' : ''}>${esc(a.nombre)}</option>`).join('')}</select>` : ''}</div>` : ''}</div>
+        ${verTodas && st.meta.asesores.length ? `<select id="wa-fases" aria-label="Filtrar por asesor"><option value="">Todos los asesores</option>${st.meta.asesores.map((a) => `<option value="${esc(a.id)}" ${st.fAses === a.id ? 'selected' : ''}>${esc(a.nombre)}</option>`).join('')}</select>` : ''}</div>` : ''}
+      <div class="wa-fpie"><button type="button" class="wa-fpie-lim" id="wa-flimpiar">Quitar filtros</button><button type="button" class="wa-fpie-ok" id="wa-fcerrar">Listo</button></div></div></div>
     <ul id="wa-items" class="wa-items"></ul></aside>
   <div class="wa-hilo" id="wa-hilo"><p class="v-muted">Elige una conversación para verla aquí.</p></div></div>`;
+    const cBtn = el.querySelector('#wa-conect-btn'); const cPan = el.querySelector('#wa-conect-panel');
+    const cargarConectados = async () => {
+      const { data } = await supabase.rpc('agenda_wa_conectados', { p_empresa_id: empresaId });
+      const lista = Array.isArray(data) ? data : [];
+      const n = el.querySelector('#wa-conect-n'); if (n) n.textContent = `Conectados (${lista.length})`;
+      if (cPan) cPan.innerHTML = lista.length
+        ? `<b>Conectados ahora</b><ul>${lista.map((u) => `<li><span class="wa-punto"></span>${esc(u.nombre)}</li>`).join('')}</ul><small>Si nadie está conectado, la IA envía al cliente al WhatsApp del asesor de su ciudad.</small>`
+        : '<b>Nadie conectado</b><small>La IA enviará a los clientes al WhatsApp del asesor de su ciudad.</small>';
+    };
+    cBtn?.addEventListener('click', async () => { const abrir = cPan.hidden; cPan.hidden = !abrir; cBtn.setAttribute('aria-expanded', String(abrir)); if (abrir) await cargarConectados(); });
+    cargarConectados();
+    if (st.timerConect) clearInterval(st.timerConect);
+    st.timerConect = setInterval(() => { if (!el.isConnected) return clearInterval(st.timerConect); cargarConectados(); }, 30000);
     el.querySelector('#wa-sonido')?.addEventListener('click', (ev) => {
       const on = !sonidoActivo();
       try { localStorage.setItem('wa_sonido', on ? 'si' : 'no'); } catch { /* sin almacenamiento */ }
@@ -103,11 +127,25 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
     el.querySelector('#wa-buscar').addEventListener('input', (e) => { st.buscar = e.target.value; pintarLista(); });
     el.querySelector('#wa-ftema')?.addEventListener('change', (e) => { st.fTema = e.target.value; pintarLista(); });
     el.querySelector('#wa-fases')?.addEventListener('change', (e) => { st.fAses = e.target.value; pintarLista(); });
+    const panelF = el.querySelector('#wa-fpanel'); const btnF = el.querySelector('#wa-filtro-btn');
+    const refrescarF = () => { const t = el.querySelector('#wa-filtro-txt'); if (t) t.textContent = textoFiltro(); btnF?.classList.toggle('wa-activo', textoFiltro() !== 'Filtros'); };
+    const abrirF = (abrir) => { panelF.hidden = !abrir; btnF.setAttribute('aria-expanded', String(abrir)); };
+    btnF?.addEventListener('click', () => abrirF(panelF.hidden));
+    el.querySelector('#wa-fcerrar')?.addEventListener('click', () => abrirF(false));
+    el.querySelector('#wa-flimpiar')?.addEventListener('click', () => {
+      st.filtro = 'todas'; st.fTema = ''; st.fAses = '';
+      const t = el.querySelector('#wa-ftema'); if (t) t.value = ''; const a = el.querySelector('#wa-fases'); if (a) a.value = '';
+      el.querySelectorAll('.wa-pildoras button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.f === 'todas')));
+      refrescarF(); pintarLista(); abrirF(false);
+    });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && panelF && !panelF.hidden) abrirF(false); });
     el.querySelectorAll('.wa-pildoras button').forEach((b) => b.addEventListener('click', () => {
       st.filtro = b.dataset.f;
       el.querySelectorAll('.wa-pildoras button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-      pintarLista();
+      refrescarF(); pintarLista(); abrirF(false);
     }));
+    el.querySelector('#wa-ftema')?.addEventListener('change', refrescarF);
+    el.querySelector('#wa-fases')?.addEventListener('change', refrescarF);
   }
 
   // ── Alertas: conversaciones que necesitan a una persona ──
@@ -152,7 +190,7 @@ export async function renderWhatsapp({ el, supabase, empresaId, escape, toast, p
       }
     }
     const pill = el.querySelector('.wa-pildoras button[data-f="atencion"]');
-    if (pill) pill.textContent = pend.length ? `Atención (${pend.length})` : 'Atención';
+    if (pill) { const b = pill.querySelector('b'); if (b) b.textContent = pend.length ? `Atención (${pend.length})` : 'Atención'; }
     document.title = pend.length && document.hidden ? `(${pend.length}) ⚠ ${st.tituloOriginal}` : st.tituloOriginal;
   }
   function ajustarAlto() {
