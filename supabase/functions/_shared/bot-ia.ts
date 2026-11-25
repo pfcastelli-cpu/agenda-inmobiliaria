@@ -72,6 +72,7 @@ const HERRAMIENTAS = [{
     type: 'object',
     properties: {
       codigo: { type: 'integer', description: 'Código interno (número) del inmueble, si el cliente lo da o viene en un enlace.' },
+      codigo_portal: { type: 'string', description: 'Código de un portal: el número al final de un enlace de Fincaraíz (ej. 194288347), un código de Metrocuadrado (ej. 507-M7074593) o de Ciencuadras (ej. 155650-279). Los datos de NUESTRA base mandan: si el título del portal (venta/arriendo, barrio) no coincide, el portal puede estar mal rotulado; da la información de nuestra base.' },
       operacion: { type: 'string', enum: ['Arriendo', 'Venta'] },
       ciudad: { type: 'string', description: 'Ciudad, p. ej. Bogotá, Medellín, Barranquilla.' },
       tipo: { type: 'string', description: 'Tipo: apartamento, casa, local, oficina, bodega, lote...' },
@@ -94,6 +95,7 @@ export async function buscarInmuebles(admin: Admin, empresaId: string, cfgEmpres
     p_habitaciones_min: Number.isInteger(f.habitaciones_min) ? f.habitaciones_min : null,
     p_valor_max: Number.isFinite(f.valor_max) ? f.valor_max : null,
     p_limite: 6,
+    p_codigo_portal: f.codigo_portal ? String(f.codigo_portal).replace(/[^A-Za-z0-9-]/g, '').slice(0, 40) || null : null,
   });
   if (error || !data) return { error: 'No se pudo consultar el catálogo en este momento.' };
   const dominio = String(cfgEmpresa.dominio_publico || 'citas.patrimonios.co').replace(/[^a-zA-Z0-9.-]/g, '');

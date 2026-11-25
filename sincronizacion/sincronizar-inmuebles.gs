@@ -169,8 +169,10 @@ function sincronizarInmuebles() {
         const v1 = numeroOrNull(fila[idx.valorAdmin1]);
         const v2 = numeroOrNull(fila[idx.valorAdmin2]);
         const v3 = numeroOrNull(fila[idx.valorAdmin3]);
+        // Las tres columnas NO se suman: son el mismo valor en fechas de pago distintas. «Fecha 1» es el de descuento
+        // (pago antes del día indicado) y es el que se informa siempre; si falta, se usa el siguiente que exista.
         if (v1 === null && v2 === null && v3 === null) { return null; }
-        return (v1 || 0) + (v2 || 0) + (v3 || 0);
+        return v1 !== null ? v1 : (v2 !== null ? v2 : v3);
       })(),
       visto_en_ultima_sincronizacion: true,
       veces_no_visto: 0,
