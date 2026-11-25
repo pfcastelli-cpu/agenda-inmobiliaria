@@ -123,6 +123,29 @@ async function credencialDe(admin: Admin, empresaId: string): Promise<Credencial
   return { clave: String(data.clave), proveedor, modelo: String(data.modelo || MODELOS_POR_DEFECTO[proveedor]) };
 }
 
+async function listarModelos(cred: Credencial): Promise<string[]> {
+  const senal = AbortSignal.timeout(20000);
+  let ids: string[] = [];
+  if (cred.proveedor === 'google') {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': cred.clave }, signal: senal });
+    if (!r.ok) throw new Error(`El proveedor respondió ${r.status}`);
+    const d = await r.json();
+    ids = (d.models ?? []).filter((m: { supportedGenerationMethods?: string[] }) => (m.supportedGenerationMethods ?? []).includes('generateContent'))
+      .map((m: { name: string }) => String(m.name).replace(/^models//, '')).filter((n: string) => /^gemini-/.test(n) && !/(embedding|image|tts|live|audio|robotics|computer|vision|aqa)/.test(n));
+  } else if (cred.proveedor === 'openai') {
+    const r = await fetch('https://api.openai.com/v1/models', { headers: { authorization: `Bearer ${cred.clave}` }, signal: senal });
+    if (!r.ok) throw new Error(`El proveedor respondió ${r.status}`);
+    const d = await r.json();
+    ids = (d.data ?? []).map((m: { id: string }) => m.id).filter((n: string) => /^(gpt-|od)/.test(n) && !/(audio|realtime|transcribe|tts|image|embedding|search|moderation|instruct|codex)/.test(n));
+  } else {
+    const r = await fetch('https://api.anthropic.com/v1/models?limit=100', { headers: { 'x-api-key': cred.clave, 'anthropic-version': '2023-06-01' }, signal: senal });
+    if (!r.ok) throw new Error(`El proveedor respondió ${r.status}`);
+    const d = await r.json();
+    ids = (d.data ?? []).map((m: { id: string }) => m.id);
+  }
+  return [...new Set(ids)].sort().slice(0, 60);
+}
+
 async function procesarEmpresa(admin: Admin, empresaId: string): Promise<{ revisados: number; errores: number; sinClave?: boolean }> {
   const cred = await credencialDe(admin, empresaId);
   if (!cred) return { revisados: 0, errores: 0, sinClave: true };
@@ -165,7 +188,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ ok: false, error: 'Método no permitido.' }, 405);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-  let body: { empresa_id?: string; probar?: boolean } = {};
+  let body: { empresa_id?: string; probar?: boolean; modelos?: boolean } = {};
   try {
     body = await req.json();
   } catch {
@@ -173,7 +196,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- Botón «Probar la clave»: exige un administrador activo de esa empresa ----------------------
-  if (body.probar === true) {
+  if (body.probar === true || body.modelos === true) {
     const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     const { data: usuario } = jwt ? await admin.auth.getUser(jwt) : { data: { user: null } };
     if (!usuario?.user || !body.empresa_id) return json({ ok: false, error: 'Sesión no válida.' }, 401);
@@ -188,6 +211,11 @@ Deno.serve(async (req) => {
 
     const cred = await credencialDe(admin, body.empresa_id);
     if (!cred) return json({ ok: false, error: 'Todavía no hay una clave guardada, o el filtro está apagado.' });
+    // Lista los modelos que el proveedor ofrece HOY con esta clave, para elegir uno vigente.
+    if (body.modelos === true) {
+      try { return json({ ok: true, proveedor: cred.proveedor, actual: cred.modelo, modelos: await listarModelos(cred) }); }
+      catch (e) { const m = e instanceof Error ? e.message : ''; return json({ ok: false, error: /40[13]/.test(m) ? 'El proveedor rechazó la clave (revisa que esté completa y vigente).' : 'No se pudo consultar la lista de modelos: ' + (m || 'error desconocido') }); }
+    }
     try {
       const r = await consultarIA(cred, 'El apartamento es muy luminoso pero la cocina es pequeña. El asesor Juan fue muy amable, llámenme al 3001234567.');
       // La prueba usa un texto inventado: no toca ninguna encuesta real.
@@ -195,7 +223,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, ejemplo: r.texto, revisados_ahora: procesadas.revisados });
     } catch (e) {
       const motivo = e instanceof Error ? e.message : 'Error desconocido';
-      return json({ ok: false, error: /40[13]/.test(motivo) ? 'El proveedor rechazó la clave (revisa que esté completa y vigente).' : `No se pudo usar la clave: ${motivo}` });
+      return json({ ok: false, error: /40[13]/.test(motivo) ? 'El proveedor rechazó la clave (revisa que esté completa y vigente).' : /404/.test(motivo) ? `El modelo «${cred.modelo}» ya no está disponible. Pulsa «Ver modelos disponibles» y elige uno vigente.` : `No se pudo usar la clave: ${motivo}` });
     }
   }
 

@@ -37,6 +37,7 @@ export async function iaTab(ctx) {
   <div class="ad-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
    <button type="submit">Guardar</button>
    <button type="button" data-probar-ia ${tiene ? '' : 'disabled'}>Probar la clave</button>
+   <button type="button" data-modelos-ia ${tiene ? '' : 'disabled'} title="Pregunta al proveedor qué modelos están vigentes hoy">Ver modelos disponibles</button>
    ${tiene ? '<button type="button" class="ad-link-btn" data-quitar-ia style="color:#B3261E">Quitar la clave</button>' : ''}
   </div>
   <p class="ad-probar-ia-resultado ad-muted" role="status" style="margin-top:8px"></p>
@@ -68,6 +69,23 @@ export async function iaTab(ctx) {
     if (err) { aviso(err.message || 'No se pudo guardar la clave.', true); return; }
     aviso('Configuración de inteligencia artificial guardada.');
     await iaTab(ctx);
+  };
+  el.querySelector('[data-modelos-ia]').onclick = async (ev) => {
+    const b = ev.currentTarget;
+    b.disabled = true; resultado.classList.remove('error'); resultado.textContent = 'Consultando al proveedor…';
+    try {
+      const { data, error: err } = await supabase.functions.invoke('filtrar-opiniones', { body: { empresa_id: empresaId, modelos: true } });
+      if (err || !data?.ok) { resultado.textContent = '❌ ' + (data?.error || 'No se pudo consultar la lista de modelos.'); resultado.classList.add('error'); }
+      else {
+        const lista = data.modelos || [];
+        el.querySelector('#ad-ia-modelos').innerHTML = lista.map((m) => `<option value="${esc(m)}"></option>`).join('');
+        resultado.innerHTML = lista.length
+          ? `Modelos vigentes hoy (toca uno para elegirlo, luego «Guardar»):<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${lista.map((m) => `<button type="button" class="ad-link-btn" data-elegir-modelo="${esc(m)}" style="border:1px solid currentColor;border-radius:999px;padding:3px 10px">${esc(m)}</button>`).join('')}</div>`
+          : 'El proveedor no devolvió modelos para esta clave.';
+        resultado.querySelectorAll('[data-elegir-modelo]').forEach((x) => x.onclick = () => { el.querySelector('[name=ia_modelo]').value = x.dataset.elegirModelo; resultado.textContent = 'Modelo elegido: ' + x.dataset.elegirModelo + '. Pulsa «Guardar» y luego «Probar la clave».'; });
+      }
+    } catch { resultado.textContent = '❌ No se pudo conectar con el servicio.'; resultado.classList.add('error'); }
+    b.disabled = false;
   };
   el.querySelector('[data-probar-ia]').onclick = async (ev) => {
     const b = ev.currentTarget;
