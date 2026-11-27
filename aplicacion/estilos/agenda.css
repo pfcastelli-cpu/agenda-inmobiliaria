@@ -572,3 +572,14 @@ table.v-tabla-res td[data-label="#"]::before, table.ad-tabla td[data-label="#"]:
 .v-contador[hidden]{display:none}
 .v-pesta{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
 .v-pesta .v-btn{min-height:40px}
+
+/* Barra inferior con 8–9 botones: cada uno con su ancho, sin que el texto se monte; si no caben, se desliza */
+@media (max-width: 860px) {
+  #visita-app .v-nav { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  #visita-app .v-nav::-webkit-scrollbar { display: none; }
+  #visita-app .v-nav button { flex: 0 0 auto; min-width: 64px; padding: 4px 8px; font-size: 11px; line-height: 1.15; white-space: nowrap; letter-spacing: 0; position: relative; }
+  #visita-app .v-nav button svg { flex: none; }
+}
+@media (max-width: 860px) {
+  #visita-app .v-nav .v-contador { position: absolute; top: 2px; right: 6px; margin: 0; min-width: 17px; padding: 0 5px; font-size: 11px; line-height: 17px; }
+}
