@@ -8,7 +8,7 @@ import { ORIGENES_CAPTACION, cargarCiudadesYZonas, buscarHorariosCaptacion, sele
 import { renderPendientes, reiniciarPendientes } from './pendientes.js';
 import { renderEstudios } from './estudios-mercado.js';
 import { enviarPrueba, reportarProblemaCorreo } from './correo-prueba.js';
-import { renderAsambleas } from './asambleas.js';
+import { renderCasos, abrirCasosEn } from './casos-inmuebles.js';
 import { renderMiDisponibilidad } from './mi-disponibilidad.js';
 import { renderWhatsapp } from './whatsapp-bandeja.js';
 import { iniciarPresenciaWhatsapp, detenerPresenciaWhatsapp } from './whatsapp-presencia.js';
@@ -39,6 +39,8 @@ import {
   createIcons,
   ExternalLink,
   Eye,
+  FolderKanban,
+  FolderOpen,
   History,
   House,
   LifeBuoy,
@@ -74,6 +76,8 @@ const icons = {
   Clock3,
   ExternalLink,
   Eye,
+  FolderKanban,
+  FolderOpen,
   History,
   House,
   LifeBuoy,
@@ -176,7 +180,7 @@ export function iniciarAgendaReal(acceso) {
   if (insignia) insignia.textContent = 'Datos reales';
   const pie = root.querySelector('.v-footnote');
   if (pie) pie.textContent = 'Datos reales · las citas y cancelaciones quedan guardadas';
-  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', estudios: 'Estudios', soporte: 'Ayuda', disponibilidad: 'Mi disponibilidad', whatsapp: 'WhatsApp', propietarios: 'Propietarios', salud: 'Salud', auditoria: 'Seguridad' };
+  const ETIQUETAS_NAV = { agenda: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', casos: 'Casos', estudios: 'Estudios', soporte: 'Ayuda', disponibilidad: 'Mi disponibilidad', whatsapp: 'WhatsApp', propietarios: 'Propietarios', salud: 'Salud', auditoria: 'Seguridad' };
   root.querySelectorAll('[data-view]').forEach((b) => {
     // El icono puede ser aún <i data-lucide> o ya el <svg> en que Lucide lo convirtió (si esta función corre otra vez): se conserva en ambos casos.
     const textoIcono = b.querySelector('i, svg');
@@ -200,6 +204,8 @@ export function iniciarAgendaReal(acceso) {
     if (['propietarios', 'salud', 'estudios', 'negociaciones'].includes(b.dataset.view)) b.hidden = true;
     // Asambleas (citaciones de copropiedades, datos sensibles): solo administración y coordinación.
     if (b.dataset.view === 'asambleas') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
+    // Casos (terminaciones, mantenimientos, PQRs, asambleas): administración y coordinación.
+    if (b.dataset.view === 'casos') b.hidden = contexto.rol !== 'administrador' && contexto.rol !== 'coordinador';
     // Soporte (tickets): lo ve todo el equipo.
     if (b.dataset.view === 'soporte') b.hidden = false;
     // Mi disponibilidad: quien tenga el permiso (el administrador lo da o quita por rol) edita su jornada y sus ausencias.
@@ -801,7 +807,7 @@ function pestanasPendientes() {
   return `<div class="v-pesta" role="tablist" aria-label="Pendientes">${GRUPO_PENDIENTES.map(([v, t]) => `<button type="button" role="tab" data-view="${v}" class="v-btn ${state.view === v ? 'v-primary' : 'v-quiet'}" aria-selected="${state.view === v}">${t}${v === 'propietarios' ? '<span class="v-contador" data-contador-propietarios hidden></span>' : ''}</button>`).join('')}</div>`;
 }
 let renderSeq = 0;
-const NOMBRES_VISTA = { negociaciones: 'Propuestas de compra', auditoria: 'Seguridad', propietarios: 'Solicitudes de propietarios', salud: 'Estado de inmuebles', agenda: 'Agenda', interna: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', reserva: 'Reservar cita', exito: 'Reservar cita' };
+const NOMBRES_VISTA = { negociaciones: 'Propuestas de compra', auditoria: 'Seguridad', propietarios: 'Solicitudes de propietarios', salud: 'Estado de inmuebles', agenda: 'Agenda', interna: 'Agenda', properties: 'Inmuebles', team: 'Mi equipo', informes: 'Informes', bitacora: 'Historial de cambios', pendientes: 'Por atender', asambleas: 'Asambleas', casos: 'Casos', reserva: 'Reservar cita', exito: 'Reservar cita' };
 let vistaAnteriorSoporte = 'agenda';
 
 async function render() {
@@ -821,7 +827,8 @@ async function render() {
     else if (state.view === 'team') await renderEquipo();
     else if (state.view === 'informes') await renderInformes();
     else if (state.view === 'bitacora') await renderBitacora();
-    else if (state.view === 'asambleas') renderAsambleas({ el: main() });
+    else if (state.view === 'asambleas') { abrirCasosEn('asamblea'); await renderCasos({ el: main(), supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, icon, refreshIcons }); }   // Asambleas y Casos son ahora un solo módulo
+    else if (state.view === 'casos') await renderCasos({ el: main(), supabase, empresaId: contexto.empresaId, rol: contexto.rol, escape, icon, refreshIcons });
     else if (GRUPO_PENDIENTES.some(([v]) => v === state.view)) {
       // Pendientes agrupa Publicidad, Propietarios, Estudios y Salud en pestañas (solo administración/coordinación ven las 4).
       const gestiona = contexto.rol === 'administrador' || contexto.rol === 'coordinador';

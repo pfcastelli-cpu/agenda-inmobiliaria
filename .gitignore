@@ -7,3 +7,6 @@ desktop.ini
 
 # Respaldos de datos (contienen datos de contacto reales) -- nunca a git
 respaldos/
+
+# Datos reales de prueba traidos de Sedi (sin nombres) -- nunca a git
+aplicacion/datos-demo/
